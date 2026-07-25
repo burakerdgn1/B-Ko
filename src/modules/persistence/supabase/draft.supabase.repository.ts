@@ -5,6 +5,7 @@ import {
   CreateDraftInput,
   DraftRepository,
   UpdateDraftInput,
+  assertNotBornSent,
 } from '../repositories/draft.repository';
 import { SupabaseClientProvider } from './supabase-client.provider';
 import { assertData, assertNoError } from './supabase.util';
@@ -27,6 +28,9 @@ export class DraftSupabaseRepository extends DraftRepository {
   }
 
   async create(input: CreateDraftInput): Promise<Draft> {
+    // Onay kapısının INSERT tarafı — memory sürücüsüyle davranış eşitliği.
+    assertNotBornSent(input.status);
+
     const { data, error } = await this.supabase.client
       .from(TABLE)
       .insert(draftToRow(input))

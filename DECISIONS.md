@@ -214,3 +214,22 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   dolayısıyla doğrulanacak DTO da yok. Sıfır endpoint'e hizmet etmek için iki
   çalışma-zamanı bağımlılığı taşımak gereksiz. HTTP endpoint'i (ör. Telegram
   webhook) eklendiğinde tek satırla geri gelir.
+
+## D-022 — Onay kapısı INSERT tarafında da kapatıldı (kırmızı takım bulgusu)
+- **Bağlam:** D-014'ün gerçekten kapandığını doğrulamak için bir **kırmızı takım
+  (red team) test seti** yazıldı: kapıyı kırmayı DENEYEN 6 saldırı vektörü.
+  Vektörlerden biri gerçek bir boşluk ortaya çıkardı: `update()` kapısı sağlamdı,
+  ancak `create()` hiçbir kontrol yapmıyordu — yani bir çağıran, kaydı en baştan
+  `status: 'sent'` olarak YARATARAK kapıyı tamamen atlayabilirdi.
+  (Postgres trigger'ı bunu zaten reddediyordu; açık yalnızca uygulama
+  katmanındaydı, dolayısıyla `DB_DRIVER=memory` ile çalışan geliştirme/test
+  ortamlarını etkiliyordu.)
+- **Karar:** Paylaşılan `assertNotBornSent()` koruması eklendi; hem memory hem
+  supabase sürücüsünün `create()` metodu bunu çağırıyor. Üç katman artık aynı
+  davranışı gösteriyor.
+- **Gerekçe:** Bir güvenlik kapısı, yalnızca en zayıf girişi kadar güçlüdür.
+  `update()`'i korurken `create()`'i açık bırakmak, kapıyı kilitleyip pencereyi
+  açık bırakmaktır.
+- **Süreç dersi:** "Düzeltildi" demek yetmiyor. D-014 doğru düzeltilmişti, ama
+  düzeltmenin KAPSAMI eksikti; bu ancak kapıyı aktif olarak kırmaya çalışan bir
+  test setiyle görüldü. `approval-gate.redteam.spec.ts` kalıcı olarak repoda.

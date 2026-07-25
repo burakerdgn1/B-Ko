@@ -5,6 +5,7 @@ import {
   CreateDraftInput,
   DraftRepository,
   UpdateDraftInput,
+  assertNotBornSent,
 } from '../repositories/draft.repository';
 import { MemoryStore } from './memory-store.util';
 
@@ -22,6 +23,12 @@ export class DraftMemoryRepository extends DraftRepository {
   private readonly store = new MemoryStore<Draft>();
 
   async create(input: CreateDraftInput): Promise<Draft> {
+    // Onay kapısı, INSERT'te de geçerlidir: bir taslak DOĞRUDAN 'sent'
+    // durumunda yaratılamaz. Aksi hâlde update() kapısı, kaydı en baştan
+    // 'sent' yaratarak tamamen atlanabilirdi.
+    // (DB tarafındaki karşılığı: 0001_init.sql `tg_op = 'INSERT'` kolu.)
+    assertNotBornSent(input.status);
+
     const now = new Date();
     const draft: Draft = {
       ...input,
