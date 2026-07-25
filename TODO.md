@@ -22,29 +22,29 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
 - [x] F1c (O) **PII maskeleme modülü** + crypto zarf + testler (moat) — 54 test geçti
 - [x] F1d (O) Config modülü (Zod env validasyonu, üretimde mock kaçışı kapalı)
 - [x] F1g (O) Paylaşılan alan tipleri `src/common/types/domain.ts` (sözleşme kayması önlemi)
-- [~] F1b (S) Persistence: memory + supabase repository'ler, onay kapısı
-- [~] F1e (S) LLM servis: Claude sarmalayıcı (PII zorunlu geçiş) + OcrProvider + mock
-- [~] F1f (S) Telegram kanal (grammY) + ChannelAdapter + mock adapter
-- [ ] F1h (O) `app.module.ts` entegrasyonu (agent çıktıları geldiğinde)
+- [x] F1b (S) Persistence: memory + supabase repository'ler, onay kapısı
+- [x] F1e (S) LLM servis: Claude sarmalayıcı (PII zorunlu geçiş) + OcrProvider + mock
+- [x] F1f (S) Telegram kanal (grammY) + ChannelAdapter + mock adapter
+- [x] F1h (O) `app.module.ts` entegrasyonu + DI bütünlük testi
 
 ## Faz 2 — Çekirdek Agent Mantığı
 - [x] F2.0 (O) Deadline/risk yardımcıları + testleri (30 test geçti)
-- [~] F2.3 (S) 8+ sentetik Behördenbrief fixture + expected.json + profiles.json
-- [ ] F2.1 (O) Analysis state machine + pipeline (F1b/F1e sözleşmeleri netleşince)
-- [ ] F2.2 (S) Documents modülü (alım, durum yönetimi, storage referansı)
-- [ ] F2.4 (S) Analysis + documents modül testleri (fixture'larla)
+- [x] F2.3 (S) 8 sentetik Behördenbrief fixture + expected.json + profiles.json
+- [x] F2.1 (O) Analysis state machine + pipeline + uçtan uca test
+- [x] F2.2 (O) Belge alımı pipeline içinde modellendi (ayrı modüle gerek kalmadı)
+- [x] F2.4 (O) Fixture tabanlı PII + pipeline testleri
 
 ## Faz 3 — Üretim + İzleme
-- [ ] F3a (S) Taslak mektup üretimi (Beamtendeutsch) + approval state machine
-- [ ] F3b (S) Playwright randevu izleme PoC (tek kurum, mock sayfa)
+- [x] F3a (S) Taslak mektup üretimi (Beamtendeutsch) + approval state machine
+- [x] F3b (S) Playwright randevu izleme PoC (tek kurum, mock sayfa)
 
 ## Faz 4 — Arayüz
-- [ ] F4.1 (S) Telegram UX akışı (onboarding→consent→AI disclosure→belge→onay)
+- [x] F4.1 (O) ConversationService — tam sohbet akışı (tr/de/en)
 - [ ] F4.2 (—) minimal web dashboard — **ertelendi** (v1 kapsam dışı, CLAUDE.md §4)
 
 ## Faz 5 — Test & Teslim
-- [ ] F5.1 (S) Reminders + GDPR silme cron + testleri
-- [ ] F5.2 (S) Uçtan uca (e2e) senaryo testi (fixture ile tam döngü)
-- [ ] F5.3 (S) Dockerfile + docker-compose + deployment scriptleri
-- [ ] F5.4 (S) README + mimari diyagram (mermaid) + demo senaryosu
-- [ ] F5.5 (O) Final entegrasyon + DoD doğrulama + STATUS güncelle
+- [x] F5.1 (S) Reminders + GDPR silme cron + testleri (+D-019 eksik silme düzeltmesi)
+- [x] F5.2 (O) Uçtan uca senaryo testleri (pipeline + conversation, fixture ile tam döngü)
+- [x] F5.3 (S) Dockerfile + docker-compose + CI + deployment scriptleri (imaj gerçekten build edildi)
+- [x] F5.4 (O) README + mermaid diyagramlar + demo senaryosu
+- [~] F5.5 (O) Final entegrasyon + DoD doğrulama + STATUS güncelle

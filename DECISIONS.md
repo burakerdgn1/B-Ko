@@ -188,3 +188,29 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **Not:** Regresyon testi üç durumu da (scheduled/sent/cancelled) kapsıyor.
 - **Süreç notu:** Bu, subagent'ın kapsam dışı kalan bir sorunu gizlemek yerine
   raporlamasıyla ortaya çıktı — doğru davranış.
+
+## D-020 — Boş env değeri = tanımsız (açılışta çökme düzeltmesi)
+- **Bağlam:** `.env.example` içindeki `PII_MASTER_KEY=` (boş) satırı, dotenv
+  tarafından `""` olarak okunuyordu. Zod'un `.optional()`'ı yalnızca `undefined`
+  değerini muaf tutar; `""` yine regex doğrulamasına girip **uygulamayı açılışta
+  çökertiyordu**. Yani README'nin ilk adımı (`cp .env.example .env`) doğrudan
+  bozuk bir kuruluma yol açıyordu.
+- **Karar:** `validateEnv`, tüm boş/yalnızca-boşluk string'leri `undefined`'a
+  çevirerek doğrular.
+- **Gerekçe:** `.env`'de boş bırakılan bir anahtar "ayarlanmadı" demektir; bu tüm
+  opsiyonel anahtarlar için geçerli genel bir kuraldır (tek tek yamamak yerine
+  merkezî çözüm). Geçersiz (boş olmayan) değerler hâlâ reddediliyor.
+- **Nasıl bulundu:** DevOps subagent'ı imajı GERÇEKTEN kurup çalıştırdığı için
+  yakalandı — birim testleri bu yolu hiç denemiyordu. Regresyon testi eklendi
+  (`env.schema.spec.ts`), ayrıca `.env.example` kopyalanarak gerçek açılış doğrulandı.
+
+## D-021 — Global ValidationPipe kaldırıldı (bağımlılık eklemek yerine)
+- **Bağlam:** `main.ts` global `ValidationPipe` kuruyordu; bu, `class-validator` ve
+  `class-transformer` paketlerini tembel yüklemeye çalışıp her açılışta
+  "package is missing" uyarısı üretiyordu. Paketler `package.json`'da yoktu.
+- **Karar:** İki bağımlılık eklemek yerine `ValidationPipe` kaldırıldı; ne zaman
+  geri ekleneceği `main.ts`'te yorumla yazıldı.
+- **Gerekçe:** Uygulamada **hiç HTTP controller'ı yok** (giriş kanalı Telegram),
+  dolayısıyla doğrulanacak DTO da yok. Sıfır endpoint'e hizmet etmek için iki
+  çalışma-zamanı bağımlılığı taşımak gereksiz. HTTP endpoint'i (ör. Telegram
+  webhook) eklendiğinde tek satırla geri gelir.

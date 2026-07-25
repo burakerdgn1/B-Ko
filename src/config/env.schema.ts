@@ -102,9 +102,27 @@ export const envSchema = z
 
 export type AppEnv = z.infer<typeof envSchema>;
 
+/**
+ * Boş string'leri "tanımsız" sayar.
+ *
+ * Neden gerekli: `.env` dosyasındaki `PII_MASTER_KEY=` gibi BOŞ bir satır,
+ * dotenv tarafından `""` olarak okunur. Zod'un `.optional()`'ı yalnızca
+ * `undefined` değerini muaf tutar; `""` yine de `regex`/`url` doğrulamasına
+ * girer ve uygulama açılışta ÇÖKER. Bu, `.env.example`'ı kopyalayan herkesi
+ * (README'nin önerdiği ilk adım) etkiliyordu — Docker'da gerçekten çalıştırılınca
+ * yakalandı.
+ */
+function blankToUndefined(raw: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    out[key] = typeof value === 'string' && value.trim() === '' ? undefined : value;
+  }
+  return out;
+}
+
 /** Zod hatalarını okunabilir tek bir mesaja çevirir (fail-fast log'u için). */
 export function validateEnv(raw: Record<string, unknown>): AppEnv {
-  const parsed = envSchema.safeParse(raw);
+  const parsed = envSchema.safeParse(blankToUndefined(raw));
   if (!parsed.success) {
     const lines = parsed.error.issues.map(
       (i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`,
