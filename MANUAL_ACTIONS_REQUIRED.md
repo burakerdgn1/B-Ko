@@ -9,12 +9,28 @@
 - **Neden:** Claude vision/analiz çağrıları.
 - **Aksiyon:** console.anthropic.com'dan API key al → `.env` içinde `ANTHROPIC_API_KEY=...`
 - **O ana kadar:** `LLM_MOCK=true` ile deterministik mock yanıtlar kullanılıyor.
+- **Prompt kalitesi için:** Anahtar geldiğinde `ANTHROPIC_API_KEY=sk-... npm run eval:prompts`
+  çalıştırın. 8 sentetik mektubu gerçek modelden geçirip alan bazında doğruluk
+  (kurum / son tarih / risk / eksik belge) ve PII sızıntı raporu üretir.
+  Prompt değişikliği ÖNCESİ ve SONRASI karşılaştırması için `--out baseline.json`.
+  ⚠️ Gerçek API çağrısıdır, ücretlendirilir (8 çağrı).
 
 ## 2. Telegram Bot Token
 - **Neden:** Gerçek Telegram botu.
 - **Aksiyon:** @BotFather'dan token al → `.env` içinde `TELEGRAM_BOT_TOKEN=...` ve
   `TELEGRAM_MODE=polling` (yerel geliştirme) veya `TELEGRAM_MODE=webhook` (üretim).
 - **O ana kadar:** Bot polling/webhook devre dışı; kanal mantığı `MockChannelAdapter` + testlerle doğrulanıyor.
+
+## 2b. Telegram webhook sırrı (üretim modu)
+- **Neden:** Webhook endpoint'i (`POST /webhook/telegram`) tahmin edilebilir bir
+  adrestir; gizli anahtar olmadan üçüncü taraflar sahte update enjekte edebilir.
+- **Aksiyon:**
+  1. `openssl rand -hex 32` ile bir sır üret → `.env` içine `TELEGRAM_WEBHOOK_SECRET=...`
+  2. `TELEGRAM_MODE=webhook` ve `PUBLIC_BASE_URL=https://<alan-adiniz>` ayarla
+  3. Uygulama açılışta webhook'u Telegram'a otomatik kaydeder (`setWebhook`)
+- **O ana kadar:** `TELEGRAM_MODE=polling` (yerel geliştirme) veya `disabled`.
+- **DİKKAT:** Sır tanımlı değilse endpoint **tüm istekleri 401 ile reddeder**
+  (fail-closed). Bu bilinçlidir — sırsız bir webhook açık kapıdır.
 
 ## 3. Supabase projesi (AB bölgesi)
 - **Neden:** Postgres DB + storage (GDPR için EU region).

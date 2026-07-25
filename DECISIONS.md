@@ -375,3 +375,40 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **KALAN SINIR (D-028 devam ediyor):** Tetikleyicisiz, cümle içinde çıplak
   geçen adlar ("von Petra Hoffmann geprüft") maskelenmiyor. Kalıcı bir test bu
   sınırı sabitliyor ki sessizce kaymasın.
+
+## D-030 — Telegram webhook endpoint'i fail-closed (v1.1)
+- **Karar:** `POST /webhook/telegram` eklendi. Gizli anahtar
+  (`X-Telegram-Bot-Api-Secret-Token`) **sabit zamanlı** karşılaştırılır
+  (`CryptoService.safeEqual`). Sunucuda `TELEGRAM_WEBHOOK_SECRET` TANIMSIZSA
+  endpoint tüm istekleri 401 ile reddeder.
+- **Gerekçe:** Webhook adresi tahmin edilebilir. "Sır yoksa herkese açık"
+  varsayılanı bir gizlilik ürününde kabul edilemez — sahte update enjeksiyonu,
+  başka bir kullanıcının adına belge göndermek anlamına gelirdi.
+- **Yanıt sözleşmesi:** İşleme hatasında bile **200** döner. Telegram 200
+  dışındaki yanıtlarda update'i tekrar gönderir; bozuk bir belge sonsuz
+  yeniden deneme döngüsü yaratırdı. Kimlik doğrulama hatası istisnadır (401).
+- **Loglama:** Hata logunda yalnızca `update_id` geçer — update gövdesi ham PII
+  içerir ve ASLA loglanmaz (test ile doğrulandı).
+- **Not (D-021 devamı):** Artık bir HTTP endpoint'i var, ancak `ValidationPipe`
+  hâlâ eklenmedi: doğrulama DTO ile değil, gizli anahtar + grammY tip eşlemesi
+  ile yapılıyor. `class-validator` bağımlılığı için hâlâ gerekçe yok.
+
+## D-031 — Prompt "tuning" ölçüm olmadan yapılmaz (v1.1)
+- **Bağlam:** v1.1 planında "gerçek Claude çağrılarıyla prompt tuning" vardı.
+  Ortamda `ANTHROPIC_API_KEY` YOK; gerçek çağrı yapılamıyor.
+- **Karar:** Prompt'ları körlemesine "iyileştirmek" yerine ÖLÇÜM ALTYAPISI
+  kuruldu: `npm run eval:prompts` (`scripts/prompt-eval.ts`). 8 sentetik
+  mektubu gerçek modelden geçirir; kurum / son tarih / risk / eksik belge
+  alanlarında doğruluk ve PII sızıntı raporu üretir. `--out` ile öncesi/sonrası
+  karşılaştırması yapılabilir.
+- **Gerekçe:** Ölçmeden yapılan prompt değişikliği tahmindir ve bu projede
+  tekrar tekrar görüldüğü gibi (D-013, D-014, D-024) doğrulanmamış varsayımlar
+  gerçek hatalara dönüşüyor. Anahtar geldiğinde tek komutla ölçüm yapılabilir.
+- **Tek istisna — ölçüm gerektirmeyen düzeltme:** `riskLevel` alanı prompt'ta
+  ölçütsüz bir enum olarak duruyordu; model "high" ile "medium" arasındaki farkı
+  bilemezdi. Bu bir *belirsizlik*tir, tercih değil. Fixture semantiğinden
+  türetilen açık bir ölçüt eklendi. Ayrıca modele, tarihleri MASKELİ gördüğü
+  için zaman baskısını değerlendirmemesi gerektiği açıkça söylendi — bunu sistem
+  zaten yerelde `escalateRiskByDeadline` ile yapıyor.
+- **DOĞRULANMADI:** Bu prompt değişikliğinin gerçek model davranışına etkisi
+  ÖLÇÜLMEDİ. Anahtar geldiğinde `eval:prompts` ile doğrulanmalıdır.

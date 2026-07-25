@@ -1,0 +1,216 @@
+/**
+ * Prompt değerlendirme koşumu (v1.1) — GERÇEK Claude çağrılarıyla.
+ *
+ * Neden gerekli: prompt "iyileştirmesi" ölçüm olmadan tahmin yürütmektir.
+ * Bu script, 8 sentetik Behördenbrief'i gerçek modelden geçirir ve çıktıyı
+ * `expected.json`'daki beklenen değerlerle karşılaştırarak alan bazında
+ * doğruluk raporu üretir. Prompt değiştirildiğinde ÖNCE/SONRA karşılaştırması
+ * yapılabilsin diye sonuçları JSON olarak da yazar.
+ *
+ * Kullanım:
+ *   ANTHROPIC_API_KEY=sk-... npm run eval:prompts
+ *   ANTHROPIC_API_KEY=sk-... npm run eval:prompts -- --out baseline.json
+ *
+ * ⚠️ GERÇEK API çağrısı yapar ve ÜCRETLENDİRİLİR (8 mektup × 1 çağrı).
+ * ⚠️ Fixture'lar sentetiktir; gerçek kişi verisi gönderilmez (D-005).
+ */
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
+import { AppModule } from '../src/app.module';
+import { LlmService } from '../src/modules/llm/llm.service';
+import { PiiService } from '../src/common/pii/pii.service';
+import { parseGermanDate } from '../src/modules/analysis/deadline.util';
+import type { KnownPiiProfile } from '../src/common/pii/pii.types';
+
+const FIXTURE_DIR = join(__dirname, '../test-fixtures');
+const LETTER_DIR = join(FIXTURE_DIR, 'behordenbriefe');
+
+interface ExpectedEntry {
+  file: string;
+  authority: string;
+  requestType?: string;
+  expectedDeadline?: string | null;
+  expectedRiskLevel: string;
+  expectedMissingDocuments?: string[];
+}
+
+interface FieldScore {
+  field: string;
+  correct: number;
+  total: number;
+}
+
+interface CaseResult {
+  key: string;
+  authority: { expected: string; got: string | null; ok: boolean };
+  requestType: { expected?: string; got: string | null };
+  deadline: { expected: string | null; got: string | null; ok: boolean };
+  riskLevel: { expected: string; got: string; ok: boolean };
+  missingDocs: { expected: number; got: number; overlap: number };
+  inScope: boolean;
+  confidence: number;
+  leaked: string[];
+}
+
+async function main(): Promise<void> {
+  const logger = new Logger('PromptEval');
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    logger.error(
+      'ANTHROPIC_API_KEY tanımsız — bu script GERÇEK model çağrısı gerektirir.\n' +
+        '  Kullanım: ANTHROPIC_API_KEY=sk-... npm run eval:prompts\n' +
+        '  Anahtar edinme: MANUAL_ACTIONS_REQUIRED.md §1',
+    );
+    process.exit(1);
+  }
+
+  // Mock'u kapat — gerçek çağrı yolunu zorla.
+  process.env.LLM_MOCK = 'false';
+  process.env.DB_DRIVER = process.env.DB_DRIVER ?? 'memory';
+  process.env.TELEGRAM_MODE = 'disabled';
+
+  const expected: Record<string, ExpectedEntry> = JSON.parse(
+    readFileSync(join(LETTER_DIR, 'expected.json'), 'utf8'),
+  );
+  const profiles: Record<string, KnownPiiProfile> = JSON.parse(
+    readFileSync(join(FIXTURE_DIR, 'profiles.json'), 'utf8'),
+  );
+
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: ['error', 'warn'],
+  });
+  const llm = app.get(LlmService);
+  const pii = app.get(PiiService);
+
+  const results: CaseResult[] = [];
+  const keys = Object.keys(expected);
+
+  for (const key of keys) {
+    const entry = expected[key];
+    const text = readFileSync(join(LETTER_DIR, entry.file), 'utf8');
+
+    process.stdout.write(`\n▸ ${key} … `);
+
+    try {
+      const out = await llm.analyzeDocument({ text, profile: profiles[key] });
+      const r = out.result;
+
+      // Deadline token'ını gerçek tarihe çöz (D-009).
+      const deadlineRaw = r.deadlineToken
+        ? pii.unmask(r.deadlineToken, out.map)
+        : null;
+      const deadline = parseGermanDate(deadlineRaw);
+      const gotDeadline = deadline ? deadline.toISOString().slice(0, 10) : null;
+      const wantDeadline = entry.expectedDeadline ?? null;
+
+      // Eksik belge örtüşmesi (tam eşleşme yerine gevşek içerme).
+      const wantDocs = entry.expectedMissingDocuments ?? [];
+      const gotDocs = r.missingDocuments.map((d) => d.label);
+      const overlap = wantDocs.filter((w) =>
+        gotDocs.some(
+          (g) =>
+            g.toLowerCase().includes(w.toLowerCase().slice(0, 8)) ||
+            w.toLowerCase().includes(g.toLowerCase().slice(0, 8)),
+        ),
+      ).length;
+
+      results.push({
+        key,
+        authority: {
+          expected: entry.authority,
+          got: r.authority,
+          ok: !!r.authority && looselyMatches(r.authority, entry.authority),
+        },
+        requestType: { expected: entry.requestType, got: r.requestType },
+        deadline: {
+          expected: wantDeadline,
+          got: gotDeadline,
+          ok: gotDeadline === wantDeadline,
+        },
+        riskLevel: {
+          expected: entry.expectedRiskLevel,
+          got: r.riskLevel,
+          ok: r.riskLevel === entry.expectedRiskLevel,
+        },
+        missingDocs: {
+          expected: wantDocs.length,
+          got: gotDocs.length,
+          overlap,
+        },
+        inScope: r.inScope,
+        confidence: r.confidence,
+        // Gizlilik regresyonu: maskeli metinde sızıntı var mı?
+        leaked: pii.detectLeaks(out.maskedText, out.map),
+      });
+
+      process.stdout.write('tamam');
+    } catch (error) {
+      process.stdout.write(
+        `HATA: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  await app.close();
+  report(results, keys.length);
+
+  const outArg = process.argv.indexOf('--out');
+  if (outArg !== -1 && process.argv[outArg + 1]) {
+    writeFileSync(process.argv[outArg + 1], JSON.stringify(results, null, 2));
+    console.log(`\nSonuçlar yazıldı: ${process.argv[outArg + 1]}`);
+  }
+}
+
+function looselyMatches(got: string, want: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-zäöüß]/g, '');
+  return norm(got).includes(norm(want).slice(0, 10)) ||
+    norm(want).includes(norm(got).slice(0, 10));
+}
+
+function report(results: CaseResult[], total: number): void {
+  const scores: FieldScore[] = [
+    { field: 'authority', correct: results.filter((r) => r.authority.ok).length, total },
+    { field: 'deadline', correct: results.filter((r) => r.deadline.ok).length, total },
+    { field: 'riskLevel', correct: results.filter((r) => r.riskLevel.ok).length, total },
+  ];
+
+  console.log('\n\n═══════════ PROMPT DEĞERLENDİRME RAPORU ═══════════\n');
+
+  for (const s of scores) {
+    const pct = total > 0 ? Math.round((s.correct / total) * 100) : 0;
+    console.log(`  ${s.field.padEnd(12)} ${s.correct}/${s.total}  (%${pct})`);
+  }
+
+  const docsRecall = results.reduce(
+    (acc, r) => acc + (r.missingDocs.expected > 0 ? r.missingDocs.overlap / r.missingDocs.expected : 1),
+    0,
+  );
+  console.log(
+    `  ${'missingDocs'.padEnd(12)} ortalama recall: %${Math.round((docsRecall / Math.max(results.length, 1)) * 100)}`,
+  );
+
+  const leaks = results.filter((r) => r.leaked.length > 0);
+  console.log(
+    `\n  🔒 PII sızıntısı: ${leaks.length === 0 ? 'YOK ✅' : `${leaks.length} vakada VAR ❌`}`,
+  );
+
+  console.log('\n── Vaka bazında ──');
+  for (const r of results) {
+    const mark = (ok: boolean) => (ok ? '✓' : '✗');
+    console.log(
+      `  ${mark(r.authority.ok)} auth  ${mark(r.deadline.ok)} deadline  ` +
+        `${mark(r.riskLevel.ok)} risk   ${r.key}`,
+    );
+    if (!r.deadline.ok) {
+      console.log(`      beklenen: ${r.deadline.expected} · gelen: ${r.deadline.got}`);
+    }
+    if (!r.riskLevel.ok) {
+      console.log(`      beklenen: ${r.riskLevel.expected} · gelen: ${r.riskLevel.got}`);
+    }
+  }
+  console.log('\n═══════════════════════════════════════════════════\n');
+}
+
+void main();

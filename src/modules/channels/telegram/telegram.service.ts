@@ -101,17 +101,52 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           });
       } else if (mode === 'webhook') {
         await this.bot.init();
+        await this.registerWebhook();
         this.running = true;
-        this.logger.log(
-          'Telegram bot webhook modu için hazır (webhook endpoint bağlama ' +
-            'ana uygulamanın/DevOps agent’ının sorumluluğunda).',
-        );
       }
     } catch (err) {
       this.running = false;
       this.logger.error(
         `Telegram botu başlatılamadı: ${errMsg(err)} — uygulama yine de ` +
           'çalışmaya devam ediyor.',
+      );
+    }
+  }
+
+  /**
+   * Webhook URL'ini Telegram'a kaydeder (v1.1).
+   *
+   * `PUBLIC_BASE_URL` üzerinden hesaplanır; gizli anahtar tanımlıysa Telegram'a
+   * da bildirilir, böylece Telegram her istekte `X-Telegram-Bot-Api-Secret-Token`
+   * başlığını gönderir ve `TelegramController` bunu doğrular.
+   *
+   * Kayıt başarısız olursa uygulama ÇÖKMEZ — hata loglanır ve bot pasif kalır
+   * (yerelde `PUBLIC_BASE_URL` genelde erişilemez bir adrestir).
+   */
+  private async registerWebhook(): Promise<void> {
+    if (!this.bot) return;
+
+    const secret = this.config.telegramWebhookSecret;
+    const url = `${this.config.get('PUBLIC_BASE_URL')}/webhook/telegram`;
+
+    if (!secret) {
+      this.logger.error(
+        'TELEGRAM_WEBHOOK_SECRET tanımsız — webhook KAYDEDİLMEDİ. Sırsız bir ' +
+          'endpoint sahte update enjeksiyonuna açıktır (MANUAL_ACTIONS_REQUIRED.md).',
+      );
+      return;
+    }
+
+    try {
+      await this.bot.api.setWebhook(url, {
+        secret_token: secret,
+        drop_pending_updates: false,
+      });
+      this.logger.log(`Telegram webhook kaydedildi: ${url}`);
+    } catch (err) {
+      this.logger.error(
+        `Telegram webhook kaydedilemedi (${url}): ${errMsg(err)} — ` +
+          'uygulama çalışmaya devam ediyor.',
       );
     }
   }

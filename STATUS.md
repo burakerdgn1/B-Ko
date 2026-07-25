@@ -11,7 +11,7 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **463 test geçiyor** (36 suite), **0 atlanan**
+- **473 test geçiyor** (37 suite), **0 atlanan**
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edildi (218 MB)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
 - 10 commit, ana dal `main`
@@ -74,10 +74,19 @@ Kalıcı test bu sınırı sabitliyor, böylece sessizce kaymaz.
 - **Web dashboard** — CLAUDE.md §4 gereği kapsam dışı.
 
 ## Sıradaki adımlar (v1.1 önerisi)
-1. Yerel NER → tetikleyicisiz isimler (D-028) — kalan tek gizlilik boşluğu
-2. Telegram webhook controller'ı (üretim için polling yerine)
-3. `LLM_MOCK=false` ile gerçek Claude çağrılarında prompt tuning
-4. Gerçek Behördenbrief örnekleriyle (anonimleştirilmiş) doğrulama
+1. **`npm run eval:prompts` çalıştır** (ANTHROPIC_API_KEY gerekir) — prompt
+   değişikliklerinin gerçek model davranışına etkisi HENÜZ ÖLÇÜLMEDİ (D-031)
+2. Yerel NER → tetikleyicisiz isimler (D-028) — kalan tek gizlilik boşluğu
+3. Gerçek Behördenbrief örnekleriyle (anonimleştirilmiş) doğrulama
+4. WhatsApp adapter (v2)
+
+## v1.1'de tamamlananlar
+- **Telegram webhook endpoint'i** (D-030): gizli anahtar sabit zamanlı doğrulanır,
+  sır tanımsızsa fail-closed 401, işleme hatasında bile 200 (retry döngüsü yok),
+  loglarda yalnızca `update_id`. Açılışta `setWebhook` ile otomatik kayıt.
+- **Prompt değerlendirme koşumu** (D-031): `npm run eval:prompts` — alan bazında
+  doğruluk + PII sızıntı raporu, öncesi/sonrası karşılaştırması için `--out`.
+- **riskLevel ölçütü** prompt'a eklendi (ölçüm gerektirmeyen belirsizlik giderme).
 
 ## Engel
 Yok. Kalan tek şey gerçek API anahtarları/hesaplar: `MANUAL_ACTIONS_REQUIRED.md`.

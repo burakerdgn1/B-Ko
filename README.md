@@ -152,7 +152,7 @@ Supabase/Postgres · Zod · Playwright · Jest
 
 ## Durum
 
-**463 test geçiyor** (36 suite) · TypeScript strict · gerçek API anahtarı olmadan
+**473 test geçiyor** (37 suite) · TypeScript strict · gerçek API anahtarı olmadan
 uçtan uca çalışır (mock modlar).
 
 | Faz | Durum |
@@ -164,6 +164,8 @@ uçtan uca çalışır (mock modlar).
 | Hatırlatma + GDPR silme cron'ları | ✅ |
 | Randevu izleme (Playwright PoC, mock sayfa) | ✅ |
 | Telegram sohbet akışı (tr/de/en) | ✅ |
+| Telegram webhook endpoint'i (gizli anahtar doğrulamalı) | ✅ |
+| Prompt değerlendirme koşumu (`npm run eval:prompts`) | ✅ (anahtar gerektirir) |
 | Onboarding PII profili (bilinen-değer maskeleme) | ✅ |
 | Üçüncü taraf isimleri — bağlamsal tetikleyici (D-029) | ✅ |
 | Tetikleyicisiz isimler için yerel NER | ⏳ v2 (bkz. D-028) |
@@ -177,7 +179,7 @@ uçtan uca çalışır (mock modlar).
 git clone <repo> && cd B-Ko
 npm install
 cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 463 test
+npm test                  # 473 test
 npm run start:dev
 ```
 

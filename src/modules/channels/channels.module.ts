@@ -3,6 +3,7 @@ import { ChannelAdapter } from './channel.adapter';
 import { MockChannelAdapter } from './mock/mock.adapter';
 import { TelegramAdapter } from './telegram/telegram.adapter';
 import { TelegramService } from './telegram/telegram.service';
+import { TelegramController } from './telegram/telegram.controller';
 
 /**
  * Kanal-agnostik mesajlaşma katmanı (ARCHITECTURE.md §7, D-002).
@@ -18,6 +19,7 @@ import { TelegramService } from './telegram/telegram.service';
  * gibi mock-özel alanlara erişebilsin.
  */
 @Module({
+  controllers: [TelegramController],
   providers: [
     TelegramService,
     TelegramAdapter,
