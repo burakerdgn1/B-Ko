@@ -36,3 +36,50 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 ## D-007 — LLM çağrı katmanı PII zorunlu geçiş
 - **Karar:** `LlmService`, PII maskeleme yapılmamış ham metni kabul etmez; API `maskAndComplete()` etrafında kurulur, "kaçış" mümkün olmasın diye ham `messages.create` sarmalayıcının dışına açılmaz.
 - **Gerekçe:** Güvenliği API tasarımına gömmek, UX metnine bırakmaktan daha güçlü (CLAUDE.md §7).
+
+## D-008 — Yer tutucu biçimi `[[TYPE_n]]` (D-003'ten sapma)
+- **Bağlam:** D-003 `«TYPE_n»` (guillemet) öngörüyordu. Ancak Alman tipografisinde `»...«`
+  gerçek tırnak işareti olarak kullanılır ve Behördenbrief metinlerinde geçebilir.
+- **Karar:** Yer tutucu biçimi `[[TYPE_n]]` (ör. `[[NAME_1]]`).
+- **Gerekçe:** Belge metniyle çakışma riski pratikte sıfır; LLM'ler bu biçimi bozmadan
+  geri döndürüyor; regex ile ayrıştırması güvenli. Ek savunma: girdideki mevcut
+  `[[...]]` dizileri maskeleme öncesi etkisizleştirilir (token enjeksiyonu savunması,
+  `pii.service.spec.ts` ile test edildi).
+
+## D-009 — Tarihler de maskelenir; deadline TOKEN üzerinden çıkarılır
+- **Bağlam:** Doğum tarihi PII'dir, ama son tarih (Frist) analiz için gerekli. Tüm
+  tarihleri maskelemek modelin deadline çıkarmasını engelliyor gibi görünüyor.
+- **Karar:** Tüm tarihler maskelenir. Model, son tarihi *takvim değeri* olarak değil,
+  ilgili **`[[DATE_n]]` token'ı** olarak döndürür (`LlmAnalysisResult.deadlineToken`).
+  Gerçek tarih yerelde `unmask` ile elde edilir.
+- **Gerekçe:** Model hangi tarihin son tarih olduğunu bağlamdan seçer ("bis zum ... ein"),
+  takvim değerini bilmesine gerek yoktur. Böylece gizlilik VE işlevsellik korunur.
+  Doğum tarihi ile son tarih ayrımı da modelden gizlenmiş olur.
+
+## D-010 — OCR/Vision gizlilik gerilimi açıkça modellendi (KRİTİK)
+- **Bağlam:** CLAUDE.md hem "Claude native vision ile OCR" hem "PII asla çıplak LLM'e
+  gitmez" diyor. Bir mektup FOTOĞRAFI zorunlu olarak ham PII içerir; görseli sağlayıcıya
+  yollamak maskelemeyi bu tek adımda baypas eder. Bu gerilim gerçektir ve gizlenmemelidir.
+- **Karar:** `OcrProvider` soyutlaması + iki mod:
+  1. `claude-vision` (varsayılan): görsel Claude'a gider, YALNIZCA düz metin transkripsiyonu
+     istenir. Maskeleme bundan sonraki TÜM adımları (analiz, taslak, kalıcı depolama,
+     denetim izi) korur. Sınırlama kod yorumunda ve README'de açıkça yazılır.
+  2. `local` (`OCR_PROVIDER=local`): `tesseract.js` ile yerel OCR → sıfır ham-PII sızıntısı.
+     Lazy `import()` ile yüklenir; kurulu değilse anlamlı hata, uygulama çökmez.
+- **Gerekçe:** "Tam gizlilik" iddiası ancak yerel OCR ile dürüsttür. Varsayılanı çalışır
+  tutup (kurulum sürtünmesi yok), gizlilik-maksimum modu tek env değişkeniyle sunmak
+  MVP için doğru denge. Metin/PDF girdilerinde zaten ham veri hiç LLM'e gitmez.
+
+## D-011 — Türkçe noktasız `ı` case-folding düzeltmesi
+- **Bağlam:** Unicode case-folding'de `ı` (U+0131) ile `I` EŞLEŞMEZ; `/i` regex bayrağı
+  tek başına "Yılmaz" ↔ "YILMAZ" eşleşmesini kaçırıyordu (test ile yakalandı).
+- **Karar:** Bilinen-değer desenlerinde i-ailesi karakterleri `[iıIİ]` sınıfına genişletilir.
+- **Gerekçe:** Türk kullanıcılar ürünün ana hedef kitlesinde; büyük harfle yazılmış
+  isimler resmi mektuplarda yaygın. Bu, sessiz ve ciddi bir PII sızıntısı olurdu.
+  Regresyon testi eklendi. Aynı sorun Azerice/Kazakça isimleri de kapsar.
+
+## D-012 — Paylaşılan alan tipleri tek dosyada
+- **Karar:** `src/common/types/domain.ts` tek doğruluk kaynağı; tüm modüller oradan import eder.
+- **Gerekçe:** Paralel subagent'lar aynı sözleşmeye kodladığı için tip kayması (contract
+  drift) riski yüksekti; sözleşmeyi agent'lar başlamadan önce sabitlemek entegrasyon
+  maliyetini ortadan kaldırdı.
