@@ -65,6 +65,17 @@ export class ReminderSupabaseRepository extends ReminderRepository {
     return (data as ReminderRow[] | null)?.map(mapReminderRow) ?? [];
   }
 
+  /** Kullanıcının tüm hatırlatmaları — durumdan bağımsız (GDPR Art.17). */
+  async findByUser(userId: string): Promise<Reminder[]> {
+    const { data, error } = await this.supabase.client
+      .from(TABLE)
+      .select('*')
+      .eq('user_id', userId)
+      .order('due_date', { ascending: true });
+    assertNoError(error, `findByUser(${TABLE})`);
+    return (data as ReminderRow[] | null)?.map(mapReminderRow) ?? [];
+  }
+
   async purgeExpired(now: Date): Promise<number> {
     const { data, error } = await this.supabase.client
       .from(TABLE)

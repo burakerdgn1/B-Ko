@@ -19,8 +19,23 @@ npm run start:prod
 npm run start:dev
 ```
 
-Varsayılan `.env.example` değerleriyle proje **hiçbir gerçek anahtar olmadan** ayağa kalkar
-(mock LLM, in-memory DB, Telegram devre dışı) — bkz. `MANUAL_ACTIONS_REQUIRED.md`.
+Varsayılan `.env.example` değerleriyle proje **hiçbir gerçek anahtar olmadan** ayağa kalkması
+gerekir (mock LLM, in-memory DB, Telegram devre dışı) — bkz. `MANUAL_ACTIONS_REQUIRED.md`.
+
+> ⚠️ **Bilinen sorun (doğrulandı, `env.schema.ts` kapsamında — bu agent'ın dosya
+> sahipliği dışında, config/backend sahibine bildirilmeli):** `.env.example`'da
+> `PII_MASTER_KEY=` satırı BOŞ bırakılmış. `dotenv`/`@nestjs/config` bunu `""` (boş
+> string) olarak okur — `undefined` değil. `env.schema.ts`'deki
+> `z.string().regex(/^[0-9a-fA-F]{64}$/).optional()` tanımı yalnızca `undefined`'ı
+> "yok" sayar; `""` regex'e karşı test edilir ve BAŞARISIZ olur. Sonuç: `cp .env.example .env`
+> sonrası hiçbir değişiklik yapmadan `npm run start:prod` / `docker compose up` çalıştırmak
+> "PII_MASTER_KEY 64 hex karakter olmalı" hatasıyla **process'i başlatmadan çökertir** —
+> bu, `node dist/main.js` ile lokal olarak ve Docker içinde bağımsız olarak doğrulandı.
+> **Geçici çözüm:** `.env` dosyanızda `PII_MASTER_KEY=` satırını tamamen SİLİN (veya
+> yorum satırı yapın) ki değişken gerçekten tanımsız sayılsın; ya da
+> `openssl rand -hex 32` ile gerçek bir dev anahtarı girin. **Kalıcı düzeltme** için
+> `env.schema.ts`'de bu alanın boş string'i `undefined`'a çeviren bir `transform`
+> eklemesi önerilir (örn. `z.string().optional().refine(v => !v || regex.test(v), ...)`).
 
 ### 1b. docker-compose ile
 
@@ -162,6 +177,19 @@ Alpine'in musl libc'si üzerinde Chromium/WebKit/Firefox resmi olarak desteklenm
 opsiyonel bir PoC modülü (ARCHITECTURE.md §3) olduğu için ana kullanım senaryosunu
 (Telegram bot) gereksiz yere ~1GB+ büyütmemek adına iki ayrı hedef tanımlandı.
 
+**Gerçek ölçüm (lokal `docker build` ile doğrulandı):**
+
+| Hedef | Ölçülen imaj boyutu | Node sürümü |
+|---|---|---|
+| `runtime` | ~218 MB | 22 (Alpine) |
+| `with-browsers` | ~2.08 GB | **20** (Microsoft'un `playwright:v1.48.0-jammy` taban imajı Node 22 değil, Node 20 ile geliyor) |
+
+⚠️ **Dikkat:** `with-browsers` hedefi Node 20 üzerinde çalışır (taban imajın sürümü),
+`runtime` hedefi ise Node 22. `npm ci` sırasında `@supabase/*` paketleri için
+`EBADENGINE` uyarısı görülür (paket Node ≥22 istiyor) — kurulum yine de başarılı olur,
+ancak bu tutarsızlık bilinçli bir ödün: watcher hedefi yalnızca PoC amaçlı, üretimde
+Telegram/LLM/PII akışı için `runtime` hedefi kullanılmalıdır.
+
 ## 7. CI (`.github/workflows/ci.yml`)
 
 Her PR ve `main` push'unda otomatik çalışır:
@@ -173,7 +201,26 @@ Her PR ve `main` push'unda otomatik çalışır:
 5. `docker build --target runtime` (push YOK, sadece build edilebilirlik doğrulaması,
    GitHub Actions cache ile hızlandırılmış).
 
-## 8. Şeffaflık ve Konumlandırma Hatırlatması
+## 8. Bilinen Sorunlar (Docker build/run doğrulaması sırasında bulundu)
+
+Bu bulgular `src/**` / `package.json` kapsamında — bu agent'ın dosya sahipliği dışında,
+ama gerçek `docker build` + `docker run` denemesiyle doğrulandığı için burada not edildi:
+
+1. **`PII_MASTER_KEY=` boş satırı çöküşe sebep olur** — bkz. §1a üstündeki uyarı kutusu.
+2. **`class-validator` / `class-transformer` bağımlılığı eksik.** `src/main.ts`,
+   `app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))`
+   çağırıyor; NestJS'in `ValidationPipe`'ı bu iki paketi runtime'da lazy-require eder.
+   `package.json`'da (`dependencies` VE `devDependencies` içinde) bu paketler **hiç yok**
+   (doğrulandı: `package-lock.json`'da da yok, `node_modules`'ta da yok — devDependency
+   hoisting'ten değil, tamamen eksik). Sonuç: hem lokalde tam `npm ci` ile hem de üretim
+   Docker imajında (`--omit=dev`) başlangıçta
+   `[PackageLoader] The "class-validator" package is missing` hatası loglanıyor.
+   Şu an DTO'larda `class-validator` dekoratörü kullanılmıyorsa etkisiz olabilir, ama
+   `ValidationPipe`'ın `transform: true` ile global kullanılması bu paketlerin üretim
+   bağımlılığı olarak eklenmesini gerektirir. **Öneri:** `npm i class-validator
+   class-transformer --save` (backend/config sahibine iletilmeli).
+
+## 9. Şeffaflık ve Konumlandırma Hatırlatması
 
 Üretime alırken README/bot mesajlarında şu ifadelerin korunduğundan emin olun
 (CLAUDE.md §7, ARCHITECTURE.md §6):

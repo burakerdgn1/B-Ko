@@ -217,11 +217,19 @@ describe('RetentionService', () => {
     });
 
     it('silinen sayıları gdpr.purge audit girdisi olarak (yalnızca sayı) kaydeder', async () => {
-      await service.purgeNow();
-      const entries = await audit.findByUser('__yok__'); // audit.append userId:null kullanıyor
-      // userId null olduğundan findByUser'da görünmez; genel bir kontrol için
-      // en azından çağrının hata vermeden tamamlandığını doğruluyoruz.
-      expect(entries).toEqual([]);
+      const counts = await service.purgeNow();
+
+      // `gdpr.purge` girdileri userId:null ile yazılır; memory repository
+      // `findByUser` filtrelemesi `===` kullandığından `null` ile de sorgulanabilir.
+      const entries = await audit.findByUser(null as unknown as string);
+      const purgeEntry = entries.find((e) => e.action === 'gdpr.purge');
+
+      expect(purgeEntry).toBeDefined();
+      expect(purgeEntry?.detail).toMatchObject(counts);
+      // Denetim izinde ASLA veri olmamalı — yalnızca sayısal alanlar.
+      expect(
+        Object.values(purgeEntry?.detail ?? {}).every((v) => typeof v === 'number'),
+      ).toBe(true);
     });
 
     it('silme sırası referans hatası üretmez (iç içe bağımlı kayıtlarla)', async () => {
@@ -272,7 +280,7 @@ describe('RetentionService', () => {
         deleteAfter: PAST,
       });
       await piiVault.create(
-        dummySealedRecord({ userId: user.id, documentId: doc.id, deleteAfter: PAST } as never),
+        dummySealedRecord({ userId: user.id, documentId: doc.id, deleteAfter: PAST }),
       );
 
       await expect(service.purgeNow()).resolves.toBeDefined();
@@ -281,6 +289,37 @@ describe('RetentionService', () => {
   });
 
   describe('deleteUserData', () => {
+    // Regresyon (D-019): silme, hatırlatmanın DURUMUNDAN bağımsız olmalı.
+    // Önceki sürüm yalnızca `scheduled` olanları buluyordu; `sent`/`cancelled`
+    // hatırlatmalar kullanıcı verisi olarak geride kalıyordu.
+    it('sent/cancelled dahil TÜM hatırlatmaları siler (GDPR Art.17)', async () => {
+      const user = await users.create({
+        channel: 'telegram',
+        channelUserId: `r-${randomUUID()}`,
+        locale: 'tr',
+      });
+
+      const PAST = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      for (const status of ['scheduled', 'sent', 'cancelled'] as const) {
+        await reminders.create({
+          userId: user.id,
+          analysisId: null,
+          kind: 'deadline',
+          dueDate: PAST,
+          message: null,
+          status,
+          sentAt: status === 'sent' ? PAST : null,
+          deleteAfter: FUTURE,
+        });
+      }
+
+      expect(await reminders.findByUser(user.id)).toHaveLength(3);
+
+      await service.deleteUserData(user.id);
+
+      expect(await reminders.findByUser(user.id)).toHaveLength(0);
+    });
+
     it('kullanıcıya ait belge/analiz/taslak/vault/hatırlatma kayıtlarını tamamen siler', async () => {
       const userA = await users.create({
         channel: 'telegram',

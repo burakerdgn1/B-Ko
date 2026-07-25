@@ -116,13 +116,10 @@ export class RetentionService implements OnModuleInit {
    * HER ŞEYİ siler. Cascade sırası `purgeNow`/`purge_expired_data()` ile aynı.
    *
    * BİLİNEN KISITLAMA: `ReminderRepository` kullanıcı-bazlı bir sorgu
-   * (`findByUser`) sağlamıyor — yalnızca `findDue(now)` ve `findById` var.
-   * Bu yüzden hatırlatmalar `findDue` ile (uzak bir gelecek tarih vererek)
-   * taranıp `userId`'ye göre filtrelenir; bu yalnızca `status: 'scheduled'`
-   * kayıtları kapsar. `sent`/`cancelled` durumundaki hatırlatmalar bu yolla
-   * BULUNAMAZ ve silinmez. Kalıcı çözüm `ReminderRepository`'ye `findByUser`
-   * eklenmesidir — bu dosya bu ajanın sahipliği dışında olduğundan burada
-   * eklenemedi; ana oturuma raporda bildirildi.
+   * Hatırlatmalar `ReminderRepository.findByUser` ile DURUMDAN BAĞIMSIZ
+   * olarak silinir. (Önceki sürüm `findDue` ile tarıyordu; bu yalnızca
+   * `scheduled` kayıtları kapsadığı için `sent`/`cancelled` hatırlatmalar
+   * geride kalıyordu — silme talebinin eksik kalması kabul edilemez.)
    */
   async deleteUserData(userId: string): Promise<void> {
     const documents = await this.documents.findByUser(userId);
@@ -156,14 +153,11 @@ export class RetentionService implements OnModuleInit {
     }
 
     // ── 4. reminders (bkz. sınıf üstü KISITLAMA notu) ──
-    const distantFuture = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000);
-    const scheduledReminders = await this.reminders.findDue(distantFuture);
+    const userReminders = await this.reminders.findByUser(userId);
     let remindersDeleted = 0;
-    for (const reminder of scheduledReminders) {
-      if (reminder.userId === userId) {
-        await this.reminders.delete(reminder.id);
-        remindersDeleted++;
-      }
+    for (const reminder of userReminders) {
+      await this.reminders.delete(reminder.id);
+      remindersDeleted++;
     }
 
     // ── 5. documents ──

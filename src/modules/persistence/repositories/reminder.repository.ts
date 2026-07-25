@@ -13,6 +13,15 @@ export abstract class ReminderRepository {
   /** `status: 'scheduled'` ve `dueDate <= now` olan hatırlatmalar (cron için). */
   abstract findDue(now: Date): Promise<Reminder[]>;
 
+  /**
+   * Kullanıcının TÜM hatırlatmaları — durumdan bağımsız.
+   *
+   * GDPR Art.17 için zorunlu: `findDue` yalnızca `scheduled` olanları döndürdüğü
+   * için, "verilerimi sil" talebinde `sent`/`cancelled` hatırlatmalar geride
+   * kalırdı. Silme işlemi eksik kalamaz.
+   */
+  abstract findByUser(userId: string): Promise<Reminder[]>;
+
   /** GDPR Art.17 — süresi geçmiş kayıtları siler, silinen adedi döner. */
   abstract purgeExpired(now: Date): Promise<number>;
 }

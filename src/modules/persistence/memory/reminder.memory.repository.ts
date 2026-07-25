@@ -48,6 +48,14 @@ export class ReminderMemoryRepository extends ReminderRepository {
       .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }
 
+  /** Kullanıcının tüm hatırlatmaları — durumdan bağımsız (GDPR Art.17). */
+  async findByUser(userId: string): Promise<Reminder[]> {
+    return this.store
+      .all()
+      .filter((r) => r.userId === userId)
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  }
+
   async purgeExpired(now: Date): Promise<number> {
     return this.store.purgeExpired(now, (r) => r.deleteAfter);
   }

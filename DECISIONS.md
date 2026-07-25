@@ -174,3 +174,17 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   avantajının v1'de DEVREDE OLMADIĞI anlamına gelir. `PiiService` profil desteğini
   tam olarak içeriyor ve test ediliyor; yalnızca akış onu henüz beslemiyor.
   Onboarding eklendiğinde tek satırlık bir değişiklikle devreye girer.
+
+## D-019 — GDPR silme, hatırlatma durumundan bağımsız olmalı
+- **Bağlam:** `RetentionService.deleteUserData` hatırlatmaları `findDue()` ile
+  tarıyordu (repository'de `findByUser` yoktu). `findDue` yalnızca
+  `status: 'scheduled'` kayıtları döndürdüğü için, kullanıcının "verilerimi sil"
+  talebinde `sent` ve `cancelled` hatırlatmalar VERİTABANINDA KALIYORDU.
+  Subagent bu eksikliği kendi raporunda dürüstçe bildirdi.
+- **Karar:** `ReminderRepository.findByUser(userId)` eklendi (soyut sınıf + memory
+  + supabase) ve `deleteUserData` buna geçirildi.
+- **Gerekçe:** Art.17 "silinme hakkı" kısmi silmeye izin vermez. Hatırlatma kayıtları
+  kullanıcının kimliğine ve işlem geçmişine bağlıdır; geride kalmaları uyumsuzluktur.
+- **Not:** Regresyon testi üç durumu da (scheduled/sent/cancelled) kapsıyor.
+- **Süreç notu:** Bu, subagent'ın kapsam dışı kalan bir sorunu gizlemek yerine
+  raporlamasıyla ortaya çıktı — doğru davranış.

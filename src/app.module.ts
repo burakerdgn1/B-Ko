@@ -9,6 +9,7 @@ import { ChannelsModule } from './modules/channels/channels.module';
 import { AnalysisModule } from './modules/analysis/analysis.module';
 import { DraftsModule } from './modules/drafts/drafts.module';
 import { WatcherModule } from './modules/watcher/watcher.module';
+import { RemindersModule } from './modules/reminders/reminders.module';
 import { ConversationModule } from './modules/conversation/conversation.module';
 
 /**
@@ -33,6 +34,7 @@ import { ConversationModule } from './modules/conversation/conversation.module';
     AnalysisModule,
     DraftsModule,
     WatcherModule,
+    RemindersModule,
     // En son: botu ürün akışına bağlayan orkestrasyon halkası.
     ConversationModule,
   ],
