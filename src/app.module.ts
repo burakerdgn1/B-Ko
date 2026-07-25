@@ -5,6 +5,7 @@ import { PiiModule } from './common/pii/pii.module';
 import { PersistenceModule } from './modules/persistence/persistence.module';
 import { LlmModule } from './modules/llm/llm.module';
 import { ChannelsModule } from './modules/channels/channels.module';
+import { AnalysisModule } from './modules/analysis/analysis.module';
 
 /**
  * Kök modül.
@@ -23,6 +24,7 @@ import { ChannelsModule } from './modules/channels/channels.module';
     PersistenceModule,
     LlmModule,
     ChannelsModule,
+    AnalysisModule,
   ],
 })
 export class AppModule {}
