@@ -11,7 +11,7 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **437 test geçiyor** (36 suite), **0 atlanan**
+- **463 test geçiyor** (36 suite), **0 atlanan**
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edildi (218 MB)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
 - 10 commit, ana dal `main`
@@ -52,12 +52,20 @@ besler. Uçtan uca kanıtlandı (`onboarding.e2e.spec.ts`):
 - Log/audit/hata kanallarının hiçbiri profil değerlerini içermiyor
 - `/atla` diyen kullanıcıda eski davranış sürüyor ve bu kullanıcıya AÇIKÇA bildiriliyor
 
-## 🟡 Kalan sınır — ÜÇÜNCÜ TARAF isimleri (v2, D-028)
-Memur adı, aile üyeleri, avukatlar gibi kullanıcıya ait OLMAYAN isimler hâlâ
-maskelenmiyor; bunun için yerel NER gerekiyor ve bu v2 kapsamında.
-İnce davranış: üçüncü taraf kullanıcıyla aynı soyadı taşıyorsa soyadı maskelenir,
-ÖN ADI sızar (`Elif Kılıç` → `Elif [[NAME_2]]`) — metin maskelenmiş görünür ama tam değildir.
-Geçici çözüm: aile üyeleri profile `extra` alanıyla eklenebilir.
+## ✅ Üçüncü taraf isimleri — bağlamsal tetikleyici eklendi (D-029, Faz A)
+Memur adı, aile üyesi, avukat gibi üçüncü taraf isimleri artık TETİKLEYİCİ
+bağlamlarda maskeleniyor: `Sehr geehrte Frau X`, `Sachbearbeiterin: X`,
+`Herrn X`, `i. A. X`, `Ihrer Ehefrau X`, `Rechtsanwältin X`.
+Deterministik — NER yok, denetlenebilirlik korundu.
+
+**Ölçüm:** 8 sentetik mektupta 16 NAME eşleşmesinin 16'sı da gerçek isim
+(sıfır yanlış pozitif). Alan terimleri maskelenmiyor, token oranı %15'in altında.
+Daha önce yalnızca ortak soyadı maskelenip ön adı sızan aile üyesi vakası da kapandı.
+
+## 🟡 Kalan sınır — TETİKLEYİCİSİZ isimler (v2, D-028)
+Hiçbir unvan/etiket olmadan cümle içinde geçen adlar hâlâ maskelenmiyor
+("Der Antrag wurde von Petra Hoffmann geprüft"). Yerel NER gerektiriyor, v2 kapsamında.
+Kalıcı test bu sınırı sabitliyor, böylece sessizce kaymaz.
 
 ## Bilinçli kapsam kararları (dürüst liste)
 - **D-010 — OCR gizlilik istisnası.** `claude-vision` modunda mektup GÖRSELİ ham PII
@@ -66,7 +74,7 @@ Geçici çözüm: aile üyeleri profile `extra` alanıyla eklenebilir.
 - **Web dashboard** — CLAUDE.md §4 gereği kapsam dışı.
 
 ## Sıradaki adımlar (v1.1 önerisi)
-1. Yerel NER → üçüncü taraf isimleri (D-028) — kalan tek gizlilik boşluğu
+1. Yerel NER → tetikleyicisiz isimler (D-028) — kalan tek gizlilik boşluğu
 2. Telegram webhook controller'ı (üretim için polling yerine)
 3. `LLM_MOCK=false` ile gerçek Claude çağrılarında prompt tuning
 4. Gerçek Behördenbrief örnekleriyle (anonimleştirilmiş) doğrulama

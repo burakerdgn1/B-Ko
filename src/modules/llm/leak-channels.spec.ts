@@ -155,7 +155,7 @@ describe('Sızıntı kanalı denetimi', () => {
   });
 
   // ── KRİTİK: v1'in GERÇEK durumu (profil YOK — D-018) ─────────────────────
-  describe('🔴 Kanal 1b — v1 gerçek akışı: profil OLMADAN', () => {
+  describe('Kanal 1b — profil OLMADAN (D-029 sonrası)', () => {
     /**
      * ConversationService v1'de `profile: undefined` geçiyor (D-018).
      * Bu test, o durumda payload'a NE GİTTİĞİNİ dürüstçe ölçer.
@@ -177,16 +177,16 @@ describe('Sızıntı kanalı denetimi', () => {
       }
     });
 
-    it('🔴 BULGU: İSİM profilsiz maskelenmez ve payload\'a ÇIPLAK gider', async () => {
+    it('✅ isim, profil OLMASA BİLE tetikleyici bağlamda maskelenir (D-029)', async () => {
       await pipeline.run({ userId, source: 'text', text: LETTER });
 
       const sent = payloads.join('\n');
       const name = PROFILE.fullName!;
       expect(LETTER).toContain(name); // mektupta gerçekten var
 
-      // Mevcut davranış: isim maskelenmiyor. NAME için yapısal desen YOK ve
-      // v1 akışı profil beslemiyor (D-018) → isim Claude'a çıplak ulaşıyor.
-      expect(sent).toContain(name);
+      // Faz A: "Herrn <ad>" / "Sehr geehrter Herr <ad>" gibi bağlamlar
+      // deterministik olarak yakalanır — NER olmadan.
+      expect(sent).not.toContain(name);
     });
 
     it('KARŞILAŞTIRMA: aynı akış profil İLE çağrılırsa isim maskelenir', async () => {
@@ -337,16 +337,14 @@ describe('Sızıntı kanalı denetimi', () => {
   });
 
   // ── Kanal 6: veritabanı (profilsiz) ──────────────────────────────────────
-  describe('🔴 Kanal 6 — veritabanı, profil OLMADAN', () => {
-    it('🔴 BULGU: maskelenmeyen isim `documents.masked_text` içinde KALICI olur', async () => {
+  describe('Kanal 6 — veritabanı, profil OLMADAN (D-029 sonrası)', () => {
+    it('✅ tetikleyici bağlamdaki isim `masked_text` içinde de SAKLANMAZ', async () => {
       const outcome = await pipeline.run({ userId, source: 'text', text: LETTER });
 
       const doc = await app.get(DocumentRepository).findById(outcome.document.id);
 
-      // `masked_text` adı üzerinde "maskeli"dir; ancak maskeleme NAME'i
-      // kapsamadığı için (D-024) isim burada ham hâliyle kalıcılaşır.
-      // Bu, yalnızca LLM'e gönderimi değil, GDPR saklama yüzeyini de etkiler.
-      expect(doc?.maskedText).toContain(PROFILE.fullName!);
+      // D-029 sonrası: saklama yüzeyi de temizlendi (D-026'nın kapanışı).
+      expect(doc?.maskedText).not.toContain(PROFILE.fullName!);
     });
 
     it('KARŞILAŞTIRMA: profil ile aynı alan ham isim İÇERMEZ', async () => {

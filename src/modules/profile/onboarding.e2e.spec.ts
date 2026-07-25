@@ -244,13 +244,15 @@ describe('Onboarding uçtan uca — bilinen-değer maskeleme aktif mi?', () => {
       expect(doc!.maskedText!).not.toContain(ME.address);
     });
 
-    it('KARŞILAŞTIRMA: /atla diyen kullanıcıda ad hâlâ gidiyor (dürüst fark)', async () => {
+    it('/atla diyen kullanıcıda bile tetikleyici bağlamdaki ad maskelenir (D-029)', async () => {
       await say({ kind: 'command', command: 'start' });
       await say({ kind: 'command', command: 'onayla' });
       await say({ kind: 'command', command: 'atla' });
       await say({ text: LETTER });
 
-      expect(payloads.join('\n')).toContain(ME.name);
+      // Profil yok; ama "Herrn <ad>" tetikleyicisi deterministik olarak yakalar.
+      // Profilin ek değeri: tetikleyicisiz geçişleri ve adresi de kapsaması.
+      expect(payloads.join('\n')).not.toContain(ME.name);
     });
   });
 
@@ -320,30 +322,40 @@ describe('Onboarding uçtan uca — bilinen-değer maskeleme aktif mi?', () => {
   });
 
   // ── v2 SINIRI: üçüncü taraf isimleri ──────────────────────────────────────
-  describe('🟡 v2 sınırı — ÜÇÜNCÜ TARAF isimleri hâlâ maskelenmiyor', () => {
-    it('BULGU: memur adı (Sachbearbeiterin) payload\'a çıplak gider', async () => {
+  describe('✅ üçüncü taraf adları — tetikleyici bağlamda (D-029, Faz A)', () => {
+    it('memur adı (Sachbearbeiterin) artık maskelenir', async () => {
       await completeOnboarding();
       await say({ text: LETTER });
 
-      // Memur adı kullanıcının profilinde yok ve NAME için yapısal desen yok
-      // → yerel NER olmadan yakalanamaz. v2 kapsamı (D-028).
-      expect(payloads.join('\n')).toContain(CASEWORKER);
+      // "Ihre Sachbearbeiterin: Frau <ad>" bir tetikleyicidir.
+      expect(payloads.join('\n')).not.toContain(CASEWORKER);
+      expect(payloads.join('\n')).not.toContain('Sabine');
     });
 
-    it('BULGU: aile üyesi adı KISMEN maskelenir — ön adı sızar', async () => {
+    it('aile üyesi adı (Ehefrau <ad>) artık TAM olarak maskelenir', async () => {
       await completeOnboarding();
       await say({ text: LETTER });
       const sent = payloads.join('\n');
 
-      // İnce ve önemli davranış: aile üyesi kullanıcıyla AYNI SOYADI taşıdığı
-      // için soyad maskelenir, ancak ÖN AD sızmaya devam eder.
-      // ("Elif Kılıç" → "Elif [[NAME_2]]")
-      //
-      // Bu, kısmi maskelemenin yanıltıcı olabileceğini gösterir: metin
-      // maskelenmiş GÖRÜNÜR ama üçüncü tarafın ön adı hâlâ oradadır.
-      // Tam çözüm yerel NER gerektirir (v2 — D-028).
-      expect(sent).not.toContain(FAMILY); // tam ad geçmez (soyad maskeli)
-      expect(sent).toContain('Elif'); // ama ön ad SIZAR
+      // Daha önce yalnızca ortak SOYAD maskeleniyordu ve ön ad ("Elif")
+      // sızıyordu — kısmi maskeleme yanıltıcıydı. Aile bağı tetikleyicisi
+      // ("Ihrer Ehefrau <ad>") artık öbeğin tamamını yakalıyor.
+      expect(sent).not.toContain(FAMILY);
+      expect(sent).not.toContain('Elif');
+    });
+
+    it('🟡 KALAN SINIR: tetikleyicisiz geçen ad hâlâ maskelenmez (v2 — D-028)', async () => {
+      await completeOnboarding();
+      // Hiçbir unvan/etiket olmadan, cümle içinde geçen bir ad.
+      await say({
+        text:
+          'Ausländerbehörde Berlin\n\nDer Antrag wurde von Petra Hoffmann geprüft ' +
+          'und an die zuständige Stelle weitergeleitet. Bitte warten Sie auf weitere ' +
+          'Nachricht.\n\nMit freundlichen Grüßen',
+      });
+
+      // Bu ancak yerel NER ile yakalanabilir; Faz A kapsamı dışında.
+      expect(payloads.join('\n')).toContain('Petra Hoffmann');
     });
 
     it('aile üyesi profile EKLENİRSE maskelenir (geçici çözüm mevcut)', async () => {

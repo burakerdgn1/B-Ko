@@ -15,7 +15,7 @@ import { PiiEntityType } from './pii.types';
  * güvenli olduğu anlamına GELMEZ; sınırın nerede olduğunu görünür kılar.
  * Sınır değişirse (ör. NER eklenirse) bu testler kırılır ve güncellenmelidir.
  */
-describe('PII boşluk denetimi — profil olmadan (v1 gerçeği, D-018)', () => {
+describe('PII boşluk denetimi — profil olmadan (D-029 sonrası kapsam)', () => {
   let pii: PiiService;
 
   beforeEach(() => {
@@ -25,16 +25,18 @@ describe('PII boşluk denetimi — profil olmadan (v1 gerçeği, D-018)', () => 
   /** Profil VERİLMEDEN maskele — ConversationService v1'de tam olarak böyle çağırıyor. */
   const maskWithoutProfile = (text: string) => pii.mask(text);
 
-  // ── KRİTİK BULGU: isimler ─────────────────────────────────────────────────
-  describe('🔴 İSİMLER — yapısal desen YOK', () => {
-    it('BULGU: profil olmadan hiçbir isim maskelenmez', () => {
-      const text = 'Sehr geehrter Herr Ahmet Yılmaz, Ihr Antrag wurde geprüft.';
-      const { maskedText, map } = maskWithoutProfile(text);
-
-      // Hiçbir NAME token'ı üretilmez.
-      expect(map.matches.some((m) => m.type === PiiEntityType.NAME)).toBe(false);
-      // Ve isim metinde OLDUĞU GİBİ kalır — yani LLM'e çıplak gider.
-      expect(maskedText).toContain('Ahmet Yılmaz');
+  // ── İsimler: bağlamsal tetikleyici (D-029, Faz A) ─────────────────────────
+  describe('🟢 İSİMLER — TETİKLEYİCİ bağlamda maskelenir (profilsiz de)', () => {
+    it.each([
+      ['selamlama', 'Sehr geehrter Herr Ahmet Yılmaz,'],
+      ['memur alanı', 'Ihre Sachbearbeiterin: Frau Sabine Brandt'],
+      ['imza bloğu', 'i. A. Brandt'],
+      ['adres bloğu', 'Herrn Yasin Kılıç'],
+      ['aile bağı', 'für Ihre Ehefrau Elif Demir'],
+      ['avukat', 'Rechtsanwältin Claudia Weber'],
+    ])('%s bağlamındaki isim maskelenir', (_label, text) => {
+      const { map } = maskWithoutProfile(text);
+      expect(map.matches.some((m) => m.type === PiiEntityType.NAME)).toBe(true);
     });
 
     it.each([
@@ -43,17 +45,54 @@ describe('PII boşluk denetimi — profil olmadan (v1 gerçeği, D-018)', () => 
       ['Arapça (latin)', 'Sehr geehrter Herr Mohammed Al-Rashid,'],
       ['Hintçe', 'Sehr geehrter Herr Rajesh Venkataraman,'],
       ['Ukraynaca', 'Sehr geehrte Frau Oleksandra Kovalenko,'],
-    ])('BULGU: %s isim maskelenmeden kalır', (_label, text) => {
+      ['tireli Alman adı', 'Sehr geehrte Frau Müller-Schmidt,'],
+    ])('%s isim de yakalanır (Unicode desteği)', (_label, text) => {
+      const { maskedText, map } = maskWithoutProfile(text);
+      expect(map.matches.some((m) => m.type === PiiEntityType.NAME)).toBe(true);
+      expect(pii.unmask(maskedText, map)).toBe(text);
+    });
+
+    it('bir kez yakalanan isim, metnin GERİ KALANINDA da maskelenir (D-013)', () => {
+      const text =
+        'Ihre Sachbearbeiterin: Frau Sabine Brandt\n' +
+        'Bitte wenden Sie sich an Sabine Brandt.';
+      const { maskedText } = maskWithoutProfile(text);
+      expect(maskedText).not.toContain('Sabine Brandt');
+    });
+  });
+
+  // ── Yanlış pozitif koruması (Almanca'da tüm isimler büyük harfle başlar) ──
+  describe('🛡️ yanlış pozitif koruması', () => {
+    it.each([
+      ['toplu hitap', 'Sehr geehrte Damen und Herren,'],
+      ['kurum adı', 'Ausländerbehörde Berlin'],
+      ['sıradan cümle', 'Bitte reichen Sie die Unterlagen fristgerecht ein.'],
+      ['büyük harfli terimler', 'Betreff: Antrag auf Verlängerung der Aufenthaltserlaubnis'],
+      ['belge adları', 'Aktueller Mietvertrag und Nachweis über Krankenversicherung'],
+      ['kapanış', 'Mit freundlichen Grüßen'],
+    ])('%s → İSİM olarak maskelenmez', (_label, text) => {
       const { map } = maskWithoutProfile(text);
       expect(map.matches.some((m) => m.type === PiiEntityType.NAME)).toBe(false);
     });
 
-    it('KARŞILAŞTIRMA: profil VERİLİRSE aynı isim maskelenir', () => {
-      const text = 'Sehr geehrter Herr Ahmet Yılmaz, Ihr Antrag wurde geprüft.';
-      const { maskedText } = pii.mask(text, {
-        profile: { fullName: 'Ahmet Yılmaz' },
-      });
-      expect(maskedText).not.toContain('Ahmet Yılmaz');
+    it('"Sehr geehrte Damen und Herren" tamamen değişmeden kalır', () => {
+      const text = 'Sehr geehrte Damen und Herren,';
+      expect(maskWithoutProfile(text).maskedText).toBe(text);
+    });
+  });
+
+  // ── Kalan sınır: tetikleyicisiz çıplak isimler (v2 — D-028) ──────────────
+  describe('🟡 KALAN SINIR — tetikleyicisiz isimler (yerel NER gerekir, v2)', () => {
+    it('BULGU: hiçbir tetikleyici olmadan geçen ad maskelenmez', () => {
+      const text = 'Der Antrag wurde von Sabine Brandt geprüft und weitergeleitet.';
+      const { map } = maskWithoutProfile(text);
+      // "von" bir tetikleyici değil; bu ad ancak NER ile yakalanabilir.
+      expect(map.matches.some((m) => m.type === PiiEntityType.NAME)).toBe(false);
+    });
+
+    it('KARŞILAŞTIRMA: aynı ad tetikleyiciyle geçerse yakalanır', () => {
+      const { map } = maskWithoutProfile('Bearbeiterin: Sabine Brandt');
+      expect(map.matches.some((m) => m.type === PiiEntityType.NAME)).toBe(true);
     });
   });
 
@@ -111,8 +150,8 @@ describe('PII boşluk denetimi — profil olmadan (v1 gerçeği, D-018)', () => 
         profile: { familyName: 'Yılmaz' },
       });
       expect(maskedText).not.toContain('Yılmaz');
-      // Diğer kişi maskelenmez — bilinen değer değil (beklenen sınır).
-      expect(maskedText).toContain('Demir');
+      // Artık üçüncü taraf da maskelenir — "Frau X" bir tetikleyicidir (D-029).
+      expect(maskedText).not.toContain('Demir');
     });
 
     it('profildeki boş degerler yok sayılır (yanlış maskeleme yapmaz)', () => {

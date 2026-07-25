@@ -338,3 +338,40 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   Metin maskelenmiş GÖRÜNÜR ama tam değildir — kısmi maskeleme yanıltıcı olabilir.
 - **Geçici çözüm:** Aile üyeleri `KnownPiiProfile.extra` üzerinden profile
   eklenebilir; test bunun çalıştığını gösteriyor.
+
+## D-029 — Üçüncü taraf isimleri: bağlamsal tetikleyici (Faz A, NER değil)
+- **Bağlam:** D-028, üçüncü taraf isimlerini (memur, aile üyesi, avukat) v2'ye
+  bırakmıştı. Kullanıcı onayıyla önce ucuz ve deterministik olan "Faz A"
+  uygulandı; NER kararı ölçüm sonrasına bırakıldı.
+- **Karar:** Bir ismin *biçimi* onu tanınabilir kılmaz, ama Alman resmî
+  yazışmasında isimlerin geçtiği BAĞLAMLAR düzenlidir. Beş tetikleyici desen
+  ailesi eklendi: selamlama (`Sehr geehrte(r) Herr/Frau X`), görevli alanları
+  (`Sachbearbeiter(in)/Ansprechpartner/Bearbeiter/Rechtsanwalt`), imza blokları
+  (`i. A.` / `i. V.` / `gez.`), adres bloğu (`Herrn/Herr/Frau X`) ve aile bağı
+  (`Ehefrau/Ehemann/Sohn/Tochter/Vater/Mutter X`).
+- **Gerekçe:** Olasılıksal bir model eklemeden, D-003'ün "deterministik →
+  test edilebilir → denetlenebilir" ilkesini bozmadan gerçek sızıntıyı kapatır.
+  Maliyet ~1 gün; NER ~5.5 gün ve üretime olasılıksal bir katman sokardı.
+- **Yanlış pozitif tasarımı (kritik):** Almancada TÜM isimler büyük harfle
+  başlar; "büyük harf = özel ad" sezgisi Almanca'da felaketle sonuçlanırdı.
+  Bu yüzden büyük harf ASLA tek başına sinyal değil — eşleşme yalnızca
+  tetikleyici bağlamda olur, ayrıca `NOT_A_NAME` stoplist'i (`Damen`, `Herren`,
+  `Behörde`, `Abteilung`, `Betreff` …) uygulanır.
+- **Unicode:** `\p{Lu}[\p{L}'’-]+` kullanıldı; ASCII `[A-Z]` Türkçe (Kılıç),
+  Vietnamca (Nguyễn), Arapça latinizasyonu (Al-Rashid) ve tireli adları
+  (Müller-Schmidt) KAÇIRIRDI — hedef kitle tam olarak bu isimler.
+- **Satır sonu hatası (geliştirme sırasında bulundu):** İsim öbeğinde `\s+`
+  kullanmak satır sonunu aşıyor ve "Sabine Brandt\nBitte" gibi öbekler
+  yakalanıyordu. Ad öbeği içinde yalnızca YATAY boşluk (`[ \t]+`) kullanılıyor;
+  tetikleyici→ad arasında ise en fazla BİR satır sonuna izin var (Alman adres
+  blokları iki satırlıdır: "Herrn\nMax Mustermann").
+- **Ölçüm:** 8 sentetik mektupta 16 NAME eşleşmesinin 16'sı da gerçek isim —
+  sıfır yanlış pozitif. Kalıcı testler alan terimlerinin maskelenmediğini,
+  her mektupta en az bir ad yakalandığını ve token oranının %15'i aşmadığını
+  (aşırı maskeleme yok) doğruluyor.
+- **Yan kazanç:** D-026'daki "kısmi maskeleme yanıltıcıdır" vakası kapandı —
+  aile üyesi artık ortak soyadıyla değil, aile bağı tetikleyicisiyle TAM
+  yakalanıyor (`Elif Kılıç` → tek token).
+- **KALAN SINIR (D-028 devam ediyor):** Tetikleyicisiz, cümle içinde çıplak
+  geçen adlar ("von Petra Hoffmann geprüft") maskelenmiyor. Kalıcı bir test bu
+  sınırı sabitliyor ki sessizce kaymasın.

@@ -57,7 +57,145 @@ function isValidIban(raw: string): boolean {
  * SIRA ÖNEMLİ: daha spesifik desenler önce gelir. Örn. IBAN, Steuer-ID'den
  * önce denenmelidir; aksi hâlde IBAN içindeki rakam dizisi yanlış eşleşir.
  */
+/**
+ * Bir isim öbeği: büyük harfle başlayan 1-3 sözcük.
+ *
+ * `\p{Lu}\p{L}*` (Unicode) kullanılır — Türkçe (Kılıç), Vietnamca (Nguyễn),
+ * Arapça latinizasyonu (Al-Rashid) ve tireli/kesme işaretli adlar (O’Brien,
+ * Müller-Schmidt) kapsansın diye. ASCII `[A-Z]` bunları KAÇIRIRDI.
+ */
+const NAME_PHRASE = String.raw`\p{Lu}[\p{L}'’\-]+(?:[ \t]+\p{Lu}[\p{L}'’\-]+){0,2}`;
+
+/** Unvan öneki (yakalanan ada dâhil edilmez, sadece atlanır). */
+const TITLE_PREFIX = String.raw`(?:(?:Dr|Prof|Dipl)\.[ \t]*(?:med\.[ \t]*|jur\.[ \t]*|Ing\.[ \t]*)?)?`;
+
+/**
+ * Tetikleyici ile ad arasındaki boşluk: EN FAZLA bir satır sonu.
+ *
+ * Alman mektuplarında adres bloğu sıklıkla iki satırdır ("Herrn\nMax Mustermann"),
+ * bu yüzden tek satır sonuna izin veriyoruz. Ancak ad ÖBEĞİNİN KENDİSİ satır
+ * atlayamaz (`NAME_PHRASE` içinde yalnızca yatay boşluk) — aksi hâlde satır
+ * sonundaki bir ad, sonraki satırın ilk kelimesini de yutardı.
+ */
+const GAP = String.raw`[ \t]*\n?[ \t]*`;
+
+/**
+ * İsim gibi görünen ama İSİM OLMAYAN sözcükler.
+ *
+ * Almancada TÜM isimler (nouns) büyük harfle başlar; bu yüzden "büyük harf =
+ * özel ad" sezgisi Almanca'da felaketle sonuçlanır. Tetikleyici desenler bu
+ * riski büyük ölçüde azaltır, ancak "Sehr geehrte Damen und Herren" gibi
+ * kalıplar yine de yakalanabilirdi — bu liste onları eler.
+ */
+const NOT_A_NAME = new Set(
+  [
+    'damen', 'herren', 'herr', 'frau', 'damen und herren',
+    'doktor', 'professor', 'kollege', 'kollegin',
+    'sachbearbeiter', 'sachbearbeiterin', 'ansprechpartner', 'ansprechpartnerin',
+    'bearbeiter', 'bearbeiterin', 'mitarbeiter', 'mitarbeiterin',
+    'antragsteller', 'antragstellerin', 'anwalt', 'anwältin',
+    'rechtsanwalt', 'rechtsanwältin', 'behörde', 'amt', 'abteilung',
+    'ausländerbehörde', 'bürgeramt', 'landeshauptstadt', 'stadt', 'gemeinde',
+    'auftrag', 'vertretung', 'unterschrift', 'anlage', 'anlagen',
+    'betreff', 'datum', 'seite', 'grüßen', 'hochachtungsvoll',
+  ].map((w) => w.toLowerCase()),
+);
+
+/** Yakalanan öbeğin gerçekten bir ad olup olmadığını denetler. */
+function isPlausiblePersonName(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length < 3) return false;
+
+  const words = trimmed.split(/\s+/);
+  // Her sözcük stoplist'te olmamalı; tek sözcüklü öbekte de aynı kural.
+  for (const word of words) {
+    if (NOT_A_NAME.has(word.toLowerCase().replace(/[.,;:]$/, ''))) return false;
+  }
+  if (NOT_A_NAME.has(trimmed.toLowerCase())) return false;
+
+  // Tamamı büyük harf ve tek sözcükse (ör. "ABTEILUNG") ad kabul etme.
+  if (words.length === 1 && trimmed === trimmed.toUpperCase()) return false;
+
+  return true;
+}
+
+/**
+ * Üçüncü taraf kişi adları — BAĞLAMSAL TETİKLEYİCİ yaklaşımı (D-029, Faz A).
+ *
+ * Neden NER değil: bir ismin *biçimi* onu tanınabilir kılmaz, ama Alman resmî
+ * yazışmasında isimlerin geçtiği BAĞLAMLAR son derece düzenlidir. Bu desenler
+ * yalnızca o bağlamlarda eşleşir; dolayısıyla olasılıksal bir model olmadan,
+ * deterministik ve denetlenebilir kalarak memur/aile üyesi adlarını yakalar.
+ *
+ * Kapsamadığı durum (bilinçli): hiçbir tetikleyici olmadan, metnin ortasında
+ * geçen çıplak adlar. Onlar yerel NER gerektirir — v2 (D-028).
+ */
+const THIRD_PARTY_NAME_PATTERNS: PiiPattern[] = [
+  // "Sehr geehrter Herr Yılmaz," / "Sehr geehrte Frau Nguyễn Thị Hồng,"
+  {
+    type: PiiEntityType.NAME,
+    regex: new RegExp(
+      String.raw`Sehr[ \t]+geehrte[rs]?[ \t]+(?:Herr|Frau)${GAP}${TITLE_PREFIX}(${NAME_PHRASE})`,
+      'gu',
+    ),
+    group: 1,
+    validate: isPlausiblePersonName,
+  },
+
+  // "Ihre Sachbearbeiterin: Frau Sabine Brandt" / "Ansprechpartner: Herr Meier"
+  {
+    type: PiiEntityType.NAME,
+    regex: new RegExp(
+      String.raw`(?:Sachbearbeiter(?:in)?|Ansprechpartner(?:in)?|Bearbeiter(?:in)?|` +
+        String.raw`Sachgebietsleiter(?:in)?|Rechtsanwalt|Rechtsanwältin)[ \t]*[:.]?${GAP}` +
+        String.raw`(?:Herr|Frau)?${GAP}${TITLE_PREFIX}(${NAME_PHRASE})`,
+      'gu',
+    ),
+    group: 1,
+    validate: isPlausiblePersonName,
+  },
+
+  // İmza blokları: "i. A. Brandt", "i.V. Müller", "gez. Schmidt"
+  {
+    type: PiiEntityType.NAME,
+    regex: new RegExp(
+      String.raw`(?:i\.[ \t]*[AV]\.|gez\.)${GAP}${TITLE_PREFIX}(${NAME_PHRASE})`,
+      'gu',
+    ),
+    group: 1,
+    validate: isPlausiblePersonName,
+  },
+
+  // Adres bloğu / metin içi hitap: "Herrn Yasin Kılıç", "Frau Elif Kılıç"
+  {
+    type: PiiEntityType.NAME,
+    regex: new RegExp(
+      String.raw`\b(?:Herrn|Herr|Frau)${GAP}${TITLE_PREFIX}(${NAME_PHRASE})`,
+      'gu',
+    ),
+    group: 1,
+    validate: isPlausiblePersonName,
+  },
+
+  // Aile bağı ifadeleri: "Ihrer Ehefrau Elif Kılıç", "Ihres Sohnes Ahmet"
+  {
+    type: PiiEntityType.NAME,
+    regex: new RegExp(
+      String.raw`(?:Ehefrau|Ehemann|Ehepartner(?:in)?|Sohn(?:es)?|Tochter|Kind(?:es)?|` +
+        String.raw`Vater[s]?|Mutter)${GAP}${TITLE_PREFIX}(${NAME_PHRASE})`,
+      'gu',
+    ),
+    group: 1,
+    validate: isPlausiblePersonName,
+  },
+];
+
 export const PII_PATTERNS: PiiPattern[] = [
+  // ── Üçüncü taraf adları (bağlamsal tetikleyici — D-029) ──
+  // En başta: bu desenler ETİKETLİ olduğu için daha spesifiktir ve adres/tarih
+  // desenlerinin isim öbeğini parçalamasını önler.
+  ...THIRD_PARTY_NAME_PATTERNS,
+
   // ── E-posta (en spesifik) ──
   {
     type: PiiEntityType.EMAIL,

@@ -24,9 +24,9 @@ Kullanıcı mektup fotoğrafı gönderir
         ↓
   OCR (Claude vision veya yerel tesseract)
         ↓
-  🔒 PII MASKELEME  ← kullanıcının kendi adı/adresi + tüm yapısal
-        ↓             alanlar [[NAME_1]] gibi yer tutuculara çevrilir
-                      (üçüncü taraf isimleri: v2)
+  🔒 PII MASKELEME  ← kullanıcının kendi bilgileri + tetikleyici
+        ↓             bağlamdaki isimler + tüm yapısal alanlar
+                      [[NAME_1]] gibi yer tutuculara çevrilir
   Claude analizi (yalnızca maskeli metin görür)
         ↓
   🔓 yerel geri çevirme
@@ -61,26 +61,46 @@ asla yapay zekâya gönderilmez) ve her belgede "bilinen-değer maskeleme"yi bes
 | Adres — standart Alman biçimi (`…straße 12`, `10827 Berlin`) | ✅ Her zaman maskelenir |
 | **Kullanıcının kendi adı ve adresi** | ✅ **Onboarding sonrası maskelenir** |
 | Kullanıcının adresi — standart dışı biçim | ✅ Onboarding sonrası (birebir eşleşme) |
-| **Mektuptaki ÜÇÜNCÜ TARAF isimleri** (memur, aile üyesi, avukat) | ❌ **Maskelenmez — v2** |
-| Profil vermeyi reddeden (`/atla`) kullanıcının adı | ❌ Maskelenmez (kullanıcıya açıkça bildirilir) |
+| **Üçüncü taraf isimleri** — tetikleyici bağlamda (memur, aile üyesi, avukat) | ✅ Maskelenir (D-029) |
+| Üçüncü taraf isimleri — **tetikleyicisiz**, cümle içinde çıplak geçen | ❌ **Maskelenmez — v2 (NER)** |
+| Profil vermeyen (`/atla`) kullanıcının adı — tetikleyici bağlamda | ✅ Maskelenir |
 
-### ⚠️ v2 sınırlaması: üçüncü taraf isimleri
+### Üçüncü taraf isimleri: bağlamsal tetikleyiciler (D-029)
 
-Maskeleme, **kullanıcının kendi verisi** için bilinen-değer eşleşmesine dayanır.
-Mektupta geçen ve kullanıcıya ait olmayan isimler — **memurun adı**
-(`Sachbearbeiterin: Frau …`), **aile üyeleri**, avukatlar, referans verilen
-üçüncü kişiler — bu yöntemle yakalanamaz, çünkü sistem onları önceden bilmez ve
-bir ismin *biçimi* onu tanınabilir kılmaz.
+Bir ismin *biçimi* onu tanınabilir kılmaz — ama Alman resmî yazışmasında
+isimlerin geçtiği **bağlamlar** son derece düzenlidir. BüKo bu bağlamları
+deterministik olarak yakalar:
 
-Bunları yakalamak **yerel NER (adlandırılmış varlık tanıma)** gerektirir; bu
-bilinçli olarak **v2 kapsamına** bırakılmıştır (bkz. [`DECISIONS.md`](DECISIONS.md)
-D-028). Bunu küçümsemiyoruz: memur adları da kişisel veridir ve şu anda
-Claude'a ulaşmaktadır.
+`Sehr geehrte(r) Herr/Frau X` · `Ihre Sachbearbeiterin: Frau X` ·
+`Ansprechpartner: X` · `Herrn X` (adres bloğu) · `i. A. X` / `gez. X` (imza) ·
+`Ihrer Ehefrau X` · `Rechtsanwältin X`
 
-İnce bir davranış: üçüncü taraf kullanıcıyla **aynı soyadı** taşıyorsa (ör. eş),
-soyadı maskelenir ama **ön adı sızar** (`Elif Kılıç` → `Elif [[NAME_2]]`). Metin
-maskelenmiş *görünür* ama tam değildir. Geçici çözüm: aile üyeleri profile
-`extra` alanı üzerinden eklenebilir.
+Bu, olasılıksal bir model olmadan çalışır; dolayısıyla **denetlenebilir ve
+tekrarlanabilir** kalır — maskelemenin temel tasarım ilkesi budur (D-003).
+
+**Yanlış pozitif koruması.** Almancada *tüm* isimler büyük harfle başlar, bu
+yüzden "büyük harf = özel ad" sezgisi Almanca'da felaket olurdu. BüKo bunu asla
+sinyal olarak kullanmaz: yalnızca tetikleyici bağlamlarda eşleşir ve ayrıca bir
+stoplist (`Damen`, `Herren`, `Behörde`, `Abteilung` …) uygular.
+Ölçüm: 8 sentetik mektupta **16 NAME eşleşmesinin 16'sı da gerçek isim** —
+sıfır yanlış pozitif. Test, alan terimlerinin maskelenmediğini ve token
+oranının %15'i aşmadığını (aşırı maskeleme yok) sürekli doğrular.
+
+### ⚠️ Kalan v2 sınırlaması: tetikleyicisiz isimler
+
+Hiçbir unvan/etiket olmadan cümle içinde geçen isimler **hâlâ maskelenmiyor**:
+
+> „Der Antrag wurde von **Petra Hoffmann** geprüft."
+
+Burada `von` bir tetikleyici değildir ve bu adı yakalamak **yerel NER**
+gerektirir — bilinçli olarak **v2 kapsamındadır** (bkz. [`DECISIONS.md`](DECISIONS.md)
+D-028). Bunu küçümsemiyoruz: bu da kişisel veridir ve şu anda Claude'a
+ulaşmaktadır. Kalıcı bir test (`onboarding.e2e.spec.ts` — "KALAN SINIR") bu
+davranışı sabitler, böylece sınır sessizce kaymaz.
+
+Neden yarım bir NER eklemiyoruz: yanlış pozitifler mektubu okunamaz hâle
+getirir, yanlış negatifler ise sahte güven yaratır. Ölçülmüş ve ilan edilmiş bir
+boşluk, ölçülmemiş bir modelden dürüsttür.
 
 **Son tarih nasıl çıkarılıyor?** Model, takvim değerini değil ilgili
 `[[DATE_n]]` yer tutucusunu döndürür — hangi tarihin son tarih olduğunu
@@ -132,7 +152,7 @@ Supabase/Postgres · Zod · Playwright · Jest
 
 ## Durum
 
-**437 test geçiyor** (36 suite) · TypeScript strict · gerçek API anahtarı olmadan
+**463 test geçiyor** (36 suite) · TypeScript strict · gerçek API anahtarı olmadan
 uçtan uca çalışır (mock modlar).
 
 | Faz | Durum |
@@ -145,7 +165,8 @@ uçtan uca çalışır (mock modlar).
 | Randevu izleme (Playwright PoC, mock sayfa) | ✅ |
 | Telegram sohbet akışı (tr/de/en) | ✅ |
 | Onboarding PII profili (bilinen-değer maskeleme) | ✅ |
-| Üçüncü taraf isimleri için yerel NER | ⏳ v2 (bkz. D-028) |
+| Üçüncü taraf isimleri — bağlamsal tetikleyici (D-029) | ✅ |
+| Tetikleyicisiz isimler için yerel NER | ⏳ v2 (bkz. D-028) |
 | Web dashboard | ⏳ kapsam dışı |
 
 ---
@@ -156,7 +177,7 @@ uçtan uca çalışır (mock modlar).
 git clone <repo> && cd B-Ko
 npm install
 cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 437 test
+npm test                  # 463 test
 npm run start:dev
 ```
 

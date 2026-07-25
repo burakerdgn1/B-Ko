@@ -113,6 +113,62 @@ describe('PII maskeleme — sentetik Behördenbrief fixture\'ları', () => {
     });
   });
 
+  // ── İsim maskeleme kesinliği (D-029 Faz A) ────────────────────────────────
+  describe('NAME kesinliği — yanlış pozitif ölçümü', () => {
+    /**
+     * Almancada TÜM isimler büyük harfle başladığı için aşırı maskeleme
+     * gerçek bir risktir: mektup okunamaz hâle gelir ve modelin analizi bozulur.
+     * Bu blok, 8 mektubun tamamında NAME olarak maskelenen HER değeri denetler.
+     */
+    const DOMAIN_WORDS = [
+      'Ausländerbehörde', 'Bürgeramt', 'Aufenthaltserlaubnis', 'Antrag',
+      'Frist', 'Unterlagen', 'Mietvertrag', 'Krankenversicherung',
+      'Damen', 'Herren', 'Betreff', 'Aktenzeichen', 'Anlagen',
+      'Widerspruch', 'Gebührenbescheid', 'Verpflichtungserklärung',
+      'Berlin', 'München', 'Hamburg', 'Stuttgart',
+    ];
+
+    it.each(letterKeys)('%s — NAME eşleşmeleri alan terimi İÇERMEZ', (key) => {
+      const text = readFileSync(join(LETTER_DIR, expected[key].file), 'utf8');
+      const { map } = pii.mask(text); // profilsiz — en zorlu durum
+
+      const names = map.matches
+        .filter((m) => m.type === PiiEntityType.NAME)
+        .map((m) => m.original);
+
+      for (const name of names) {
+        for (const word of DOMAIN_WORDS) {
+          expect(name).not.toContain(word);
+        }
+      }
+    });
+
+    it('her mektupta en az bir alıcı adı yakalanır (recall)', () => {
+      for (const key of letterKeys) {
+        const text = readFileSync(join(LETTER_DIR, expected[key].file), 'utf8');
+        const { map } = pii.mask(text);
+        const names = map.matches.filter((m) => m.type === PiiEntityType.NAME);
+        expect(names.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('maskeleme sonrası belgeler ANLAMLI kalır (aşırı maskeleme yok)', () => {
+      for (const key of letterKeys) {
+        const text = readFileSync(join(LETTER_DIR, expected[key].file), 'utf8');
+        const { maskedText } = pii.mask(text);
+
+        // Kurum türü ve resmî dil korunmalı ki model sınıflandırabilsin.
+        expect(maskedText).toMatch(/Ausländerbehörde|Bürgeramt|Amt|Behörde|Landeshauptstadt/);
+        expect(maskedText).toMatch(/Mit freundlichen Grüßen/);
+
+        // Token oranı makul olmalı — metnin yarısı token ise aşırı maskeleme var.
+        const tokenCount = (maskedText.match(/\[\[[A-Z]+_\d+\]\]/g) ?? []).length;
+        const wordCount = maskedText.split(/\s+/).length;
+        expect(tokenCount / wordCount).toBeLessThan(0.15);
+      }
+    });
+  });
+
   describe('kapsam ve çeşitlilik', () => {
     it('risk seviyeleri çeşitli — en az bir critical ve bir low', () => {
       const risks = letterKeys.map((k) => expected[k].expectedRiskLevel);
