@@ -123,3 +123,29 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **Süreç dersi:** İkinci kez, subagent'ın "tüm testler geçiyor" raporu doğru ama
   YETERSİZDİ — testler yanlış davranışı doğruluyordu. Geçen test sayısı değil, neyin
   test edildiği önemli.
+
+## D-015 — Tam adın PARÇALARI da maskelenir (yüksek etkili recall açığı)
+- **Bağlam:** Onboarding'de kullanıcı genellikle tek bir "tam ad" alanı doldurur
+  ("Ahmet Yılmaz"). Alman resmi mektupları ise kişiye neredeyse HER ZAMAN yalnızca
+  soyadıyla hitap eder: "Sehr geehrter Herr Yılmaz". Bilinen-değer maskelemesi tam
+  adı arıyordu, dolayısıyla selamlamadaki soyadı MASKELENMEDEN LLM'e gidiyordu.
+  DI bütünlük testi yazarken tesadüfen ortaya çıktı.
+- **Karar:** `fullName` verildiğinde ad parçaları da ayrı ayrı bilinen-değer olarak
+  kaydedilir. 3 karakterden kısa parçalar ve ad bağlaçları/unvanlar
+  (van, von, de, bin, al, Dr, Herr...) hariç tutulur.
+- **Gerekçe:** Bu, teorik değil tipik bir senaryodur — neredeyse HER Behördenbrief'te
+  gerçekleşirdi. Bağlaçları hariç tutmak, metnin okunabilirliğini korur (aksi hâlde
+  "von hier" gibi sıradan ifadeler maskelenirdi); gizlilik açısından bağlaçlar tek
+  başına kimlik belirtmez.
+- **Ödünleşim:** Aşırı maskeleme (bir ad parçasının sıradan bir kelimeyle çakışması)
+  kabul edilir; eksik maskeleme kabul edilmez. Gizlilik aracında yön daima
+  aşırı-maskeleme lehinedir.
+
+## D-016 — DI bütünlük testi (modül entegrasyonu kanıtı)
+- **Karar:** `src/app.module.spec.ts` tüm modülleri birlikte ayağa kaldırır, hiçbir
+  gerçek API anahtarı olmadan mock modda uçtan uca bir analiz çağrısı ve bir
+  repository yazma/okuma işlemi yapar.
+- **Gerekçe:** Modüller ayrı ayrı yeşilken birleşince DI grafiği çözülemeyebilir
+  (eksik export, yanlış token, döngüsel bağımlılık). Ayrıca bu test,
+  MANUAL_ACTIONS_REQUIRED.md'nin "her şey mock arkasında çalışıyor" iddiasının
+  yürütülebilir kanıtıdır — iddia belgede kalmaz, CI'da doğrulanır.

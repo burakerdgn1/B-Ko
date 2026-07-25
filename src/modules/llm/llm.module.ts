@@ -8,17 +8,16 @@ import {
   ClaudeVisionOcrProvider,
   LocalOcrProvider,
   OCR_PROVIDER_TOKEN,
-  resolveOcrProviderKind,
+
 } from './ocr.provider';
 
 /**
  * LLM entegrasyon modülü — Claude sarmalayıcı (`LlmService`) ve OCR
  * sağlayıcıları burada bir araya getirilir.
  *
- * NOT (ana oturuma — bkz. çıktı raporu): `OCR_PROVIDER` ortam değişkeni
- * `src/config/env.schema.ts`'e henüz eklenmedi (o dosya ana oturuma ait, bu
- * modül dokunmuyor). Şimdilik `process.env.OCR_PROVIDER` doğrudan okunuyor
- * (bkz. `resolveOcrProviderKind`); varsayılan `claude-vision`.
+ * `OCR_PROVIDER` artık `env.schema.ts` içinde Zod ile doğrulanıyor ve
+ * `AppConfigService.ocrProvider` üzerinden okunuyor (ham `process.env` değil) —
+ * böylece geçersiz bir değer uygulama başlarken fail-fast yakalanır.
  */
 @Module({
   imports: [AppConfigModule, PiiModule],
@@ -33,9 +32,12 @@ import {
     },
     {
       provide: OCR_PROVIDER_TOKEN,
-      useFactory: (claudeVision: ClaudeVisionOcrProvider, local: LocalOcrProvider) =>
-        resolveOcrProviderKind() === 'local' ? local : claudeVision,
-      inject: [ClaudeVisionOcrProvider, LocalOcrProvider],
+      useFactory: (
+        config: AppConfigService,
+        claudeVision: ClaudeVisionOcrProvider,
+        local: LocalOcrProvider,
+      ) => (config.ocrProvider === 'local' ? local : claudeVision),
+      inject: [AppConfigService, ClaudeVisionOcrProvider, LocalOcrProvider],
     },
   ],
   exports: [LlmService],

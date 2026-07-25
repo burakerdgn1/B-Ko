@@ -193,6 +193,35 @@ describe('PiiService', () => {
       expect(pii.unmask(maskedText, map)).toBe('YILMAZ, AHMET');
     });
 
+    // D-015 regresyonu: Alman resmi mektupları kişiye SOYADIYLA hitap eder.
+    // Profil yalnızca tam ad içerse bile soyadı tek başına maskelenmeli.
+    it('yalnızca tam ad verildiğinde soyadı TEK BAŞINA da maskelenir', () => {
+      const text = 'Sehr geehrter Herr Yılmaz, bitte reichen Sie ein.';
+      const { maskedText, map } = pii.mask(text, {
+        profile: { fullName: 'Ahmet Yılmaz' },
+      });
+
+      expect(maskedText).not.toContain('Yılmaz');
+      expect(pii.detectLeaks(maskedText, map)).toEqual([]);
+      expect(pii.unmask(maskedText, map)).toBe(text);
+    });
+
+    it('yalnızca tam ad verildiğinde ad da tek başına maskelenir', () => {
+      const { maskedText } = pii.mask('Guten Tag Ahmet,', {
+        profile: { fullName: 'Ahmet Yılmaz' },
+      });
+      expect(maskedText).not.toContain('Ahmet');
+    });
+
+    it('ad bağlaçları/unvanlar maskelenmez (metin okunabilir kalır)', () => {
+      const { maskedText } = pii.mask('Sehr geehrter Herr Silva, von hier.', {
+        profile: { fullName: 'Joao van der Silva' },
+      });
+      expect(maskedText).not.toContain('Silva');
+      // "von"/"der" tek başına kimlik belirtmez — maskelenirse metin bozulur.
+      expect(maskedText).toContain('von hier');
+    });
+
     it('"Soyad, Ad" sırası da yakalanır', () => {
       const { maskedText } = pii.mask('Yılmaz, Ahmet', { profile });
       expect(maskedText).not.toContain('Yılmaz, Ahmet');

@@ -181,6 +181,16 @@ export class PiiService {
     push(profile.fullName, PiiEntityType.NAME);
     push(profile.givenName, PiiEntityType.NAME);
     push(profile.familyName, PiiEntityType.NAME);
+
+    // Tam adın PARÇALARI da ayrı ayrı maskelenmeli.
+    //
+    // Neden kritik: Alman resmi mektupları kişiye neredeyse her zaman yalnızca
+    // SOYADIYLA hitap eder ("Sehr geehrter Herr Yılmaz"). Onboarding'de çoğu
+    // kullanıcı tek bir "tam ad" alanı doldurur; parçalara ayırmazsak
+    // selamlamadaki soyadı maskelenmeden LLM'e giderdi. (D-015)
+    for (const part of splitNameParts(profile.fullName)) {
+      push(part, PiiEntityType.NAME);
+    }
     push(profile.dateOfBirth, PiiEntityType.DOB);
     push(profile.address, PiiEntityType.ADDRESS);
     push(profile.city, PiiEntityType.ADDRESS);
@@ -338,6 +348,30 @@ export class PiiService {
 
 function emptyMap(): PiiMap {
   return { byToken: new Map(), matches: [] };
+}
+
+/**
+ * Tam adı bağımsız olarak maskelenebilir parçalara ayırır.
+ *
+ * Atlanan parçalar:
+ *   - 3 karakterden kısa olanlar (baş harf, "Dr" vb.) — belge genelinde
+ *     yanlış eşleşme gürültüsü üretirler.
+ *   - Ad bağlaçları/unvanlar — bunlar tek başına kimlik belirtmez, ama
+ *     maskelenirlerse metin okunamaz hâle gelir.
+ */
+function splitNameParts(fullName?: string): string[] {
+  if (!fullName) return [];
+
+  const PARTICLES = new Set([
+    'van', 'von', 'de', 'der', 'den', 'del', 'della', 'di', 'da', 'dos',
+    'bin', 'ibn', 'al', 'el', 'abu', 'ait', 'ben',
+    'dr', 'prof', 'herr', 'frau', 'mr', 'mrs', 'ms',
+  ]);
+
+  return fullName
+    .split(/[\s,]+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length >= 3 && !PARTICLES.has(p.toLowerCase()));
 }
 
 /** Karşılaştırma için normalizasyon: NFKC + küçük harf + boşluk sıkıştırma. */
