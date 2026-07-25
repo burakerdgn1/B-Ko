@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!--
+  MOCK SAYFA — gerçek bir kurumu temsil etmez.
+
+  Aynı senaryonun "randevu YOK" durumu (bkz. termin-available.html üst
+  yorumu). `.slot-item` elemanı YOK; bunun yerine `.no-slots-message`
+  bulunuyor. AppointmentChecker, slot elemanı bulunamadığında
+  `available: false` döner — bu sayfanın metnini ayrıştırmaya çalışmaz
+  (kırılganlığı azaltmak için).
+-->
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Terminvereinbarung – Ausländerbehörde Musterstadt (MOCK)</title>
+  </head>
+  <body>
+    <header>
+      <h1>Ausländerbehörde Musterstadt</h1>
+      <p>Online-Terminvereinbarung — Aufenthaltstitel / Verlängerung</p>
+    </header>
+
+    <main>
+      <section class="appointment-results" data-status="none">
+        <h2>Terminstatus</h2>
+        <p class="no-slots-message">
+          Keine Termine verfügbar. Bitte versuchen Sie es zu einem späteren
+          Zeitpunkt erneut.
+        </p>
+      </section>
+
+      <footer>
+        <p class="disclaimer">
+          Dies ist eine Testseite (MOCK) für Entwicklungszwecke. Keine echte
+          Behörde.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

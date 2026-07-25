@@ -7,6 +7,9 @@ import { PersistenceModule } from './modules/persistence/persistence.module';
 import { LlmModule } from './modules/llm/llm.module';
 import { ChannelsModule } from './modules/channels/channels.module';
 import { AnalysisModule } from './modules/analysis/analysis.module';
+import { DraftsModule } from './modules/drafts/drafts.module';
+import { WatcherModule } from './modules/watcher/watcher.module';
+import { ConversationModule } from './modules/conversation/conversation.module';
 
 /**
  * Kök modül.
@@ -28,6 +31,10 @@ import { AnalysisModule } from './modules/analysis/analysis.module';
     LlmModule,
     ChannelsModule,
     AnalysisModule,
+    DraftsModule,
+    WatcherModule,
+    // En son: botu ürün akışına bağlayan orkestrasyon halkası.
+    ConversationModule,
   ],
 })
 export class AppModule {}

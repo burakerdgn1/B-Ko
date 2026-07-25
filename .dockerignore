@@ -1,0 +1,37 @@
+# ── Bağımlılıklar / build çıktıları (imaj içinde yeniden üretilir) ──
+node_modules
+dist
+coverage
+
+# ── VCS / IDE ──
+.git
+.gitignore
+.github
+.idea
+.vscode
+
+# ── Ortam / sırlar (ASLA imaja gömülmez) ──
+.env
+.env.local
+.env.*.local
+
+# ── Test / geliştirme dosyaları ──
+test
+test-fixtures
+**/*.spec.ts
+**/*.test.ts
+jest.config.*
+
+# ── Dokümantasyon / proje takip dosyaları (imaj boyutuna gerek yok) ──
+*.md
+docs
+
+# ── Diğer ──
+*.log
+npm-debug.log*
+.DS_Store
+*.tsbuildinfo
+tmp
+playwright-report
+test-results
+.claude

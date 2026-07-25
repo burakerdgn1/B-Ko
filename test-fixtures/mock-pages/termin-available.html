@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<!--
+  MOCK SAYFA — gerçek bir kurumu temsil etmez.
+
+  BüKo Playwright PoC'si için hazırlanmış, gerçekçi bir Alman
+  "Ausländerbehörde" randevu sayfası taklididir (F3b, CLAUDE.md §5/§6).
+  Testler ve varsayılan geliştirme akışı DAİMA bu türden yerel `file://`
+  sayfaları üzerinde çalışır; gerçek bir kurum sitesine otomatik istek
+  atılmaz (bkz. src/modules/watcher/appointment-checker.ts üst dosya yorumu).
+
+  Durum: randevu VAR — `.slot-item` elemanları AppointmentChecker'ın
+  aradığı göstergedir.
+-->
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Terminvereinbarung – Ausländerbehörde Musterstadt (MOCK)</title>
+  </head>
+  <body>
+    <header>
+      <h1>Ausländerbehörde Musterstadt</h1>
+      <p>Online-Terminvereinbarung — Aufenthaltstitel / Verlängerung</p>
+    </header>
+
+    <main>
+      <section class="appointment-results" data-status="available">
+        <h2>Verfügbare Termine</h2>
+        <p>Bitte wählen Sie einen der folgenden freien Termine aus:</p>
+        <ul class="slot-list">
+          <li class="slot-item" data-slot="2026-08-03T09:00">
+            Montag, 03.08.2026, 09:00 Uhr
+          </li>
+          <li class="slot-item" data-slot="2026-08-03T09:20">
+            Montag, 03.08.2026, 09:20 Uhr
+          </li>
+          <li class="slot-item" data-slot="2026-08-05T14:40">
+            Mittwoch, 05.08.2026, 14:40 Uhr
+          </li>
+        </ul>
+      </section>
+
+      <footer>
+        <p class="disclaimer">
+          Dies ist eine Testseite (MOCK) für Entwicklungszwecke. Keine echte
+          Behörde.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

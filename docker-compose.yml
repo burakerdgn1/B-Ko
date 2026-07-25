@@ -1,0 +1,74 @@
+# ============================================================================
+# BüKo — docker-compose.yml (yerel geliştirme / entegrasyon)
+#
+# NOT (önemli sınırlama): `postgres` servisi, `DB_DRIVER=supabase` modunun
+# yerel bir ikamesi DEĞİLDİR. Uygulama Postgres'e ham SQL/wire protokolüyle değil,
+# `@supabase/supabase-js` istemcisiyle Supabase'in REST/PostgREST API'sine bağlanır
+# (bkz. src/modules/persistence/supabase/supabase-client.provider.ts, SUPABASE_URL).
+# Buradaki `postgres` servisi yalnızca:
+#   - `supabase/migrations/0001_init.sql` şemasını gözden geçirmek/psql ile denemek,
+#   - `scripts/apply-migrations.sh` script'ini yerelde test etmek
+# için var. Uygulamayı gerçek Supabase davranışıyla tam yerel çalıştırmak isteyenler
+# Supabase CLI (`supabase start`) kullanmalı — bkz. docs/DEPLOYMENT.md.
+# Bu servis olmadan da proje `DB_DRIVER=memory` (varsayılan .env.example) ile
+# tamamen çalışır durumdadır.
+# ============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: bueko:local
+    env_file:
+      - .env
+    environment:
+      # Compose ağında postgres servisine erişmek isterseniz (bkz. yukarıdaki not,
+      # bu doğrudan DB_DRIVER=supabase için yeterli değildir):
+      - LOCAL_POSTGRES_HOST=postgres
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get({host:'127.0.0.1',port:process.env.PORT||3000,path:'/'},(r)=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # Opsiyonel: Supabase yerine yerelde şema/psql denemesi için düz Postgres.
+  # `docker compose --profile local-db up` ile devreye alınır (varsayılanda çalışmaz).
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["local-db"]
+    environment:
+      POSTGRES_USER: bueko
+      POSTGRES_PASSWORD: bueko_dev_only
+      POSTGRES_DB: bueko
+    ports:
+      - "5432:5432"
+    volumes:
+      - bueko_postgres_data:/var/lib/postgresql/data
+      # Konteyner ilk ayağa kalkışında şemayı otomatik uygular.
+      - ./supabase/migrations/0001_init.sql:/docker-entrypoint-initdb.d/0001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bueko -d bueko"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  bueko_postgres_data:
