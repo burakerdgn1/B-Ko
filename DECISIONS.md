@@ -280,3 +280,18 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **Eşzamanlılık:** Aynı kullanıcı için paralel iki analiz, 8 paralel analiz ve
   kullanıcı izolasyonu test edildi; AAD bağlaması sayesinde bir kullanıcının
   vault kaydı başka bir kullanıcının bağlamıyla çözülemiyor.
+
+## D-026 — İsim boşluğu yalnızca LLM'i değil, SAKLAMAYI da etkiliyor
+- **Bağlam:** D-024 isimlerin LLM'e çıplak gittiğini gösterdi. Denetim derinleştirilince
+  ikinci sonuç ortaya çıktı: `documents.masked_text` alanı adı "maskeli" olsa da
+  maskeleme NAME'i kapsamadığı için **isimler veritabanında ham hâliyle kalıcılaşıyor.**
+- **Etki:** Bu yalnızca bir "LLM'e gönderim" konusu değil, bir **GDPR saklama yüzeyi**
+  konusudur. Veri minimizasyonu iddiası isimler için geçerli değil (silme yine çalışıyor:
+  `delete_after` + `/sil` bu satırları da siliyor).
+- **Karar:** İddia edilen davranış DÜZELTİLDİ (README, STATUS, ARCHITECTURE). Kalıcı test
+  eklendi (`leak-channels.spec.ts` — "Kanal 6"): profilsiz akışta isim `masked_text`
+  içinde bulunur, profille bulunmaz.
+- **Gerekçe:** Şemadaki `masked_text` adı, alanın içeriği hakkında olduğundan güçlü bir
+  garanti ima ediyordu. Yanıltıcı bir alan adının etrafında sessizce çalışmak yerine
+  sınırı ölçüp belgelemek doğru olan.
+- **Kapatma:** Onboarding profili (v1.1) hem gönderim hem saklama tarafını aynı anda kapatır.

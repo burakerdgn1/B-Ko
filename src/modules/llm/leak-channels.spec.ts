@@ -336,6 +336,43 @@ describe('Sızıntı kanalı denetimi', () => {
     });
   });
 
+  // ── Kanal 6: veritabanı (profilsiz) ──────────────────────────────────────
+  describe('🔴 Kanal 6 — veritabanı, profil OLMADAN', () => {
+    it('🔴 BULGU: maskelenmeyen isim `documents.masked_text` içinde KALICI olur', async () => {
+      const outcome = await pipeline.run({ userId, source: 'text', text: LETTER });
+
+      const doc = await app.get(DocumentRepository).findById(outcome.document.id);
+
+      // `masked_text` adı üzerinde "maskeli"dir; ancak maskeleme NAME'i
+      // kapsamadığı için (D-024) isim burada ham hâliyle kalıcılaşır.
+      // Bu, yalnızca LLM'e gönderimi değil, GDPR saklama yüzeyini de etkiler.
+      expect(doc?.maskedText).toContain(PROFILE.fullName!);
+    });
+
+    it('KARŞILAŞTIRMA: profil ile aynı alan ham isim İÇERMEZ', async () => {
+      const outcome = await pipeline.run({
+        userId,
+        source: 'text',
+        text: LETTER,
+        profile: PROFILE,
+      });
+
+      const doc = await app.get(DocumentRepository).findById(outcome.document.id);
+      expect(doc?.maskedText).not.toContain(PROFILE.fullName!);
+    });
+
+    it('yapısal alanlar profilsiz de DB\'de maskelidir', async () => {
+      const outcome = await pipeline.run({ userId, source: 'text', text: LETTER });
+      const doc = await app.get(DocumentRepository).findById(outcome.document.id);
+
+      for (const structural of [PROFILE.email, PROFILE.steuerId].filter(
+        (v): v is string => typeof v === 'string' && v.length > 3 && LETTER.includes(v),
+      )) {
+        expect(doc?.maskedText).not.toContain(structural);
+      }
+    });
+  });
+
   // ── Kanal 5: audit log ────────────────────────────────────────────────────
   describe('Kanal 5 — audit log', () => {
     it('audit kayıtları ham PII içermez (yalnızca id/sayaç)', async () => {

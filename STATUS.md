@@ -6,11 +6,12 @@
 ## Tek cümlede
 Kullanıcı Telegram'dan bir Behördenbrief gönderdiğinde; kimlik bilgileri maskeleniyor,
 belge analiz ediliyor, son tarih/risk/eksik belgeler çıkarılıyor, hatırlatmalar
-kuruluyor, istenirse resmî dilde taslak yanıt üretilip **insan onayına** sunuluyor —
-ve bunların hiçbirinde ham kimlik bilgisi veritabanına yazılmıyor.
+kuruluyor, istenirse resmî dilde taslak yanıt üretilip **insan onayına** sunuluyor.
+Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. aşağıdaki
+kapsam boşluğu).
 
 ## Sayılar
-- **418 test geçiyor** (35 suite), **0 atlanan**
+- **421 test geçiyor** (35 suite), **0 atlanan**
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edildi (218 MB)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
 - 10 commit, ana dal `main`
@@ -45,8 +46,9 @@ Geçen test sayısı değil, neyin doğrulandığı önemli.
 Derinlemesine sızıntı denetimi, D-018'in gerçek sonucunu ölçtü:
 `PII_PATTERNS` içinde **NAME için yapısal desen yok** (bir isim biçiminden
 tanınamaz). İsim maskeleme yalnızca onboarding profiline dayanır ve v1 akışı
-profil beslemez → **kişi adları Claude'a çıplak gidiyor.** Standart dışı adres
-biçimleri (`Am Alten Bahnhof 3b`, `c/o …`, `Postfach …`) de kaçıyor.
+profil beslemez → **kişi adları hem Claude'a çıplak gidiyor hem de
+`documents.masked_text` içinde ham olarak saklanıyor** (GDPR saklama yüzeyi).
+Standart dışı adres biçimleri (`Am Alten Bahnhof 3b`, `c/o …`, `Postfach …`) de kaçıyor.
 
 Yapısal alanlar (Steuer-ID, IBAN, e-posta, telefon, tarih, Aktenzeichen,
 Ausländernummer, pasaport, sigorta no) ve standart Alman adresleri profilsiz de

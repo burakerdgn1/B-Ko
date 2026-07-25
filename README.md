@@ -46,7 +46,7 @@ Bu, sonradan eklenmiş bir "gizlilik özelliği" değil; mimarinin merkezinde.
 **Nasıl:** Belgedeki kimlik bilgileri LLM'e gitmeden önce deterministik yer
 tutuculara çevrilir. Model `[[STEUERID_1]]` görür, gerçek numarayı değil. Yanıt
 geldiğinde yerelde geri çevrilir. Eşleme tablosu **AES-256-GCM ile şifreli**
-saklanır; düz PII hiçbir yere yazılmaz.
+saklanır. Maskelenen her değer için düz PII yalnızca şifreli vault'ta durur.
 
 **v1'de neyin kapsandığı (ölçülmüş, iddia değil):**
 
@@ -64,7 +64,9 @@ maskeleme, kullanıcının onboarding'de verdiği kendi bilgisine dayanan
 "bilinen-değer" stratejisiyle çalışır — ve **v1 akışı bu profili henüz
 toplamıyor** (bkz. [`DECISIONS.md`](DECISIONS.md) D-018).
 
-Sonuç: **v1'de bir mektuptaki kişi adları Claude'a maskelenmeden ulaşır.**
+Sonuç: **v1'de bir mektuptaki kişi adları hem Claude'a maskelenmeden ulaşır hem de
+`documents.masked_text` alanında ham hâliyle saklanır** (alan adı "maskeli" olsa da
+maskeleme NAME'i kapsamaz). Bu, GDPR saklama yüzeyini de etkiler.
 Bu, `src/modules/llm/leak-channels.spec.ts` içinde açıkça test edilerek
 belgelenmiştir. Motor tarafı hazırdır (`PiiService` profil desteğini tam
 olarak içerir ve test edilir); eksik olan yalnızca onboarding akışıdır.
@@ -122,7 +124,7 @@ Supabase/Postgres · Zod · Playwright · Jest
 
 ## Durum
 
-**418 test geçiyor** (35 suite) · TypeScript strict · gerçek API anahtarı olmadan
+**421 test geçiyor** (35 suite) · TypeScript strict · gerçek API anahtarı olmadan
 uçtan uca çalışır (mock modlar).
 
 | Faz | Durum |
@@ -145,7 +147,7 @@ uçtan uca çalışır (mock modlar).
 git clone <repo> && cd B-Ko
 npm install
 cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 418 test
+npm test                  # 421 test
 npm run start:dev
 ```
 

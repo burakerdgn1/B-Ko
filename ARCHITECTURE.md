@@ -72,6 +72,8 @@ Model default: `claude-sonnet-5` (analiz), vision destekli. Model ID `.env` ile 
 
 - `users` — kanal kimliği, profil (visa_type, family_status), **consent_at**, **ai_disclosure_ack_at**, `delete_after`.
 - `documents` — user_id, kaynak tipi, storage_ref, status, `delete_after`.
+  `masked_text` yalnızca MASKELİ metni tutar; ancak maskeleme NAME'i kapsamadığı
+  için v1'de isimler bu alanda ham kalır (bkz. DECISIONS D-024).
 - `analyses` — document_id, authority, summary, request_type, **deadline_date**, **risk_level**, `missing_documents` (jsonb).
 - `drafts` — analysis_id, content, **status (draft/pending_approval/approved/rejected/sent)** — kod seviyesinde onay kapısı.
 - `reminders` — due_date, kind, sent_at, status.
