@@ -10,7 +10,7 @@ kuruluyor, istenirse resmî dilde taslak yanıt üretilip **insan onayına** sun
 ve bunların hiçbirinde ham kimlik bilgisi veritabanına yazılmıyor.
 
 ## Sayılar
-- **361 test geçiyor** (31 suite), **0 atlanan**
+- **418 test geçiyor** (35 suite), **0 atlanan**
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edildi (218 MB)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
 - 10 commit, ana dal `main`
@@ -40,6 +40,20 @@ Subagent raporları doğrulanmadan kabul edilmedi; bağımsız testler **7 gerç
 
 D-014 özellikle dikkate değer: subagent yanlış davranışı **doğru diye test etmişti**.
 Geçen test sayısı değil, neyin doğrulandığı önemli.
+
+## ⚠️ Bilinen kapsam boşluğu — v1'de İSİMLER maskelenmiyor (D-024)
+Derinlemesine sızıntı denetimi, D-018'in gerçek sonucunu ölçtü:
+`PII_PATTERNS` içinde **NAME için yapısal desen yok** (bir isim biçiminden
+tanınamaz). İsim maskeleme yalnızca onboarding profiline dayanır ve v1 akışı
+profil beslemez → **kişi adları Claude'a çıplak gidiyor.** Standart dışı adres
+biçimleri (`Am Alten Bahnhof 3b`, `c/o …`, `Postfach …`) de kaçıyor.
+
+Yapısal alanlar (Steuer-ID, IBAN, e-posta, telefon, tarih, Aktenzeichen,
+Ausländernummer, pasaport, sigorta no) ve standart Alman adresleri profilsiz de
+maskeleniyor.
+
+README'deki iddia buna göre DÜZELTİLDİ. Kapatma yolu: onboarding akışı (v1.1
+ilk iş) — motor tarafı hazır ve test edilmiş.
 
 ## Bilinçli kapsam kararları (dürüst liste)
 - **D-018 — Onboarding PII profili v1'de toplanmıyor.** Bilinen-değer maskelemesi

@@ -14,7 +14,8 @@ Ausländerbehörde'den gelen bir mektup, Almanca bilmeyen biri için üç ayrı 
 **ne isteniyor**, **son tarih ne zaman**, **hangi belgeleri hazırlamalıyım**.
 Kaçırılan bir Frist, oturum izninin uzatılmamasına kadar gidebilir.
 
-BüKo bu üç soruyu yanıtlar — kimlik bilgilerinizi yapay zekâya göndermeden.
+BüKo bu üç soruyu yanıtlar ve kimlik bilgilerinizin yapay zekâya gitmesini
+mümkün olduğunca engeller — neyin kapsandığı aşağıda **ölçülmüş** olarak listelidir.
 
 ## Nasıl çalışır
 
@@ -23,8 +24,8 @@ Kullanıcı mektup fotoğrafı gönderir
         ↓
   OCR (Claude vision veya yerel tesseract)
         ↓
-  🔒 PII MASKELEME  ← kimlik bilgileri burada [[NAME_1]] gibi
-        ↓             yer tutuculara çevrilir
+  🔒 PII MASKELEME  ← numaralar/adres/tarih [[STEUERID_1]] gibi
+        ↓             yer tutuculara çevrilir (isimler: v1'de değil)
   Claude analizi (yalnızca maskeli metin görür)
         ↓
   🔓 yerel geri çevirme
@@ -38,15 +39,38 @@ Ayrıntılı diyagramlar: [`docs/architecture-diagram.md`](docs/architecture-dia
 
 ---
 
-## Ayırt edici özellik: PII asla çıplak dışarı çıkmaz
+## Ayırt edici özellik: PII maskeleme katmanı
 
 Bu, sonradan eklenmiş bir "gizlilik özelliği" değil; mimarinin merkezinde.
 
-**Nasıl:** Belgedeki kimlik bilgileri (ad, adres, Steuer-ID, IBAN, Aktenzeichen,
-Ausländernummer, telefon, e-posta, tarihler) LLM'e gitmeden önce deterministik
-yer tutuculara çevrilir. Model `[[NAME_1]]` görür, "Ahmet Yılmaz" değil. Yanıt
+**Nasıl:** Belgedeki kimlik bilgileri LLM'e gitmeden önce deterministik yer
+tutuculara çevrilir. Model `[[STEUERID_1]]` görür, gerçek numarayı değil. Yanıt
 geldiğinde yerelde geri çevrilir. Eşleme tablosu **AES-256-GCM ile şifreli**
 saklanır; düz PII hiçbir yere yazılmaz.
+
+**v1'de neyin kapsandığı (ölçülmüş, iddia değil):**
+
+| Alan | v1 durumu |
+|---|---|
+| Steuer-ID, IBAN, e-posta, telefon, tarih, Aktenzeichen, Ausländernummer, pasaport, sigorta no | ✅ Her zaman maskelenir (yapısal desen + checksum) |
+| Adres — standart Alman biçimi (`…straße 12`, `10827 Berlin`) | ✅ Maskelenir |
+| Adres — standart dışı biçim (`Am Alten Bahnhof 3b`, `c/o …`, `Postfach …`) | ❌ **Maskelenmez** |
+| **Kişi adları** | ❌ **v1'de maskelenmez** — aşağıya bakın |
+
+### ⚠️ İsimler v1'de maskelenmiyor
+
+İsimler için **yapısal desen yoktur** (bir isim, biçiminden tanınamaz). İsim
+maskeleme, kullanıcının onboarding'de verdiği kendi bilgisine dayanan
+"bilinen-değer" stratejisiyle çalışır — ve **v1 akışı bu profili henüz
+toplamıyor** (bkz. [`DECISIONS.md`](DECISIONS.md) D-018).
+
+Sonuç: **v1'de bir mektuptaki kişi adları Claude'a maskelenmeden ulaşır.**
+Bu, `src/modules/llm/leak-channels.spec.ts` içinde açıkça test edilerek
+belgelenmiştir. Motor tarafı hazırdır (`PiiService` profil desteğini tam
+olarak içerir ve test edilir); eksik olan yalnızca onboarding akışıdır.
+
+Onboarding eklendiğinde isim/adres maskeleme tek satırlık bir değişiklikle
+devreye girer — v1.1 için ilk sıradaki iş.
 
 **Son tarih nasıl çıkarılıyor?** Model, takvim değerini değil ilgili
 `[[DATE_n]]` yer tutucusunu döndürür — hangi tarihin son tarih olduğunu
@@ -58,6 +82,12 @@ bağlamdan seçer. Gerçek tarih yerelde çözülür. Gizlilik ve işlevsellik b
 - 8 gerçekçi Behördenbrief üzerinde, API'ye giden **payload denetlenerek**
   ham PII bulunmadığı kanıtlanır (`llm.leak-guard.spec.ts`)
 - Maskeleme başarısız olursa çağrı **hiç yapılmaz** (fail-closed)
+- **Sızıntı yalnızca payload'da değil, TÜM kanallarda denetlenir**: log satırları,
+  DB'ye yazılan hata mesajları, exception/stack trace ve audit kayıtları
+  (`leak-channels.spec.ts`)
+- Vault, maskeli metinden ÖNCE yazılır → çözülemeyen "yetim" belge kalmaz;
+  eşzamanlı analizler ve kullanıcı izolasyonu test edilir (`pipeline.concurrency.spec.ts`)
+- Maskelemenin **neyi kaçırdığı** da ölçülür ve sabitlenir (`pii.gap-audit.spec.ts`)
 
 ### Dürüst sınırlama ⚠️
 
@@ -92,7 +122,7 @@ Supabase/Postgres · Zod · Playwright · Jest
 
 ## Durum
 
-**348 test geçiyor** (30 suite) · TypeScript strict · gerçek API anahtarı olmadan
+**418 test geçiyor** (35 suite) · TypeScript strict · gerçek API anahtarı olmadan
 uçtan uca çalışır (mock modlar).
 
 | Faz | Durum |
@@ -115,7 +145,7 @@ uçtan uca çalışır (mock modlar).
 git clone <repo> && cd B-Ko
 npm install
 cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 348 test
+npm test                  # 418 test
 npm run start:dev
 ```
 

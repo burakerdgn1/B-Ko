@@ -233,3 +233,50 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **Süreç dersi:** "Düzeltildi" demek yetmiyor. D-014 doğru düzeltilmişti, ama
   düzeltmenin KAPSAMI eksikti; bu ancak kapıyı aktif olarak kırmaya çalışan bir
   test setiyle görüldü. `approval-gate.redteam.spec.ts` kalıcı olarak repoda.
+
+## D-023 — Test'te env, import'lardan ÖNCE ayarlanmalı (sessiz tuzak)
+- **Bağlam:** Sızıntı denetimi yazarken `beforeEach` içinde `LLM_MOCK='false'`
+  atanmasına rağmen servis mock modda kaldı. Sebep: `ConfigModule.forRoot()`
+  doğrulamayı **import anında senkron** çalıştırır; spec dosyasının tepesindeki
+  `import` satırları `beforeEach`'ten önce çalıştığı için env ataması GEÇ KALIR
+  ve sessizce yok sayılır.
+- **Karar:** Env'e duyarlı spec dosyalarında `process.env` atamaları dosyanın
+  EN BAŞINA, import'lardan önce yazılır (bkz. `leak-channels.spec.ts`,
+  `pipeline.concurrency.spec.ts`).
+- **ÜRETİMİ ETKİLEMEZ:** Üretimde env değişkenleri süreç başlamadan önce verilir,
+  dolayısıyla import anında zaten doğrudur. Bu yalnızca bir test altyapısı tuzağıdır.
+- **Neden önemli:** Mevcut testler bu tuzaktan etkilenmemişti çünkü istedikleri
+  değerler zaten VARSAYILANLARDI (`LLM_MOCK=true`, `DB_DRIVER=memory`) — yani
+  doğru sonucu şans eseri alıyorlardı. Varsayılandan FARKLI bir değer gerektiren
+  ilk test yazıldığında tuzak ortaya çıktı.
+
+## D-024 — v1'de isimler maskelenmiyor (ölçülmüş kapsam, README düzeltildi)
+- **Bağlam:** D-018 "onboarding profili v1'de toplanmıyor" diyordu. Bu denetimde
+  bunun GERÇEK sonucu ölçüldü: `PII_PATTERNS` içinde **NAME için hiçbir yapısal
+  desen yoktur** (bir isim biçiminden tanınamaz; bu ancak NER ile yapılır).
+  İsim maskeleme yalnızca bilinen-değer stratejisiyle çalışır ve v1 akışı
+  profil beslemediği için **kişi adları Claude'a çıplak gidiyor.**
+- **Ölçüm:** `leak-channels.spec.ts` bunu doğrudan test ediyor: profilsiz akışta
+  payload isim İÇERİYOR; profil verilirse içermiyor. `pii.gap-audit.spec.ts`
+  ayrıca standart dışı adres biçimlerinin (`Am Alten Bahnhof 3b`, `c/o …`,
+  `Postfach …`) de kaçtığını sabitliyor.
+- **Karar:** README'deki iddia DÜZELTİLDİ. Başlık "PII asla çıplak dışarı çıkmaz"
+  → "PII maskeleme katmanı"; hangi alanın kapsandığı ölçülmüş bir tabloyla ve
+  ayrı bir uyarı bölümüyle veriliyor.
+- **Gerekçe:** Ürünün ana farklılaştırıcısı gizlilik iddiasıdır; bu iddiayı
+  olduğundan güçlü göstermek, kullanıcıyı yanlış bir güvenlik hissiyle gerçek
+  riske sokar. Kapsamı küçültmek değil, doğru anlatmak gerekir.
+- **Kapatma yolu:** Onboarding akışı (v1.1 ilk iş) → profil beslenir → isim ve
+  standart dışı adresler de maskelenir. Motor tarafı HAZIR ve test edilmiş durumda.
+
+## D-025 — Sızıntı denetimi tüm kanallarda; sıralama ve eşzamanlılık doğrulandı
+- **Karar/Kapsam:** Sızıntı yalnızca API payload'ında değil, şu kanalların
+  hepsinde denetleniyor: log satırları (tüm seviyeler), DB'ye yazılan hata
+  mesajları, exception/stack trace, audit kayıtları (`leak-channels.spec.ts`).
+- **Sıralama garantisi:** Vault (şifreli anahtarlar) belgeye maskeli metin
+  yazılmadan ÖNCE kalıcılaşır. Aksi hâlde süreç arada ölürse GERİ ÇEVRİLEMEZ bir
+  belge kalırdı. Vault yazımı başarısız olursa maskeli metin hiç yazılmaz →
+  "yetim token" oluşmaz (`pipeline.concurrency.spec.ts`).
+- **Eşzamanlılık:** Aynı kullanıcı için paralel iki analiz, 8 paralel analiz ve
+  kullanıcı izolasyonu test edildi; AAD bağlaması sayesinde bir kullanıcının
+  vault kaydı başka bir kullanıcının bağlamıyla çözülemiyor.
