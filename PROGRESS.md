@@ -28,3 +28,10 @@ Format: `- [faz/görev] (sahip) ne yapıldı — kararlar/testler`
 - [F2.0] (Opus) Deadline/risk yardımcıları — 30 test.
 - [F2.1/F2.2] (Opus) **AnalysisPipeline** tamamlandı: ingest → OCR/maskeleme → LLM → vault (şifreli) → deadline token çözümü → risk yükseltme → analiz kaydı → hatırlatma → audit. Uçtan uca test: DB'de ham PII yok, vault round-trip çalışıyor, kullanıcı çıktısı unmask edilmiş, hata yolunda PII loglanmıyor. 298/298 test geçiyor.
 - [F3a/F3b/F5.1/F5.3] (Opus) 4 subagent paralel başlatıldı: taslak üretimi, Playwright PoC, hatırlatma+GDPR cron, DevOps.
+
+## Faz 3 & 4 — Üretim, izleme, arayüz
+- [F3a] (Sonnet) `DraftsService`: Beamtendeutsch taslak üretimi + tam onay durum makinesi. Vault AAD'ini belgenin GERÇEK sahibine bağlamış (confused-deputy koruması) ve modelin ÜRETTİĞİ metin üzerinde de fail-closed sızıntı denetimi eklemiş — istenmemişti, doğru karar. 9 test.
+- [F3b] (Sonnet) `WatcherService` + `AppointmentChecker`: Playwright randevu izleme PoC'si. Gerçek kurum sitesine istek atmaz (etik); yerel mock HTML sayfalarıyla çalışır. Tarayıcı kurulu değilse testler skip edilir, uygulama çökmez. 30 dakikalık bilinçli "kibar polling" aralığı. 10 test + 3 skip.
+- [F4.1] (Opus) **`ConversationService` — son halka.** Botu ürün akışına bağlar: /start → AI şeffaflığı → rıza → belge → analiz özeti → /taslak → onay butonları → İNSAN ONAYI → metin kullanıcıya. tr/de/en. 15 test.
+  - Kod seviyesinde zorlanan iki kural test edildi: (1) rıza olmadan belge işlenmez — onaysız gönderimde hiç kayıt oluşmaz; (2) hiçbir şey kullanıcı adına kuruma gönderilmez.
+- [F1h] (Opus) Tüm modüller `app.module.ts`'e bağlandı; 343 test geçiyor, tsc temiz.

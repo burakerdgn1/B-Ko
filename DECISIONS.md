@@ -149,3 +149,28 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   (eksik export, yanlış token, döngüsel bağımlılık). Ayrıca bu test,
   MANUAL_ACTIONS_REQUIRED.md'nin "her şey mock arkasında çalışıyor" iddiasının
   yürütülebilir kanıtıdır — iddia belgede kalmaz, CI'da doğrulanır.
+
+## D-017 — Onay ≠ gönderim (ürün akışında netleştirildi)
+- **Bağlam:** `drafts.status = 'sent'` adı yanıltıcı olabilir; sistemin belgeyi
+  kuruma gönderdiği izlenimi verir.
+- **Karar:** `sent`, "kullanıcı onaylanan metni aldı ve kendisi gönderebilir"
+  anlamına gelir. `ConversationService` onay sonrası metni KULLANICIYA yollar ve
+  mesajda açıkça "BüKo hiçbir belgeyi sizin adınıza resmî kuruma göndermez" der.
+  Sistemin kuruma giden hiçbir kanalı YOKTUR (kod içinde böyle bir çağrı bulunmuyor).
+- **Gerekçe:** CLAUDE.md §4/§7 otomatik form gönderimini kesin olarak yasaklıyor.
+  Yasağı yalnızca "yapmayarak" değil, kullanıcıya da açıkça söyleyerek uyguluyoruz;
+  test bu cümlenin varlığını doğruluyor.
+
+## D-018 — v1'de onboarding PII profili toplanmıyor
+- **Bağlam:** Bilinen-değer maskelemesi (D-003 adım 1) kullanıcının kendi PII'sini
+  gerektirir; ancak `users` tablosunda tasarım gereği düz PII saklanmıyor.
+- **Karar:** v1'de `ConversationService` boş profil geçiyor; maskeleme yalnızca
+  yapısal desenlerle (regex + checksum) çalışıyor. Onboarding akışı v1.1'e ertelendi.
+- **Gerekçe:** Yapısal desenler mektuplardaki isim/adres/numaraların büyük kısmını
+  zaten yakalıyor (fixture testleri bunu gösteriyor). Profil toplamak ek bir rıza
+  ve saklama sorumluluğu getirir; MVP için hazır altyapıyı (pii_vault + profil
+  parametresi) kurup akışı sonraya bırakmak daha doğru.
+- **Etki (dürüst değerlendirme):** Bu, bilinen-değer maskelemesinin recall
+  avantajının v1'de DEVREDE OLMADIĞI anlamına gelir. `PiiService` profil desteğini
+  tam olarak içeriyor ve test ediliyor; yalnızca akış onu henüz beslemiyor.
+  Onboarding eklendiğinde tek satırlık bir değişiklikle devreye girer.
