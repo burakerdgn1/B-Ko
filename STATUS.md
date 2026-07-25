@@ -11,7 +11,7 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **421 test geçiyor** (35 suite), **0 atlanan**
+- **437 test geçiyor** (36 suite), **0 atlanan**
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edildi (218 MB)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
 - 10 commit, ana dal `main`
@@ -42,32 +42,31 @@ Subagent raporları doğrulanmadan kabul edilmedi; bağımsız testler **7 gerç
 D-014 özellikle dikkate değer: subagent yanlış davranışı **doğru diye test etmişti**.
 Geçen test sayısı değil, neyin doğrulandığı önemli.
 
-## ⚠️ Bilinen kapsam boşluğu — v1'de İSİMLER maskelenmiyor (D-024)
-Derinlemesine sızıntı denetimi, D-018'in gerçek sonucunu ölçtü:
-`PII_PATTERNS` içinde **NAME için yapısal desen yok** (bir isim biçiminden
-tanınamaz). İsim maskeleme yalnızca onboarding profiline dayanır ve v1 akışı
-profil beslemez → **kişi adları hem Claude'a çıplak gidiyor hem de
-`documents.masked_text` içinde ham olarak saklanıyor** (GDPR saklama yüzeyi).
-Standart dışı adres biçimleri (`Am Alten Bahnhof 3b`, `c/o …`, `Postfach …`) de kaçıyor.
+## ✅ D-018/D-024 KAPATILDI — onboarding profili devrede
+Onboarding akışı eklendi (D-027): kullanıcı kendi ad/adres bilgisini bir kez verir,
+bu bilgi `pii_vault`'ta **şifreli** saklanır ve her belgede bilinen-değer maskelemesini
+besler. Uçtan uca kanıtlandı (`onboarding.e2e.spec.ts`):
+- Kullanıcının adı artık Claude payload'ına GİTMİYOR
+- Kullanıcının adı artık `documents.masked_text` içinde SAKLANMIYOR
+- Profil değerleri `users` tablosunda düz metin olarak YOK
+- Log/audit/hata kanallarının hiçbiri profil değerlerini içermiyor
+- `/atla` diyen kullanıcıda eski davranış sürüyor ve bu kullanıcıya AÇIKÇA bildiriliyor
 
-Yapısal alanlar (Steuer-ID, IBAN, e-posta, telefon, tarih, Aktenzeichen,
-Ausländernummer, pasaport, sigorta no) ve standart Alman adresleri profilsiz de
-maskeleniyor.
-
-README'deki iddia buna göre DÜZELTİLDİ. Kapatma yolu: onboarding akışı (v1.1
-ilk iş) — motor tarafı hazır ve test edilmiş.
+## 🟡 Kalan sınır — ÜÇÜNCÜ TARAF isimleri (v2, D-028)
+Memur adı, aile üyeleri, avukatlar gibi kullanıcıya ait OLMAYAN isimler hâlâ
+maskelenmiyor; bunun için yerel NER gerekiyor ve bu v2 kapsamında.
+İnce davranış: üçüncü taraf kullanıcıyla aynı soyadı taşıyorsa soyadı maskelenir,
+ÖN ADI sızar (`Elif Kılıç` → `Elif [[NAME_2]]`) — metin maskelenmiş görünür ama tam değildir.
+Geçici çözüm: aile üyeleri profile `extra` alanıyla eklenebilir.
 
 ## Bilinçli kapsam kararları (dürüst liste)
-- **D-018 — Onboarding PII profili v1'de toplanmıyor.** Bilinen-değer maskelemesi
-  (`PiiService`'te tam olarak var ve test edilmiş) akış tarafından beslenmiyor;
-  v1 maskeleme yapısal desenlerle çalışıyor. Onboarding eklendiğinde tek satırla devreye girer.
 - **D-010 — OCR gizlilik istisnası.** `claude-vision` modunda mektup GÖRSELİ ham PII
   içerir ve sağlayıcıya ulaşır. `OCR_PROVIDER=local` sıfır sızıntı sunar.
   Metin/PDF girdilerinde ham veri zaten hiç dışarı çıkmaz.
 - **Web dashboard** — CLAUDE.md §4 gereği kapsam dışı.
 
 ## Sıradaki adımlar (v1.1 önerisi)
-1. Onboarding akışı → bilinen-değer maskelemesini devreye al (D-018)
+1. Yerel NER → üçüncü taraf isimleri (D-028) — kalan tek gizlilik boşluğu
 2. Telegram webhook controller'ı (üretim için polling yerine)
 3. `LLM_MOCK=false` ile gerçek Claude çağrılarında prompt tuning
 4. Gerçek Behördenbrief örnekleriyle (anonimleştirilmiş) doğrulama

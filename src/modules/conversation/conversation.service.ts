@@ -5,6 +5,8 @@ import { aiDisclosureText } from '../channels/messages';
 import { AnalysisPipeline } from '../analysis/analysis.pipeline';
 import { daysUntil } from '../analysis/deadline.util';
 import { DraftsService } from '../drafts/drafts.service';
+import { ProfileService } from '../profile/profile.service';
+import { KnownPiiProfile } from '../../common/pii/pii.types';
 import { UserRepository } from '../persistence/repositories/user.repository';
 import { AnalysisRepository } from '../persistence/repositories/analysis.repository';
 import { DocumentRepository } from '../persistence/repositories/document.repository';
@@ -32,10 +34,21 @@ export class ConversationService implements OnModuleInit {
   /** Kullanıcı başına son analiz — /taslak komutunun hedefi. */
   private readonly lastAnalysisByUser = new Map<string, string>();
 
+  /**
+   * Onboarding adımı (kullanıcı başına).
+   *
+   * Süreç yeniden başlarsa yarım kalan onboarding sıfırlanır ve kullanıcı
+   * /profil ile yeniden başlayabilir. TAMAMLANMA durumu ise kalıcıdır
+   * (`users.profile_completed_at`), yani veri kaybı yaşanmaz.
+   */
+  private readonly onboardingStep = new Map<string, OnboardingStep>();
+  private readonly onboardingDraft = new Map<string, KnownPiiProfile>();
+
   constructor(
     private readonly channel: ChannelAdapter,
     private readonly pipeline: AnalysisPipeline,
     private readonly drafts: DraftsService,
+    private readonly profiles: ProfileService,
     private readonly users: UserRepository,
     private readonly analyses: AnalysisRepository,
     private readonly documents: DocumentRepository,
@@ -55,6 +68,22 @@ export class ConversationService implements OnModuleInit {
         await this.handleCallback(user, msg);
         return;
       }
+
+      // Onboarding sürüyorsa KISA serbest metin, adım cevabıdır.
+      //
+      // Uzun metin (>80 karakter) onboarding sırasında bile BELGE sayılır:
+      // kullanıcı araya bir mektup yapıştırdığında bunun "ad" olarak
+      // yutulması kötü bir deneyim olurdu.
+      if (
+        msg.kind === 'text' &&
+        (msg.text ?? '').trim().length <= ONBOARDING_ANSWER_MAX_LENGTH &&
+        this.onboardingStep.has(user.id) &&
+        this.onboardingStep.get(user.id) !== 'done'
+      ) {
+        await this.handleOnboardingAnswer(user, msg.text ?? '');
+        return;
+      }
+
       if (msg.kind === 'command') {
         await this.handleCommand(user, msg);
         return;
@@ -106,12 +135,39 @@ export class ConversationService implements OnModuleInit {
           detail: {},
         });
         await this.send(user, m.consentDone);
+        // Rıza alındıktan sonra profil onboarding'i başlar (D-027).
+        if (!user.profileCompletedAt) await this.startOnboarding(user);
         return;
 
       case 'taslak':
       case 'entwurf':
       case 'draft':
         await this.handleDraftRequest(user);
+        return;
+
+      case 'profil':
+      case 'profile':
+        await this.startOnboarding(user);
+        return;
+
+      case 'atla':
+      case 'ueberspringen':
+      case 'skip':
+        await this.profiles.skip(user.id);
+        this.onboardingStep.delete(user.id);
+        this.onboardingDraft.delete(user.id);
+        await this.send(user, m.onbSkipped);
+        return;
+
+      case 'gec':
+      case 'weiter':
+      case 'next':
+        // Onboarding dışında anlamsız — adım atlama yalnızca akış içindeyken.
+        if (this.onboardingStep.has(user.id)) {
+          await this.handleOnboardingAnswer(user, '');
+        } else {
+          await this.send(user, m.unsupported);
+        }
         return;
 
       case 'sil':
@@ -148,7 +204,7 @@ export class ConversationService implements OnModuleInit {
       const outcome = await this.pipeline.run({
         userId: user.id,
         ...(await this.resolveSource(msg)),
-        profile: this.buildProfile(user),
+        profile: await this.buildProfile(user),
       });
 
       this.lastAnalysisByUser.set(user.id, outcome.analysis.id);
@@ -284,6 +340,8 @@ export class ConversationService implements OnModuleInit {
     }
     await this.users.delete(user.id);
     this.lastAnalysisByUser.delete(user.id);
+    this.onboardingStep.delete(user.id);
+    this.onboardingDraft.delete(user.id);
 
     await this.audit.append({
       userId: null,
@@ -305,15 +363,92 @@ export class ConversationService implements OnModuleInit {
   }
 
   /**
-   * Kullanıcının bilinen PII'sinden maskeleme profili kurar.
+   * Kullanıcının bilinen PII'sini `pii_vault`'tan ÇÖZEREK maskeleme profili
+   * kurar (D-027 — D-018/D-024'ün kapatılması).
    *
-   * v1'de onboarding profil alanları (ad/adres) henüz toplanmıyor; `users`
-   * tablosunda düz PII saklanmadığı için (tasarım gereği) profil şu an boş
-   * kalır ve maskeleme yalnızca yapısal desenlerle çalışır. Onboarding
-   * eklendiğinde değerler `pii_vault`'tan çözülüp buraya verilecek.
+   * Profil yoksa (kullanıcı /atla dediyse) `undefined` döner ve maskeleme
+   * yalnızca yapısal desenlerle çalışır — bu durum kullanıcıya açıkça bildirilir.
    */
-  private buildProfile(_user: User): undefined {
-    return undefined;
+  private async buildProfile(user: User): Promise<KnownPiiProfile | undefined> {
+    try {
+      return await this.profiles.load(user.id);
+    } catch (error) {
+      // Profil çözülemezse analiz durmamalı; yalnızca recall düşer.
+      this.logger.error(
+        `Profil yüklenemedi (userId=${user.id}) — yapısal maskelemeyle devam ediliyor.`,
+      );
+      return undefined;
+    }
+  }
+
+  // ── Onboarding (D-027) ────────────────────────────────────────────────────
+
+  private async startOnboarding(user: User): Promise<void> {
+    const m = t(user.locale);
+    this.onboardingStep.set(user.id, 'name');
+    this.onboardingDraft.set(user.id, {});
+    await this.send(user, m.onbIntro);
+    await this.send(user, m.onbAskName);
+  }
+
+  /**
+   * Onboarding adım cevabını işler.
+   * Boş cevap = adımı atla (/gec). Profil alanı boş kalır.
+   */
+  private async handleOnboardingAnswer(user: User, raw: string): Promise<void> {
+    const m = t(user.locale);
+    const step = this.onboardingStep.get(user.id);
+    if (!step) return;
+
+    const answer = raw.trim();
+    const draft = this.onboardingDraft.get(user.id) ?? {};
+
+    if (step === 'name') {
+      if (answer.length > 0) {
+        if (answer.length < 3) {
+          await this.send(user, m.onbTooShort);
+          return;
+        }
+        draft.fullName = answer;
+        // Ad/soyad parçalarını da kaydet — mektuplar genelde yalnızca soyadıyla
+        // hitap eder (D-015).
+        const parts = answer.split(/\s+/).filter((p) => p.length >= 2);
+        if (parts.length >= 2) {
+          draft.givenName = parts[0];
+          draft.familyName = parts[parts.length - 1];
+        }
+      }
+      this.onboardingDraft.set(user.id, draft);
+      this.onboardingStep.set(user.id, 'address');
+      await this.send(user, m.onbAskAddress);
+      return;
+    }
+
+    if (step === 'address') {
+      if (answer.length >= 3) draft.address = answer;
+      this.onboardingDraft.set(user.id, draft);
+      this.onboardingStep.set(user.id, 'city');
+      await this.send(user, m.onbAskCity);
+      return;
+    }
+
+    if (step === 'city') {
+      if (answer.length >= 3) {
+        // "10827 Berlin" → posta kodu + şehir olarak da ayrıştır.
+        const match = /^(\d{5})\s+(.+)$/.exec(answer);
+        if (match) {
+          draft.postalCode = match[1];
+          draft.city = match[2].trim();
+        } else {
+          draft.city = answer;
+        }
+      }
+
+      await this.profiles.save(user.id, draft);
+      this.onboardingStep.set(user.id, 'done');
+      this.onboardingDraft.delete(user.id);
+      await this.send(user, m.onbDone);
+    }
   }
 
   private async send(
@@ -324,3 +459,12 @@ export class ConversationService implements OnModuleInit {
     await this.channel.sendMessage(user.channelUserId, text, opts);
   }
 }
+
+/** Onboarding akışındaki adımlar. */
+type OnboardingStep = 'name' | 'address' | 'city' | 'done';
+
+/**
+ * Onboarding cevabı sayılacak azami uzunluk. Bunun üstü BELGE kabul edilir —
+ * `handleDocument`'taki eşikle aynıdır, böylece iki yol çakışmaz.
+ */
+const ONBOARDING_ANSWER_MAX_LENGTH = 80;

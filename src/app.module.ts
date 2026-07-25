@@ -10,6 +10,7 @@ import { AnalysisModule } from './modules/analysis/analysis.module';
 import { DraftsModule } from './modules/drafts/drafts.module';
 import { WatcherModule } from './modules/watcher/watcher.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
+import { ProfileModule } from './modules/profile/profile.module';
 import { ConversationModule } from './modules/conversation/conversation.module';
 
 /**
@@ -35,6 +36,7 @@ import { ConversationModule } from './modules/conversation/conversation.module';
     DraftsModule,
     WatcherModule,
     RemindersModule,
+    ProfileModule,
     // En son: botu ürün akışına bağlayan orkestrasyon halkası.
     ConversationModule,
   ],

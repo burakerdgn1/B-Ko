@@ -14,8 +14,8 @@ Ausländerbehörde'den gelen bir mektup, Almanca bilmeyen biri için üç ayrı 
 **ne isteniyor**, **son tarih ne zaman**, **hangi belgeleri hazırlamalıyım**.
 Kaçırılan bir Frist, oturum izninin uzatılmamasına kadar gidebilir.
 
-BüKo bu üç soruyu yanıtlar ve kimlik bilgilerinizin yapay zekâya gitmesini
-mümkün olduğunca engeller — neyin kapsandığı aşağıda **ölçülmüş** olarak listelidir.
+BüKo bu üç soruyu yanıtlar ve **sizin kimlik bilgilerinizin** yapay zekâya
+gitmesini engeller — neyin kapsandığı aşağıda **ölçülmüş** olarak listelidir.
 
 ## Nasıl çalışır
 
@@ -24,8 +24,9 @@ Kullanıcı mektup fotoğrafı gönderir
         ↓
   OCR (Claude vision veya yerel tesseract)
         ↓
-  🔒 PII MASKELEME  ← numaralar/adres/tarih [[STEUERID_1]] gibi
-        ↓             yer tutuculara çevrilir (isimler: v1'de değil)
+  🔒 PII MASKELEME  ← kullanıcının kendi adı/adresi + tüm yapısal
+        ↓             alanlar [[NAME_1]] gibi yer tutuculara çevrilir
+                      (üçüncü taraf isimleri: v2)
   Claude analizi (yalnızca maskeli metin görür)
         ↓
   🔓 yerel geri çevirme
@@ -48,31 +49,38 @@ tutuculara çevrilir. Model `[[STEUERID_1]]` görür, gerçek numarayı değil. 
 geldiğinde yerelde geri çevrilir. Eşleme tablosu **AES-256-GCM ile şifreli**
 saklanır. Maskelenen her değer için düz PII yalnızca şifreli vault'ta durur.
 
-**v1'de neyin kapsandığı (ölçülmüş, iddia değil):**
+**Neyin kapsandığı (ölçülmüş, iddia değil):**
 
-| Alan | v1 durumu |
+Onboarding'de kullanıcı kendi ad/adres bilgisini bir kez verir. Bu bilgiler
+**AES-256-GCM ile şifreli** olarak `pii_vault`'ta saklanır (asla düz metin,
+asla yapay zekâya gönderilmez) ve her belgede "bilinen-değer maskeleme"yi besler.
+
+| Alan | Durum |
 |---|---|
 | Steuer-ID, IBAN, e-posta, telefon, tarih, Aktenzeichen, Ausländernummer, pasaport, sigorta no | ✅ Her zaman maskelenir (yapısal desen + checksum) |
-| Adres — standart Alman biçimi (`…straße 12`, `10827 Berlin`) | ✅ Maskelenir |
-| Adres — standart dışı biçim (`Am Alten Bahnhof 3b`, `c/o …`, `Postfach …`) | ❌ **Maskelenmez** |
-| **Kişi adları** | ❌ **v1'de maskelenmez** — aşağıya bakın |
+| Adres — standart Alman biçimi (`…straße 12`, `10827 Berlin`) | ✅ Her zaman maskelenir |
+| **Kullanıcının kendi adı ve adresi** | ✅ **Onboarding sonrası maskelenir** |
+| Kullanıcının adresi — standart dışı biçim | ✅ Onboarding sonrası (birebir eşleşme) |
+| **Mektuptaki ÜÇÜNCÜ TARAF isimleri** (memur, aile üyesi, avukat) | ❌ **Maskelenmez — v2** |
+| Profil vermeyi reddeden (`/atla`) kullanıcının adı | ❌ Maskelenmez (kullanıcıya açıkça bildirilir) |
 
-### ⚠️ İsimler v1'de maskelenmiyor
+### ⚠️ v2 sınırlaması: üçüncü taraf isimleri
 
-İsimler için **yapısal desen yoktur** (bir isim, biçiminden tanınamaz). İsim
-maskeleme, kullanıcının onboarding'de verdiği kendi bilgisine dayanan
-"bilinen-değer" stratejisiyle çalışır — ve **v1 akışı bu profili henüz
-toplamıyor** (bkz. [`DECISIONS.md`](DECISIONS.md) D-018).
+Maskeleme, **kullanıcının kendi verisi** için bilinen-değer eşleşmesine dayanır.
+Mektupta geçen ve kullanıcıya ait olmayan isimler — **memurun adı**
+(`Sachbearbeiterin: Frau …`), **aile üyeleri**, avukatlar, referans verilen
+üçüncü kişiler — bu yöntemle yakalanamaz, çünkü sistem onları önceden bilmez ve
+bir ismin *biçimi* onu tanınabilir kılmaz.
 
-Sonuç: **v1'de bir mektuptaki kişi adları hem Claude'a maskelenmeden ulaşır hem de
-`documents.masked_text` alanında ham hâliyle saklanır** (alan adı "maskeli" olsa da
-maskeleme NAME'i kapsamaz). Bu, GDPR saklama yüzeyini de etkiler.
-Bu, `src/modules/llm/leak-channels.spec.ts` içinde açıkça test edilerek
-belgelenmiştir. Motor tarafı hazırdır (`PiiService` profil desteğini tam
-olarak içerir ve test edilir); eksik olan yalnızca onboarding akışıdır.
+Bunları yakalamak **yerel NER (adlandırılmış varlık tanıma)** gerektirir; bu
+bilinçli olarak **v2 kapsamına** bırakılmıştır (bkz. [`DECISIONS.md`](DECISIONS.md)
+D-028). Bunu küçümsemiyoruz: memur adları da kişisel veridir ve şu anda
+Claude'a ulaşmaktadır.
 
-Onboarding eklendiğinde isim/adres maskeleme tek satırlık bir değişiklikle
-devreye girer — v1.1 için ilk sıradaki iş.
+İnce bir davranış: üçüncü taraf kullanıcıyla **aynı soyadı** taşıyorsa (ör. eş),
+soyadı maskelenir ama **ön adı sızar** (`Elif Kılıç` → `Elif [[NAME_2]]`). Metin
+maskelenmiş *görünür* ama tam değildir. Geçici çözüm: aile üyeleri profile
+`extra` alanı üzerinden eklenebilir.
 
 **Son tarih nasıl çıkarılıyor?** Model, takvim değerini değil ilgili
 `[[DATE_n]]` yer tutucusunu döndürür — hangi tarihin son tarih olduğunu
@@ -124,7 +132,7 @@ Supabase/Postgres · Zod · Playwright · Jest
 
 ## Durum
 
-**421 test geçiyor** (35 suite) · TypeScript strict · gerçek API anahtarı olmadan
+**437 test geçiyor** (36 suite) · TypeScript strict · gerçek API anahtarı olmadan
 uçtan uca çalışır (mock modlar).
 
 | Faz | Durum |
@@ -136,7 +144,8 @@ uçtan uca çalışır (mock modlar).
 | Hatırlatma + GDPR silme cron'ları | ✅ |
 | Randevu izleme (Playwright PoC, mock sayfa) | ✅ |
 | Telegram sohbet akışı (tr/de/en) | ✅ |
-| Onboarding PII profili | ⏳ v1.1 (bkz. D-018) |
+| Onboarding PII profili (bilinen-değer maskeleme) | ✅ |
+| Üçüncü taraf isimleri için yerel NER | ⏳ v2 (bkz. D-028) |
 | Web dashboard | ⏳ kapsam dışı |
 
 ---
@@ -147,7 +156,7 @@ uçtan uca çalışır (mock modlar).
 git clone <repo> && cd B-Ko
 npm install
 cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 421 test
+npm test                  # 437 test
 npm run start:dev
 ```
 
@@ -166,6 +175,18 @@ BüKo:       🤖 Ben bir yapay zekâ asistanıyım — gerçek bir memur/avukat
 BüKo:       Verilerinizi işlememe onay veriyor musunuz? (/onayla)
 
 Kullanıcı:  /onayla
+BüKo:       Son bir adım: mektuplarınızdaki KENDİ bilgilerinizi yapay zekâya
+            göndermeden gizleyebilmem için bunları bir kez öğrenmem gerekiyor.
+            Bu bilgiler şifrelenerek saklanır ve yapay zekâya ASLA gönderilmez.
+            (İstemezseniz /atla)
+BüKo:       1/3 — Adınız ve soyadınız?
+Kullanıcı:  Yasin Kılıç
+BüKo:       2/3 — Adresiniz?
+Kullanıcı:  Kolonnenstraße 12
+BüKo:       3/3 — Posta kodu ve şehir?
+Kullanıcı:  10827 Berlin
+BüKo:       ✅ Artık mektuplarınızdaki bu bilgiler yapay zekâya gitmeden gizlenecek.
+
 Kullanıcı:  [Ausländerbehörde mektubunun fotoğrafı]
 
 BüKo:       🟠 Ausländerbehörde Berlin

@@ -65,6 +65,25 @@ const T = {
     help:
       'Komutlar:\n/start — tanıtım\n/onayla — veri işleme onayı\n/taslak — son analiz için taslak yanıt\n/sil — verilerimi sil\n/yardim — bu mesaj',
     deleted: '🗑️ Verileriniz silindi.',
+
+    // ── Onboarding profili (D-027) ──
+    onbIntro:
+      'Son bir adım: Mektuplarınızdaki KENDİ bilgilerinizi (adınız, adresiniz) ' +
+      'yapay zekâya göndermeden gizleyebilmem için bunları bir kez öğrenmem gerekiyor. ' +
+      'Bu bilgiler cihazımda şifrelenerek saklanır ve yapay zekâya ASLA gönderilmez.\n\n' +
+      'İstemezseniz /atla yazabilirsiniz — o zaman yalnızca numaralar, tarihler ve ' +
+      'e-posta gibi alanlar gizlenir, adınız gizlenmez.',
+    onbAskName: '1/3 — Adınız ve soyadınız? (resmî belgelerde yazdığı gibi)',
+    onbAskAddress: '2/3 — Adresiniz? (sokak, no) — yoksa /gec yazın',
+    onbAskCity: '3/3 — Posta kodu ve şehir? (ör. 10827 Berlin) — yoksa /gec yazın',
+    onbDone:
+      '✅ Teşekkürler. Artık mektuplarınızdaki bu bilgiler yapay zekâya gitmeden gizlenecek.\n' +
+      'Değiştirmek için: /profil · Silmek için: /sil',
+    onbSkipped:
+      'ℹ️ Profil atlandı. Numaralar, tarihler, e-posta ve standart adresler yine ' +
+      'gizlenir; ancak ADINIZ gizlenmeden yapay zekâya gider. İstediğinizde /profil yazabilirsiniz.',
+    onbTooShort: 'Bu biraz kısa göründü. Lütfen tekrar yazın veya /atla deyin.',
+    profileNeeded: 'Önce kısa bir profil oluşturalım — /profil',
   },
   de: {
     welcome:
@@ -103,6 +122,24 @@ const T = {
     help:
       'Befehle:\n/start — Einführung\n/zustimmen — Einwilligung\n/entwurf — Antwortentwurf\n/loeschen — Daten löschen\n/hilfe — diese Nachricht',
     deleted: '🗑️ Ihre Daten wurden gelöscht.',
+
+    onbIntro:
+      'Ein letzter Schritt: Damit ich IHRE eigenen Angaben (Name, Adresse) in Briefen ' +
+      'unkenntlich machen kann, bevor etwas an die KI geht, muss ich sie einmal kennen. ' +
+      'Diese Angaben werden verschlüsselt gespeichert und NIE an die KI gesendet.\n\n' +
+      'Mit /ueberspringen können Sie das auslassen — dann werden nur Nummern, Daten ' +
+      'und E-Mails maskiert, Ihr Name jedoch nicht.',
+    onbAskName: '1/3 — Ihr Vor- und Nachname? (wie in amtlichen Dokumenten)',
+    onbAskAddress: '2/3 — Ihre Adresse? (Straße, Nr.) — oder /weiter',
+    onbAskCity: '3/3 — PLZ und Ort? (z. B. 10827 Berlin) — oder /weiter',
+    onbDone:
+      '✅ Danke. Diese Angaben werden künftig maskiert, bevor etwas an die KI geht.\n' +
+      'Ändern: /profil · Löschen: /loeschen',
+    onbSkipped:
+      'ℹ️ Profil übersprungen. Nummern, Daten, E-Mails und Standardadressen werden ' +
+      'weiterhin maskiert; Ihr NAME jedoch nicht. Mit /profil jederzeit nachholen.',
+    onbTooShort: 'Das schien sehr kurz. Bitte erneut eingeben oder /ueberspringen.',
+    profileNeeded: 'Legen wir zuerst ein kurzes Profil an — /profil',
   },
   en: {
     welcome:
@@ -138,6 +175,24 @@ const T = {
     help:
       'Commands:\n/start — intro\n/agree — data consent\n/draft — draft reply\n/delete — delete my data\n/help — this message',
     deleted: '🗑️ Your data has been deleted.',
+
+    onbIntro:
+      'One last step: to hide YOUR own details (name, address) in letters before ' +
+      'anything goes to the AI, I need to learn them once. They are stored encrypted ' +
+      'and are NEVER sent to the AI.\n\n' +
+      'You can type /skip — then only numbers, dates and emails are masked, but your ' +
+      'name is not.',
+    onbAskName: '1/3 — Your first and last name? (as written on official documents)',
+    onbAskAddress: '2/3 — Your address? (street, number) — or /next',
+    onbAskCity: '3/3 — Postal code and city? (e.g. 10827 Berlin) — or /next',
+    onbDone:
+      '✅ Thanks. These details will now be masked before anything reaches the AI.\n' +
+      'Change: /profile · Delete: /delete',
+    onbSkipped:
+      'ℹ️ Profile skipped. Numbers, dates, emails and standard addresses are still ' +
+      'masked, but your NAME is not. You can add it anytime with /profile.',
+    onbTooShort: 'That looked very short. Please try again or type /skip.',
+    profileNeeded: 'Let\'s set up a short profile first — /profile',
   },
 } as const;
 

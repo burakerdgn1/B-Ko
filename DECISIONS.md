@@ -295,3 +295,46 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   garanti ima ediyordu. Yanıltıcı bir alan adının etrafında sessizce çalışmak yerine
   sınırı ölçüp belgelemek doğru olan.
 - **Kapatma:** Onboarding profili (v1.1) hem gönderim hem saklama tarafını aynı anda kapatır.
+
+## D-027 — Onboarding profili: bilinen-değer maskeleme DEVREYE ALINDI
+- **Bağlam:** D-018/D-024, isim maskelemesinin motorda hazır olduğunu ama akışın
+  profil beslemediğini gösteriyordu; sonuç olarak isimler hem Claude'a gidiyor
+  hem de `documents.masked_text` içinde saklanıyordu.
+- **Karar:** Rıza sonrası 3 adımlı onboarding (ad → adres → PLZ/şehir) eklendi.
+  - Profil DEĞERLERİ `users` tablosunda DEĞİL, `pii_vault`'ta kullanıcı kapsamlı
+    (`document_id IS NULL`) ve **AES-256-GCM ile şifreli** saklanır. AAD kullanıcıya
+    bağlıdır → başka bağlamda çözülemez.
+  - `users.profile_completed_at` (migration 0002) yalnızca DURUM tutar, veri değil.
+  - Ad girildiğinde ad/soyad parçaları da kaydedilir (D-015 — mektuplar genelde
+    yalnızca soyadıyla hitap eder).
+  - "10827 Berlin" girdisi posta kodu + şehir olarak ayrıştırılır.
+- **Kullanıcı reddedebilir:** `/atla` — onboarding tamamlanmış sayılır, profil boş
+  kalır ve **adının maskelenmeyeceği kullanıcıya açıkça bildirilir.** Gizlilik
+  tercihini zorlamak yerine sonucunu şeffaf anlatmak doğru olan.
+- **Kanıt (`onboarding.e2e.spec.ts`, 16 test):** kullanıcının adı artık payload'a
+  gitmiyor, `masked_text`'te saklanmıyor, log/audit/hata kanallarında görünmüyor;
+  `/atla` durumunda eski davranışın sürdüğü karşılaştırmalı olarak gösteriliyor.
+- **UX notu:** Onboarding sırasında 80 karakterden uzun metin ADIM CEVABI değil
+  BELGE sayılır — kullanıcı araya mektup yapıştırdığında bunun "ad" olarak
+  yutulması kötü bir deneyim olurdu (test edildi).
+
+## D-028 — Üçüncü taraf isimleri: yerel NER, v2 kapsamı (AÇIK SINIR)
+- **Bağlam:** Bilinen-değer maskeleme yalnızca KULLANICININ KENDİ verisini kapsar.
+  Mektuptaki memur adı (`Sachbearbeiterin: Frau …`), aile üyeleri, avukatlar ve
+  referans verilen üçüncü kişiler bu yöntemle yakalanamaz — sistem onları önceden
+  bilmez ve bir ismin *biçimi* onu tanınabilir kılmaz (NAME için yapısal desen
+  yazılamaz).
+- **Karar:** Bu boşluk v2'ye bırakıldı; çözüm **yerel NER** (spaCy/HF benzeri bir
+  model ya da Almanca'ya uygun hafif bir alternatif). Üstü ÖRTÜLMEDİ: README'de
+  ayrı bir "v2 sınırlaması" bölümü, STATUS'ta ayrı bir başlık ve kalıcı testler
+  (`onboarding.e2e.spec.ts` — "BULGU: memur adı payload'a çıplak gider") var.
+- **Gerekçe:** NER, MVP için ciddi bir bağımlılık ve doğruluk/performans riski
+  getirir (yanlış pozitifler metni okunamaz hâle getirir, yanlış negatifler
+  sahte güven verir). Kullanıcının kendi verisi — ki en yüksek riskli ve en çok
+  tekrar eden PII odur — artık tam kapsanıyor. Kalan boşluğu ölçüp ilan etmek,
+  yarım bir NER ile "çözüldü" demekten dürüst.
+- **İnce davranış (belgelendi):** Üçüncü taraf kullanıcıyla AYNI SOYADI taşıyorsa
+  (ör. eş) soyadı maskelenir ama ÖN ADI sızar: `Elif Kılıç` → `Elif [[NAME_2]]`.
+  Metin maskelenmiş GÖRÜNÜR ama tam değildir — kısmi maskeleme yanıltıcı olabilir.
+- **Geçici çözüm:** Aile üyeleri `KnownPiiProfile.extra` üzerinden profile
+  eklenebilir; test bunun çalıştığını gösteriyor.

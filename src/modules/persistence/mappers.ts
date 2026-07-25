@@ -46,6 +46,7 @@ export interface UserRow {
   city: string | null;
   consent_at: string | null;
   ai_disclosure_ack_at: string | null;
+  profile_completed_at: string | null;
   delete_after: string | null;
   created_at: string;
   updated_at: string;
@@ -62,6 +63,7 @@ export function mapUserRow(row: UserRow): User {
     city: row.city,
     consentAt: toDate(row.consent_at),
     aiDisclosureAckAt: toDate(row.ai_disclosure_ack_at),
+    profileCompletedAt: toDate(row.profile_completed_at),
     deleteAfter: toDate(row.delete_after),
     createdAt: toDateRequired(row.created_at),
     updatedAt: toDateRequired(row.updated_at),
@@ -79,6 +81,9 @@ export function userToRow(input: Partial<Omit<User, 'id' | 'createdAt' | 'update
   if (input.consentAt !== undefined) row.consent_at = fromDate(input.consentAt);
   if (input.aiDisclosureAckAt !== undefined) {
     row.ai_disclosure_ack_at = fromDate(input.aiDisclosureAckAt);
+  }
+  if (input.profileCompletedAt !== undefined) {
+    row.profile_completed_at = fromDate(input.profileCompletedAt);
   }
   if (input.deleteAfter !== undefined) row.delete_after = fromDate(input.deleteAfter);
   return row;

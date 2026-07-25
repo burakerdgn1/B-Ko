@@ -49,6 +49,11 @@ export interface User {
 
   consentAt?: Date | null;
   aiDisclosureAckAt?: Date | null;
+  /**
+   * Onboarding profili tamamlandı (veya kullanıcı atladı) işareti.
+   * Profil DEĞERLERİ burada değil — `pii_vault`'ta şifreli (D-027).
+   */
+  profileCompletedAt?: Date | null;
 
   deleteAfter?: Date | null;
   createdAt: Date;

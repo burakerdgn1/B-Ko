@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CryptoService } from '../crypto/crypto.service';
-import { PiiEntityType, PiiMap, PiiMatch } from './pii.types';
+import { KnownPiiProfile, PiiEntityType, PiiMap, PiiMatch } from './pii.types';
 
 /** Vault'a yazılacak/okunacak şifreli PII kaydı (DB satır karşılığı). */
 export interface SealedPiiRecord {
@@ -88,7 +88,97 @@ export class PiiVaultService {
     return { byToken, matches: [...byToken.values()] };
   }
 
+  /**
+   * Onboarding profilini ŞİFRELİ olarak vault'a hazırlar (D-027).
+   *
+   * Kullanıcının kendi kimlik bilgileri, "bilinen-değer maskeleme"yi
+   * (D-003 adım 1) mümkün kılar. Bu değerler `users` tablosunda DÜZ
+   * saklanmaz — burada, kullanıcı kapsamlı (documentId yok) vault
+   * kayıtları olarak şifrelenir.
+   */
+  sealProfile(profile: KnownPiiProfile, userId: string): SealedPiiRecord[] {
+    const records: SealedPiiRecord[] = [];
+
+    for (const [field, entityType] of PROFILE_FIELDS) {
+      const value = profile[field];
+      if (typeof value !== 'string' || value.trim().length === 0) continue;
+
+      const token = profileToken(field);
+      const sealed = this.crypto.seal(
+        value.trim(),
+        this.aad({ userId }, token),
+      );
+      records.push({
+        token,
+        entityType,
+        ciphertext: sealed.ciphertext,
+        iv: sealed.iv,
+        authTag: sealed.authTag,
+        keyVersion: sealed.keyVersion,
+        userId,
+      });
+    }
+    return records;
+  }
+
+  /** Şifreli profil kayıtlarından `KnownPiiProfile` geri kurar. */
+  openProfile(records: SealedPiiRecord[], userId: string): KnownPiiProfile {
+    const profile: KnownPiiProfile = {};
+
+    for (const record of records) {
+      const field = fieldFromToken(record.token);
+      if (!field) continue;
+
+      try {
+        profile[field] = this.crypto.open(
+          {
+            ciphertext: record.ciphertext,
+            iv: record.iv,
+            authTag: record.authTag,
+            keyVersion: record.keyVersion,
+          },
+          this.aad({ userId }, record.token),
+        ) as never;
+      } catch {
+        // Değeri ASLA loglama — yalnızca alan adı.
+        this.logger.error(
+          `Profil alanı çözülemedi (field=${field}). Anahtar rotasyonu olabilir.`,
+        );
+      }
+    }
+    return profile;
+  }
+
   private aad(scope: VaultScope, token: string): string {
     return `bueko:v1:${scope.userId ?? '-'}:${scope.documentId ?? '-'}:${token}`;
   }
+}
+
+/** Profil alanı → PII tipi eşlemesi. Vault token'ları bu alanlardan türetilir. */
+const PROFILE_FIELDS: Array<[keyof KnownPiiProfile, PiiEntityType]> = [
+  ['fullName', PiiEntityType.NAME],
+  ['givenName', PiiEntityType.NAME],
+  ['familyName', PiiEntityType.NAME],
+  ['dateOfBirth', PiiEntityType.DOB],
+  ['address', PiiEntityType.ADDRESS],
+  ['city', PiiEntityType.ADDRESS],
+  ['postalCode', PiiEntityType.POSTALCODE],
+  ['email', PiiEntityType.EMAIL],
+  ['phone', PiiEntityType.PHONE],
+  ['auslaendernummer', PiiEntityType.AUSLNR],
+  ['steuerId', PiiEntityType.STEUERID],
+  ['passportNumber', PiiEntityType.PASSPORT],
+  ['insuranceNumber', PiiEntityType.INSURANCE],
+];
+
+const PROFILE_TOKEN_PREFIX = 'profile:';
+
+function profileToken(field: keyof KnownPiiProfile): string {
+  return `${PROFILE_TOKEN_PREFIX}${String(field)}`;
+}
+
+function fieldFromToken(token: string): keyof KnownPiiProfile | null {
+  if (!token.startsWith(PROFILE_TOKEN_PREFIX)) return null;
+  const field = token.slice(PROFILE_TOKEN_PREFIX.length) as keyof KnownPiiProfile;
+  return PROFILE_FIELDS.some(([f]) => f === field) ? field : null;
 }
