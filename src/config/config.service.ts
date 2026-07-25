@@ -41,6 +41,9 @@ export class AppConfigService {
   get llmMaxTokens(): number {
     return this.get('LLM_MAX_TOKENS');
   }
+  get ocrProvider(): AppEnv['OCR_PROVIDER'] {
+    return this.get('OCR_PROVIDER');
+  }
 
   // ── Telegram ──
   get telegramMode(): AppEnv['TELEGRAM_MODE'] {

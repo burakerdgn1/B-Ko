@@ -1,0 +1,53 @@
+=== SENTETİK TEST BELGESİ (siehe DECISIONS.md D-005) ===
+Bu belge BüKo projesi için üretilmiş KURGUSAL bir örnektir. İçindeki isim, adres,
+dosya/kimlik numaraları, telefon, e-posta ve Steuer-ID UYDURMADIR. Gerçek hiçbir
+kişi, kurum veya işlemle ilişkisi yoktur. Yalnızca otomatik test ve geliştirme
+amaçlıdır.
+==========================================================================
+
+Stadt Frankfurt am Main
+Ausländerbehörde
+Braubachstraße 15
+60311 Frankfurt am Main
+
+Herrn
+Arjun Mehta
+Kaiserstraße 42
+60329 Frankfurt am Main
+
+Ausländernummer: C112233445
+Steuer-ID: 23 456 789 013
+
+Aktenzeichen: FRA-BK-2024-33210
+Frankfurt am Main, den 03.06.2024
+
+Betreff: Antrag auf Erteilung einer Blauen Karte EU gemäß § 18g AufenthG
+          hier: Anforderung fehlender Unterlagen
+
+Sehr geehrter Herr Mehta,
+
+Ihr Antrag auf Erteilung einer Blauen Karte EU wird derzeit bearbeitet. Zur
+weiteren Prüfung fehlen der Ausländerbehörde Frankfurt am Main noch folgende
+Unterlagen:
+
+  1. Arbeitsvertrag mit Angabe des Jahresbruttogehalts
+  2. Nachweis der Anerkennung Ihres Hochschulabschlusses (ggf. beglaubigte
+     Übersetzung ins Deutsche)
+  3. Nachweis, dass das vereinbarte Gehalt die maßgebliche Gehaltsschwelle
+     nach § 18g AufenthG erreicht
+
+Bitte reichen Sie die fehlenden Unterlagen bis zum
+
+  18.07.2024
+
+nach. Ohne den fristgerechten Eingang der Unterlagen kann Ihr Antrag nicht
+weiterbearbeitet werden; eine Verzögerung der Antragsbearbeitung ist die
+mögliche Folge.
+
+Bei Rückfragen erreichen Sie uns unter +49 69 87654321 oder per E-Mail an
+arjun.mehta@mail.example.
+
+Mit freundlichen Grüßen
+
+i. A. K. Winter
+Ausländerbehörde Frankfurt am Main

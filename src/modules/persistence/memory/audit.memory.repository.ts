@@ -44,10 +44,13 @@ export class AuditMemoryRepository extends AuditRepository {
   }
 
   async findByUser(userId: string): Promise<AuditEntry[]> {
+    // Map ekleme sırasını korur; ters çevirmek "en yeni önce" sonucunu verir.
+    // `createdAt`'a göre sıralamak yerine bunu tercih ediyoruz çünkü aynı
+    // milisaniyede eklenen girdilerde zaman damgası sıralaması kararsızdır.
     return this.store
       .all()
       .filter((a) => a.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      .reverse();
   }
 
   /**

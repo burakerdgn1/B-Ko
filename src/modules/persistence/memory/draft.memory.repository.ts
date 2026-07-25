@@ -44,11 +44,20 @@ export class DraftMemoryRepository extends DraftRepository {
 
     const merged: Draft = { ...existing, ...patch };
 
-    if (merged.status === 'sent' && !merged.approvedAt) {
-      throw new Error(
-        `Taslak ${id} insan onayı olmadan 'sent' durumuna geçirilemez ` +
-          `(approvedAt boş). Önce 'approved' durumuna geçip onay alınmalı.`,
-      );
+    // Onay kapısı (CLAUDE.md §7) — KAYITLI duruma bakar, patch'e değil.
+    //
+    // Kritik: `merged.approvedAt` kontrol etmek yetersizdi; çağıran tek bir
+    // çağrıda {status:'sent', approvedAt: new Date()} göndererek kapıyı
+    // aşabiliyordu. Onay, ÖNCEDEN gerçekleşmiş ve kalıcılaştırılmış ayrı bir
+    // insan eylemi olmalıdır — aynı işlemde "uydurulamaz".
+    if (merged.status === 'sent' && existing.status !== 'sent') {
+      if (existing.status !== 'approved' || !existing.approvedAt) {
+        throw new Error(
+          `Taslak ${id} insan onayı olmadan 'sent' durumuna geçirilemez. ` +
+            `Mevcut durum: '${existing.status}'. Önce kullanıcı taslağı ayrı bir ` +
+            `adımda onaylamalı ('approved'), ancak ondan sonra 'sent' işaretlenebilir.`,
+        );
+      }
     }
 
     if (merged.status === 'approved' && !merged.approvedAt) {

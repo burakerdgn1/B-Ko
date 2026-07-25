@@ -1,0 +1,53 @@
+=== SENTETİK TEST BELGESİ (siehe DECISIONS.md D-005) ===
+Bu belge BüKo projesi için üretilmiş KURGUSAL bir örnektir. İçindeki isim, adres,
+doğum tarihi, dosya/kimlik numaraları, telefon ve e-posta UYDURMADIR. Gerçek hiçbir
+kişi, kurum veya işlemle ilişkisi yoktur. Yalnızca otomatik test ve geliştirme
+amaçlıdır.
+==========================================================================
+
+Landeshauptstadt München
+Kreisverwaltungsreferat – Ausländerbehörde
+Ruppertstraße 19
+80337 München
+
+Frau
+Fatima Al-Hassan
+Leopoldstraße 88
+80802 München
+
+Geburtsdatum: 05.11.1985
+Ausländernummer: B987654321
+Reisepassnummer: PB4577123
+
+Aktenzeichen: MUC-AUS-556231
+München, den 20.07.2024
+
+Betreff: Einladung zu einem persönlichen Termin
+
+Sehr geehrte Frau Al-Hassan,
+
+im Rahmen der Bearbeitung Ihres Aufenthaltsverfahrens laden wir Sie zu einem
+persönlichen Termin ein:
+
+  Datum:   14.08.2024
+  Uhrzeit: 09:30 Uhr
+  Ort:     Kreisverwaltungsreferat München, Ruppertstraße 19, Zimmer 214
+
+Bitte bringen Sie zu diesem Termin folgende Unterlagen im Original mit:
+
+  - Ihren gültigen Reisepass (Reisepassnummer PB4577123)
+  - Ein aktuelles biometrisches Lichtbild
+  - Ihren aktuellen Mietvertrag
+  - Nachweis über Ihren Krankenversicherungsschutz
+  - Dieses Einladungsschreiben
+
+Sollten Sie den Termin nicht wahrnehmen können, bitten wir um rechtzeitige
+Absage unter der Telefonnummer +49 89 33221100 oder per E-Mail an
+fatima.alhassan@mail.example, damit ein neuer Termin vereinbart werden kann.
+Ein unentschuldigtes Fernbleiben kann die weitere Bearbeitung Ihres Antrags
+verzögern.
+
+Mit freundlichen Grüßen
+
+i. A. S. Huber
+Kreisverwaltungsreferat München

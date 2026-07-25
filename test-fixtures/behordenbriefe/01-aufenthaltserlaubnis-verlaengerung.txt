@@ -1,0 +1,55 @@
+=== SENTETİK TEST BELGESİ (siehe DECISIONS.md D-005) ===
+Bu belge BüKo projesi için üretilmiş KURGUSAL bir örnektir. İçindeki isim, adres,
+doğum tarihi, dosya/kimlik numaraları, telefon, e-posta ve Steuer-ID UYDURMADIR.
+Gerçek hiçbir kişi, kurum veya işlemle ilişkisi yoktur. Yalnızca otomatik test ve
+geliştirme amaçlıdır.
+==========================================================================
+
+Ausländerbehörde Berlin
+Referat Aufenthaltsangelegenheiten
+Amtsstraße 5
+10115 Berlin
+
+Herrn
+Yasin Kılıç
+Torstraße 15
+10115 Berlin
+
+Geburtsdatum: 12.03.1990
+Ausländernummer: A123456789
+Steuer-ID: 12 345 678 905
+
+Aktenzeichen: ABH-2024-118823
+Berlin, den 15.05.2024
+
+Betreff: Verlängerung Ihrer Aufenthaltserlaubnis nach § 8 AufenthG
+          hier: Anforderung fehlender Unterlagen
+
+Sehr geehrter Herr Kılıç,
+
+Ihr Antrag vom 02.04.2024 auf Verlängerung Ihrer Aufenthaltserlaubnis (Aktenzeichen
+ABH-2024-118823) liegt der Ausländerbehörde Berlin vor. Zur abschließenden Prüfung
+Ihres Antrags benötigen wir noch folgende Unterlagen von Ihnen:
+
+  1. Aktueller Mietvertrag bzw. Nachweis über den aktuellen Wohnsitz
+  2. Nachweis über ausreichenden Krankenversicherungsschutz
+  3. Verdienstbescheinigungen der letzten drei Monate
+  4. Ein aktuelles biometrisches Passfoto
+
+Bitte reichen Sie die vollständigen Unterlagen bis spätestens
+
+  30.06.2024
+
+bei der Ausländerbehörde Berlin ein. Sollten die angeforderten Unterlagen nicht
+fristgerecht eingehen, kann über Ihren Antrag nicht positiv entschieden werden;
+in diesem Fall ist mit dem Erlöschen Ihres Aufenthaltstitels und einer
+Ausreisepflicht zu rechnen.
+
+Für Rückfragen erreichen Sie das zuständige Sachgebiet unter der Telefonnummer
++49 30 55671234 oder per E-Mail an yasin.kilic@mail.example (Ihre bei uns
+hinterlegte Kontaktadresse) bzw. an das Sachgebiet selbst.
+
+Mit freundlichen Grüßen
+
+i. A. M. Brandt
+Ausländerbehörde Berlin

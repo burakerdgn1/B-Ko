@@ -1,0 +1,39 @@
+=== SENTETİK TEST BELGESİ (siehe DECISIONS.md D-005) ===
+Bu belge BüKo projesi için üretilmiş KURGUSAL bir örnektir. İçindeki isim, adres,
+dosya numarası, telefon ve e-posta UYDURMADIR. Gerçek hiçbir kişi, kurum veya
+işlemle ilişkisi yoktur. Yalnızca otomatik test ve geliştirme amaçlıdır.
+==========================================================================
+
+Stadt Köln
+Ausländerbehörde
+Rathaus Köln
+50667 Köln
+
+Herrn
+Boris Ivanenko
+Hohenzollernring 60
+50672 Köln
+
+Aktenzeichen: KOE-2024-10234
+Köln, den 08.07.2024
+
+Betreff: Information zum Bearbeitungsstand Ihres Antrags
+
+Sehr geehrter Herr Ivanenko,
+
+wir möchten Sie darüber informieren, dass Ihr Antrag bei uns eingegangen ist
+und sich derzeit in Bearbeitung befindet. Aufgrund der aktuellen Auslastung
+der Ausländerbehörde Köln beträgt die durchschnittliche Bearbeitungszeit
+zurzeit etwa acht bis zwölf Wochen.
+
+Dieses Schreiben dient ausschließlich Ihrer Information. Es ist derzeit keine
+Handlung Ihrerseits erforderlich. Sobald eine Entscheidung über Ihren Antrag
+vorliegt, werden Sie von uns gesondert benachrichtigt.
+
+Bei Rückfragen zum Bearbeitungsstand erreichen Sie uns unter +49 221 6677889
+oder per E-Mail an boris.ivanenko@mail.example.
+
+Mit freundlichen Grüßen
+
+i. A. N. Vogel
+Ausländerbehörde Köln

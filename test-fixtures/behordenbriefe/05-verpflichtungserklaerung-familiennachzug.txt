@@ -1,0 +1,52 @@
+=== SENTETİK TEST BELGESİ (siehe DECISIONS.md D-005) ===
+Bu belge BüKo projesi için üretilmiş KURGUSAL bir örnektir. İçindeki isim, adres,
+dosya/kimlik numaraları, telefon, e-posta, Steuer-ID ve sigorta numarası
+UYDURMADIR. Gerçek hiçbir kişi, kurum veya işlemle ilişkisi yoktur. Yalnızca
+otomatik test ve geliştirme amaçlıdır.
+==========================================================================
+
+Freie und Hansestadt Hamburg
+Ausländerbehörde
+Amsinckstraße 28
+20097 Hamburg
+
+Frau
+Linh Nguyen
+Mönckebergstraße 7
+20095 Hamburg
+
+Steuer-ID: 34 567 890 124
+Versichertennummer: T123456789
+
+Aktenzeichen: HH-FAM-2024-44120
+Hamburg, den 10.06.2024
+
+Betreff: Antrag auf Familiennachzug Ihres Ehepartners
+          hier: Anforderung fehlender Unterlagen
+
+Sehr geehrte Frau Nguyen,
+
+zur weiteren Bearbeitung Ihres Antrags auf Familiennachzug benötigt die
+Ausländerbehörde Hamburg noch folgende Unterlagen:
+
+  1. Verpflichtungserklärung nach § 68 AufenthG (amtliches Formular, vollständig
+     ausgefüllt und unterschrieben)
+  2. Aktuelle Verdienstbescheinigungen der letzten drei Monate als Nachweis
+     Ihres Einkommens
+  3. Meldebescheinigung Ihres Ehepartners vom zuständigen Einwohnermeldeamt
+
+Bitte reichen Sie die vollständigen Unterlagen bis zum
+
+  01.07.2024
+
+bei der Ausländerbehörde Hamburg ein. Ohne den fristgerechten Eingang der
+Unterlagen verzögert sich die Bearbeitung Ihres Antrags auf Familiennachzug
+erheblich.
+
+Bei Rückfragen erreichen Sie uns unter +49 40 22334455 oder per E-Mail an
+linh.nguyen@mail.example.
+
+Mit freundlichen Grüßen
+
+i. A. J. Peters
+Ausländerbehörde Hamburg

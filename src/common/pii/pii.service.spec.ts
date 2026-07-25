@@ -206,6 +206,42 @@ describe('PiiService', () => {
     });
   });
 
+  // ── Değer yayılımı (D-013 regresyonu) ──────────────────────────────────────
+  describe('bulunan değerin tüm geçişleri maskelenir', () => {
+    // Gerçek sızıntı: Gebührenbescheid'de Aktenzeichen hem "Aktenzeichen:"
+    // hem de "Verwendungszweck:" etiketiyle geçiyordu; ikincisi etiket
+    // eşleşmediği için MASKELENMEDEN LLM'e giderdi.
+    it('aynı değer farklı/etiketsiz bağlamda tekrar geçse de maskelenir', () => {
+      const text = [
+        'Aktenzeichen: DUS-GEB-2024-55678',
+        'Bitte überweisen Sie unter Angabe des Aktenzeichens.',
+        'Verwendungszweck: DUS-GEB-2024-55678',
+      ].join('\n');
+
+      const { maskedText, map } = pii.mask(text);
+
+      expect(maskedText).not.toContain('DUS-GEB-2024-55678');
+      expect(pii.detectLeaks(maskedText, map)).toEqual([]);
+      // Her iki geçiş de AYNI token'ı almalı.
+      expect((maskedText.match(/\[\[AKTENZEICHEN_1\]\]/g) ?? []).length).toBe(2);
+      expect(pii.unmask(maskedText, map)).toBe(text);
+    });
+
+    it('etiketsiz tekrar eden e-posta/telefon da tek token altında toplanır', () => {
+      const text = 'Kontakt: a@example.com. Schreiben Sie an a@example.com.';
+      const { maskedText, map } = pii.mask(text);
+      expect((maskedText.match(/\[\[EMAIL_1\]\]/g) ?? []).length).toBe(2);
+      expect(pii.unmask(maskedText, map)).toBe(text);
+    });
+
+    it('kısa değerler yayılmaz (gürültü koruması)', () => {
+      // 3 karakter ve altı değerler belge genelinde yanlış eşleşme üretirdi.
+      const text = 'Die Frist läuft ab. Die Unterlagen fehlen.';
+      const { maskedText } = pii.mask(text);
+      expect(maskedText).toBe(text);
+    });
+  });
+
   // ── Güvenlik: token enjeksiyonu ────────────────────────────────────────────
   describe('token enjeksiyonu savunması', () => {
     it('girdideki sahte yer tutucular etkisizleştirilir', () => {

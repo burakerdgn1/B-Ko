@@ -24,6 +24,14 @@ export const envSchema = z
     LLM_MODEL: z.string().default('claude-sonnet-5'),
     LLM_MAX_TOKENS: z.coerce.number().int().positive().default(2048),
 
+    /**
+     * OCR sağlayıcısı (D-010).
+     *   claude-vision — Claude'un native vision'ı. Görsel ham PII içerir ve
+     *                   sağlayıcıya ulaşır; maskeleme SONRAKİ adımları korur.
+     *   local         — tesseract.js ile yerel OCR; ham veri hiç dışarı çıkmaz.
+     */
+    OCR_PROVIDER: z.enum(['claude-vision', 'local']).default('claude-vision'),
+
     // ── Telegram ──
     TELEGRAM_BOT_TOKEN: z.string().optional(),
     TELEGRAM_MODE: z

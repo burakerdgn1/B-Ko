@@ -1,0 +1,87 @@
+{
+  "_comment": "SENTETİK test verisi (D-005). Her anahtar behordenbriefe/expected.json ile aynı kısa-ad'dır. Her alan, ilgili mektup dosyasında BİREBİR geçen bir dize olmalıdır (bkz. test-fixtures/README.md). Bu dosya KnownPiiProfile (src/common/pii/pii.types.ts) sözleşmesine uygundur ve 'bilinen-değer maskeleme' testleri için kullanılır.",
+
+  "01-aufenthaltserlaubnis-verlaengerung": {
+    "fullName": "Yasin Kılıç",
+    "dateOfBirth": "12.03.1990",
+    "address": "Torstraße 15",
+    "city": "Berlin",
+    "postalCode": "10115",
+    "email": "yasin.kilic@mail.example",
+    "phone": "+49 30 55671234",
+    "auslaendernummer": "A123456789",
+    "steuerId": "12 345 678 905"
+  },
+
+  "02-termin-einladung": {
+    "fullName": "Fatima Al-Hassan",
+    "dateOfBirth": "05.11.1985",
+    "address": "Leopoldstraße 88",
+    "city": "München",
+    "postalCode": "80802",
+    "email": "fatima.alhassan@mail.example",
+    "phone": "+49 89 33221100",
+    "auslaendernummer": "B987654321",
+    "passportNumber": "PB4577123"
+  },
+
+  "03-blaue-karte-eu": {
+    "fullName": "Arjun Mehta",
+    "address": "Kaiserstraße 42",
+    "city": "Frankfurt am Main",
+    "postalCode": "60329",
+    "email": "arjun.mehta@mail.example",
+    "phone": "+49 69 87654321",
+    "auslaendernummer": "C112233445",
+    "steuerId": "23 456 789 013"
+  },
+
+  "04-ablehnung-widerspruchsfrist": {
+    "fullName": "Amina Yusuf",
+    "address": "Königstraße 21",
+    "city": "Stuttgart",
+    "postalCode": "70173",
+    "email": "amina.yusuf@mail.example",
+    "phone": "+49 711 4455667",
+    "auslaendernummer": "D556677889"
+  },
+
+  "05-verpflichtungserklaerung-familiennachzug": {
+    "fullName": "Linh Nguyen",
+    "address": "Mönckebergstraße 7",
+    "city": "Hamburg",
+    "postalCode": "20095",
+    "email": "linh.nguyen@mail.example",
+    "phone": "+49 40 22334455",
+    "steuerId": "34 567 890 124",
+    "insuranceNumber": "T123456789"
+  },
+
+  "06-buergeramt-anmeldung": {
+    "fullName": "Chidinma Okafor",
+    "address": "Karl-Marx-Allee 33",
+    "city": "Berlin",
+    "postalCode": "10178",
+    "email": "chidinma.okafor@mail.example",
+    "phone": "+49 30 99887766"
+  },
+
+  "07-informationsschreiben": {
+    "fullName": "Boris Ivanenko",
+    "address": "Hohenzollernring 60",
+    "city": "Köln",
+    "postalCode": "50672",
+    "email": "boris.ivanenko@mail.example",
+    "phone": "+49 221 6677889"
+  },
+
+  "08-gebuehrenbescheid": {
+    "fullName": "Elena Popescu",
+    "address": "Königsallee 12",
+    "city": "Düsseldorf",
+    "postalCode": "40212",
+    "email": "elena.popescu@mail.example",
+    "phone": "+49 211 1122334",
+    "steuerId": "45 678 901 231"
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "01-aufenthaltserlaubnis-verlaengerung": {
+    "file": "01-aufenthaltserlaubnis-verlaengerung.txt",
+    "authority": "Ausländerbehörde Berlin",
+    "requestType": "Unterlagennachforderung",
+    "expectedDeadline": "2024-06-30",
+    "expectedRiskLevel": "high",
+    "expectedMissingDocuments": [
+      "Aktueller Mietvertrag bzw. Nachweis über den aktuellen Wohnsitz",
+      "Nachweis über ausreichenden Krankenversicherungsschutz",
+      "Verdienstbescheinigungen der letzten drei Monate",
+      "Ein aktuelles biometrisches Passfoto"
+    ],
+    "expectedPiiTypes": [
+      "NAME",
+      "ADDRESS",
+      "DOB",
+      "DATE",
+      "AKTENZEICHEN",
+      "AUSLNR",
+      "STEUERID",
+      "PHONE",
+      "EMAIL"
+    ],
+    "notes": "Yüksek risk: somut son tarih (30.06.2024) + fristgerecht eksik belge tamamlanmazsa aufenthaltstitel'in erlöschen'i ve ausreisepflicht tehdidi açıkça yazılı. Faz-2 'yüksek risk' senaryosunun temsilcisi."
+  },
+
+  "02-termin-einladung": {
+    "file": "02-termin-einladung.txt",
+    "authority": "Ausländerbehörde München (Kreisverwaltungsreferat)",
+    "requestType": "Terminmitteilung",
+    "expectedDeadline": "2024-08-14",
+    "expectedRiskLevel": "medium",
+    "expectedMissingDocuments": [
+      "Gültiger Reisepass",
+      "Aktuelles biometrisches Lichtbild",
+      "Aktueller Mietvertrag",
+      "Nachweis über Krankenversicherungsschutz"
+    ],
+    "expectedPiiTypes": [
+      "NAME",
+      "ADDRESS",
+      "DOB",
+      "DATE",
+      "AKTENZEICHEN",
+      "AUSLNR",
+      "PASSPORT",
+      "PHONE",
+      "EMAIL"
+    ],
+    "notes": "Randevu daveti: 'son tarih' değil sabit tarih/saat/oda bilgisi içerir (14.08.2024, 09:30 Uhr, Zimmer 214). Getirilecek belge listesi var ama eksik-belge-talebi değil, randevuya getirilecek belgeler. deadlineToken burada randevu tarihine karşılık gelir (ReminderKind: 'appointment')."
+  },
+
+  "03-blaue-karte-eu": {
+    "file": "03-blaue-karte-eu.txt",
+    "authority": "Ausländerbehörde Frankfurt am Main",
+    "requestType": "Unterlagennachforderung (Blaue Karte EU)",
+    "expectedDeadline": "2024-07-18",
+    "expectedRiskLevel": "medium",
+    "expectedMissingDocuments": [
+      "Arbeitsvertrag mit Angabe des Jahresbruttogehalts",
+      "Nachweis der Anerkennung des Hochschulabschlusses (ggf. beglaubigte Übersetzung)",
+      "Nachweis der Gehaltsschwelle nach § 18g AufenthG"
+    ],
+    "expectedPiiTypes": [
+      "NAME",
+      "ADDRESS",
+      "DATE",
+      "AKTENZEICHEN",
+      "AUSLNR",
+      "STEUERID",
+      "PHONE",
+      "EMAIL"
+    ],
+    "notes": "§ 18g AufenthG'ye özgü maaş eşiği ve diploma denklik belgesi talebi. Orta risk: fristgerecht tamamlanmazsa gecikme var ama doğrudan red/ausreisepflicht tehdidi yok (04 numaralı mektupla kontrast için bilinçli tasarlandı)."
+  },
+
+  "04-ablehnung-widerspruchsfrist": {
+    "file": "04-ablehnung-widerspruchsfrist.txt",
+    "authority": "Ausländerbehörde Stuttgart",
+    "requestType": "Ablehnungsbescheid / Widerspruch",
+    "expectedDeadline": "2024-06-06",
+    "expectedRiskLevel": "critical",
+    "expectedMissingDocuments": [],
+    "expectedPiiTypes": [
+      "NAME",
+      "ADDRESS",
+      "DATE",
+      "AKTENZEICHEN",
+      "AUSLNR",
+      "PHONE",
+      "EMAIL"
+    ],
+    "notes": "KRİTİK senaryo: doğrudan RED kararı + Rechtsbehelfsbelehrung + 1 aylık Widerspruchsfrist (Zustellungsfiktion 06.05.2024 üzerinden hesaplanmış son tarih 06.06.2024) + 'vollziehbar ausreisepflichtig' ifadesi. missingDocuments boş çünkü bu bir eksik-belge talebi değil, bir hukuki itiraz süresi senaryosu."
+  },
+
+  "05-verpflichtungserklaerung-familiennachzug": {
+    "file": "05-verpflichtungserklaerung-familiennachzug.txt",
+    "authority": "Ausländerbehörde Hamburg",
+    "requestType": "Unterlagennachforderung (Familiennachzug)",
+    "expectedDeadline": "2024-07-01",
+    "expectedRiskLevel": "medium",
+    "expectedMissingDocuments": [
+      "Verpflichtungserklärung nach § 68 AufenthG",
+      "Aktuelle Verdienstbescheinigungen der letzten drei Monate",
+      "Meldebescheinigung des Ehepartners"
+    ],
+    "expectedPiiTypes": [
+      "NAME",
+      "ADDRESS",
+      "DATE",
+      "AKTENZEICHEN",
+      "STEUERID",
+      "INSURANCE",
+      "PHONE",
+      "EMAIL"
+    ],
+    "notes": "Aile birleşimi (Familiennachzug) senaryosu; Verpflichtungserklärung § 68 AufenthG özel belge türü. INSURANCE (Versichertennummer) tipi testleri için tasarlandı."
+  },
+
+  "06-buergeramt-anmeldung": {
+    "file": "06-buergeramt-anmeldung.txt",
+    "authority": "Bürgeramt Berlin-Mitte",
+    "requestType": "Unterlagennachforderung (Meldebescheinigung)",
+    "expectedDeadline": "2024-07-15",
+    "expectedRiskLevel": "low",
+    "expectedMissingDocuments": [
+      "Wohnungsgeberbestätigung nach § 19 Bundesmeldegesetz"
+    ],
+    "expectedPiiTypes": [
+      "NAME",
+      "ADDRESS",
+      "DATE",
+      "AKTENZEICHEN",
+      "PHONE",
+      "EMAIL"
+    ],
+    "notes": "Ausländerbehörde dışı bir kurum (Bürgeramt) senaryosu; düşük risk, tarih 'möglichst' ifadesiyle yumuşak/gayri resmi, doğrudan hukuki sonuç yok. Aktenzeichen etiketi burada 'Vorgangsnummer' olarak geçiyor (regex Vorgangsnummer'ı da yakalar)."
+  },
+
+  "07-informationsschreiben": {
+    "file": "07-informationsschreiben.txt",
+    "authority": "Ausländerbehörde Köln",
+    "requestType": "Informationsschreiben",
+    "expectedDeadline": null,
+    "expectedRiskLevel": "low",
+    "expectedMissingDocuments": [],
+    "expectedPiiTypes": [
+      "NAME",
+      "ADDRESS",
+      "DATE",
+      "AKTENZEICHEN",
+      "PHONE",
+      "EMAIL"
+    ],
+    "notes": "Saf bilgilendirme mektubu: 'keine Handlung Ihrerseits erforderlich' açıkça belirtilir, son tarih YOK, eksik belge YOK. Deadline/aksiyon gerektirmeyen düşük risk senaryosunun temsilcisi (deadlineToken beklentisi: null)."
+  },
+
+  "08-gebuehrenbescheid": {
+    "file": "08-gebuehrenbescheid.txt",
+    "authority": "Ausländerbehörde Düsseldorf",
+    "requestType": "Gebührenbescheid",
+    "expectedDeadline": "2024-06-20",
+    "expectedRiskLevel": "medium",
+    "expectedMissingDocuments": [],
+    "expectedPiiTypes": [
+      "NAME",
+      "ADDRESS",
+      "DATE",
+      "AKTENZEICHEN",
+      "STEUERID",
+      "IBAN",
+      "PHONE",
+      "EMAIL"
+    ],
+    "notes": "Harç/ücret tahakkuku senaryosu: IBAN (kurumun tahsilat hesabı, mod-97 geçerli sentetik) + ödeme son tarihi (20.06.2024) + gecikme faizi/Mahngebühr riski. missingDocuments boş çünkü bu bir belge talebi değil ödeme talebi."
+  }
+}

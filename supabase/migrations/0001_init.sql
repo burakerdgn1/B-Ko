@@ -162,9 +162,22 @@ create index if not exists drafts_status_idx on drafts (status);
 create or replace function enforce_draft_approval_gate()
 returns trigger as $$
 begin
-  if new.status = 'sent' and new.approved_at is null then
-    raise exception
-      'draft % cannot be marked sent without human approval (approved_at is null)', new.id;
+  -- 'sent'e geçiş, ÖNCEDEN kalıcılaşmış bir onay gerektirir.
+  -- OLD satırına bakılır: aynı UPDATE içinde approved_at set edilerek kapı
+  -- aşılamaz. Onay, ayrı ve önceki bir insan eylemi olmak zorundadır.
+  if new.status = 'sent' then
+    if tg_op = 'INSERT' then
+      raise exception
+        'draft % cannot be created directly in sent state (human approval required first)',
+        new.id;
+    end if;
+
+    if old.status is distinct from 'sent'
+       and (old.status is distinct from 'approved' or old.approved_at is null) then
+      raise exception
+        'draft % cannot be marked sent without prior human approval (current status: %)',
+        new.id, old.status;
+    end if;
   end if;
 
   if new.status = 'approved' and new.approved_at is null then

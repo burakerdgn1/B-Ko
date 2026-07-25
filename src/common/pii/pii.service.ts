@@ -60,7 +60,11 @@ export class PiiService {
       ...this.findPatterns(sanitized),
     ].filter((c) => !allowed || allowed.has(c.type));
 
-    const resolved = this.resolveOverlaps(candidates);
+    // Bir değer belgede bir kez PII olarak tanındıysa, AYNI değerin diğer tüm
+    // geçişleri de maskelenmelidir — bağlam etiketi olmasa bile. (Bkz. D-013)
+    const resolved = this.resolveOverlaps(
+      this.propagateFoundValues(sanitized, this.resolveOverlaps(candidates)),
+    );
 
     // Aynı orijinal değer → aynı token (deterministik tokenizasyon).
     const tokenByValue = new Map<string, string>();
@@ -254,6 +258,57 @@ export class PiiService {
       }
     }
     return out;
+  }
+
+  /**
+   * Bulunan her PII değerinin belgedeki DİĞER geçişlerini de aday listesine ekler.
+   *
+   * Neden gerekli (D-013): desen maskelemesi bağlam etiketine dayanır
+   * ("Aktenzeichen: X"). Aynı değer başka bir etiketle tekrar geçtiğinde
+   * ("Verwendungszweck: X") etiket eşleşmez ve değer MASKELENMEDEN LLM'e giderdi.
+   * Bu, gerçek bir sızıntıydı — sentetik Gebührenbescheid fixture'ı ile yakalandı.
+   *
+   * Kural: bir değer belgede bir kez PII olarak tanındıysa, o değerin tüm
+   * geçişleri PII'dir. Bağlam bir kez kanıt sağlar; sonrası değerin kendisidir.
+   */
+  private propagateFoundValues(
+    text: string,
+    found: Candidate[],
+  ): Candidate[] {
+    if (found.length === 0) return found;
+
+    // Aynı değer birden çok tip altında görünebilir; ilk (en güçlü) tip kazanır.
+    const typeByValue = new Map<string, PiiEntityType>();
+    for (const c of found) {
+      const key = normalizeKey(c.original);
+      // Çok kısa değerler ("Am", "Zu") belge genelinde gürültü üretir.
+      if (key.length <= 3) continue;
+      if (!typeByValue.has(key)) typeByValue.set(key, c.type);
+    }
+
+    const extra: Candidate[] = [];
+    for (const [key, type] of typeByValue) {
+      // Orijinal yazımı koru: normalize edilmiş anahtar yerine gerçek eşleşmeyi ara.
+      const source = found.find((c) => normalizeKey(c.original) === key);
+      if (!source) continue;
+
+      const pattern = new RegExp(
+        foldLocaleCase(escapeRegex(source.original).replace(/\\?\s+/g, '\\s+')),
+        'giu',
+      );
+      for (const m of text.matchAll(pattern)) {
+        if (m.index === undefined) continue;
+        extra.push({
+          start: m.index,
+          end: m.index + m[0].length,
+          original: m[0],
+          type,
+          strategy: source.strategy,
+        });
+      }
+    }
+
+    return [...found, ...extra];
   }
 
   /**

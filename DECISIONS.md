@@ -83,3 +83,43 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **Gerekçe:** Paralel subagent'lar aynı sözleşmeye kodladığı için tip kayması (contract
   drift) riski yüksekti; sözleşmeyi agent'lar başlamadan önce sabitlemek entegrasyon
   maliyetini ortadan kaldırdı.
+
+## D-013 — Bulunan PII değerinin TÜM geçişleri maskelenir (gerçek sızıntı düzeltmesi)
+- **Bağlam:** Yapısal desen maskelemesi bağlam etiketine dayanıyordu
+  ("Aktenzeichen: X"). Sentetik `08-gebuehrenbescheid` fixture'ı, aynı dosya
+  numarasının ikinci kez **"Verwendungszweck: X"** etiketiyle geçtiğini ortaya
+  çıkardı — bu etiket desen listesinde olmadığı için değer MASKELENMEDEN
+  LLM'e gidiyordu. Ödeme referansında dosya numarasını tekrarlamak gerçek
+  Gebührenbescheid'lerde standart bir uygulamadır; yani bu kurgusal değil,
+  gerçekçi bir sızıntıydı.
+- **Karar:** Maskeleme iki geçişli hâle getirildi. Birinci geçişte bulunan her
+  benzersiz değer için, belgenin TAMAMI o değerin diğer geçişleri için yeniden
+  taranır ve hepsi aynı token'a bağlanır.
+- **Gerekçe:** Bağlam etiketi bir değerin PII olduğunu **bir kez** kanıtlar;
+  ondan sonra kanıt değerin kendisidir, bulunduğu yer değil. Etiket listesini
+  genişletmek (whitelist yaklaşımı) bu sınıfın yalnızca bilinen üyelerini
+  kapatırdı; değer yayılımı sınıfın tamamını kapatır.
+- **Not:** ≤3 karakterlik değerler yayılmaz (belge genelinde yanlış eşleşme
+  gürültüsü üretirdi). Regresyon testleri eklendi.
+- **Süreç dersi:** Bu hata, subagent'ın kendi doğrulamasının "sızıntı yok"
+  raporuna rağmen ana oturumun BAĞIMSIZ testi tarafından yakalandı. Agent
+  raporları doğrulanmadan kabul edilmiyor.
+
+## D-014 — Onay kapısı KAYITLI duruma bakar (güvenlik sertleştirmesi)
+- **Bağlam:** Persistence subagent'ı onay kapısını `{...existing, ...patch}` birleşimi
+  üzerinden kontrol ediyordu ve bunu bir testle "beklenen davranış" olarak
+  sabitlemişti: `update(id, {status:'sent', approvedAt: new Date()})` tek çağrıda
+  kapıdan geçiyordu. Yani insan onayı hiç gerçekleşmeden bir taslak "gönderildi"
+  sayılabilirdi. Aynı zayıflık DB trigger'ında da vardı (`new.approved_at`).
+- **Karar:** 'sent' geçişi artık YALNIZCA kayıtta önceden `status='approved'` VE
+  `approved_at` dolu ise kabul edilir. Üç katmanda da düzeltildi: memory repository,
+  supabase repository, Postgres trigger (`OLD` satırına bakar; INSERT ile doğrudan
+  'sent' yaratmak da reddedilir).
+- **Gerekçe:** CLAUDE.md §7 onayın "sadece UX metni değil, kod seviyesinde bir adım"
+  olmasını şart koşuyor. Onayın aynı işlemde uydurulabilmesi, kapıyı tamamen anlamsız
+  kılardı. Onay, önceden kalıcılaşmış ve ayrı bir insan eylemi olmak zorundadır.
+- **Not:** Yanlış davranışı doğrulayan test tersine çevrildi; bypass'ı, reddedilmiş
+  taslağı ve `pending_approval`→`sent` geçişini kapsayan regresyon testleri eklendi.
+- **Süreç dersi:** İkinci kez, subagent'ın "tüm testler geçiyor" raporu doğru ama
+  YETERSİZDİ — testler yanlış davranışı doğruluyordu. Geçen test sayısı değil, neyin
+  test edildiği önemli.
