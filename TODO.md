@@ -47,4 +47,4 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
 - [x] F5.2 (O) Uçtan uca senaryo testleri (pipeline + conversation, fixture ile tam döngü)
 - [x] F5.3 (S) Dockerfile + docker-compose + CI + deployment scriptleri (imaj gerçekten build edildi)
 - [x] F5.4 (O) README + mermaid diyagramlar + demo senaryosu
-- [~] F5.5 (O) Final entegrasyon + DoD doğrulama + STATUS güncelle
+- [x] F5.5 (O) Final entegrasyon + DoD doğrulama + STATUS güncelle — **MVP TAMAMLANDI**

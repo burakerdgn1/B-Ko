@@ -35,3 +35,12 @@ Format: `- [faz/görev] (sahip) ne yapıldı — kararlar/testler`
 - [F4.1] (Opus) **`ConversationService` — son halka.** Botu ürün akışına bağlar: /start → AI şeffaflığı → rıza → belge → analiz özeti → /taslak → onay butonları → İNSAN ONAYI → metin kullanıcıya. tr/de/en. 15 test.
   - Kod seviyesinde zorlanan iki kural test edildi: (1) rıza olmadan belge işlenmez — onaysız gönderimde hiç kayıt oluşmaz; (2) hiçbir şey kullanıcı adına kuruma gönderilmez.
 - [F1h] (Opus) Tüm modüller `app.module.ts`'e bağlandı; 343 test geçiyor, tsc temiz.
+
+## Faz 5 — Test & Teslim
+- [F5.1] (Sonnet) `RemindersService` (saatlik) + `RetentionService` (GDPR Art.17). Silme sırası `purge_expired_data()` ile birebir. Ajan, kapsamı dışında kalan bir eksikliği gizlemek yerine raporladı → D-019.
+- [F5.1-fix] (Opus) **D-019 eksik GDPR silme** — `deleteUserData` yalnızca `scheduled` hatırlatmaları siliyordu; `ReminderRepository.findByUser` eklendi (abstract+memory+supabase), üç durumu kapsayan regresyon testi yazıldı.
+- [F5.3] (Sonnet) Dockerfile (multi-stage, non-root, healthcheck) + `with-browsers` hedefi, docker-compose, GitHub Actions CI, deployment scriptleri, `docs/DEPLOYMENT.md`. **İmajı gerçekten build etti (218 MB) ve çalıştırdı** — bu sayede iki gerçek hata bulundu.
+- [F5.3-fix] (Opus) **D-020 açılışta çökme** — `.env.example` kopyalamak uygulamayı çökertiyordu (boş env değeri Zod `.optional()`'ı geçmiyordu). Merkezî düzeltme + regresyon testi + gerçek boot doğrulaması.
+- [F5.3-fix] (Opus) **D-021** — kullanılmayan global `ValidationPipe` kaldırıldı (2 bağımlılık eklemek yerine; uygulamada hiç HTTP controller'ı yok).
+- [F5.4] (Opus) README (sorun/çözüm, PII garantisi + dürüst OCR sınırlaması, demo senaryosu) + mermaid diyagramlar.
+- [F5.5] (Opus) **DoD doğrulaması tamamlandı.** Playwright tarayıcısı kuruldu; daha önce atlanan 3 test artık gerçekten çalışıyor. **361/361 test geçiyor, 0 atlanan.** MVP bitti.
