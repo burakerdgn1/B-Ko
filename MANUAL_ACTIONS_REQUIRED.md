@@ -12,7 +12,8 @@
 
 ## 2. Telegram Bot Token
 - **Neden:** Gerçek Telegram botu.
-- **Aksiyon:** @BotFather'dan token al → `.env` içinde `TELEGRAM_BOT_TOKEN=...`
+- **Aksiyon:** @BotFather'dan token al → `.env` içinde `TELEGRAM_BOT_TOKEN=...` ve
+  `TELEGRAM_MODE=polling` (yerel geliştirme) veya `TELEGRAM_MODE=webhook` (üretim).
 - **O ana kadar:** Bot polling/webhook devre dışı; kanal mantığı `MockChannelAdapter` + testlerle doğrulanıyor.
 
 ## 3. Supabase projesi (AB bölgesi)
@@ -25,17 +26,23 @@
 - **Aksiyon:** `openssl rand -hex 32` → `.env` içinde `PII_MASTER_KEY=...` (üretimde KMS önerilir).
 - **O ana kadar:** Dev için sabit test anahtarı türetiliyor (üretimde ASLA kullanılmaz — uyarı loglanır).
 
-## 5. WhatsApp Business API (opsiyonel, v2)
+## 5. Playwright tarayıcısı (yalnızca randevu izleme özelliği için)
+- **Neden:** Ausländerbehörde randevu sayfası izleme PoC'si tarayıcı gerektirir.
+- **Aksiyon:** `npx playwright install chromium`
+- **O ana kadar:** İzleme servisi mock sayfalarla test edilir; tarayıcı yoksa ilgili
+  testler atlanır (skip) ve uygulama çökmez.
+
+## 6. WhatsApp Business API (opsiyonel, v2)
 - **Neden:** WhatsApp kanalı.
 - **Aksiyon:** Meta Business doğrulama + telefon no + `WHATSAPP_TOKEN`.
 - **O ana kadar:** `MockChannelAdapter`; kapsam v1'de Telegram.
 
-## 6. Sistem git düzeltmesi (opsiyonel, geliştirme rahatlığı)
+## 7. Sistem git düzeltmesi (opsiyonel, geliştirme rahatlığı)
 - **Neden:** `/usr/bin/git` bozuk Xcode'a bağlı.
 - **Aksiyon:** `sudo xcode-select --switch /Library/Developer/CommandLineTools`
 - **O ana kadar:** CLT git tam yol ile kullanılıyor (bkz. DECISIONS D-001).
 
-## 7. Deployment hosting hesabı (teslim aşaması)
+## 8. Deployment hosting hesabı (teslim aşaması)
 - **Neden:** Railway/Coolify canlı dağıtım.
 - **Aksiyon:** Hesap + repo bağla + env değişkenlerini gir.
 - **O ana kadar:** Dockerfile + docker-compose ile lokal çalışır.

@@ -12,3 +12,19 @@ Format: `- [faz/görev] (sahip) ne yapıldı — kararlar/testler`
 - [F1g] (Opus) `src/common/types/domain.ts` — paylaşılan sözleşmeler paralel agent'lar başlamadan sabitlendi (D-012).
 - [F2.0] (Opus) Almanca tarih ayrıştırma + deadline'a göre risk yükseltme + hatırlatma zamanlaması. **30/30 test geçti.** Risk yalnızca yükseltilir, asla düşürülmez.
 - [F1b/F1e/F1f/F2.3] (Opus) 4 Sonnet subagent paralel başlatıldı: persistence, LLM servis, kanal adaptörleri, sentetik fixture'lar. Dosya sahiplikleri ayrık.
+
+## Faz 1 — Entegrasyon (subagent çıktıları doğrulandı)
+- [F1f] (Sonnet) Kanal katmanı: `ChannelAdapter` soyutlaması, grammY Telegram adaptörü, mock adapter, 3 dilde AI şeffaflık metni, 4096 karakter bölme, onay inline keyboard. 69 test. Ana oturum bağımsız doğruladı: geçti.
+- [F2.3] (Sonnet) 8 sentetik Behördenbrief (Ausländerbehörde ×6, Bürgeramt, bilgilendirme) + expected.json + profiles.json. Türk/Suriyeli/Hintli/Somalili/Vietnamlı/Nijeryalı/Ukraynalı/Romen isimleri, 8 farklı şehir.
+- [F1b] (Sonnet) Persistence: 8 repository × (memory + supabase), mappers, driver seçimi. 36 test.
+- [F1e] (Sonnet) LLM servis: fail-closed sızıntı denetimi, Zod yapılandırılmış çıktı + 1 onarım denemesi, deterministik mock, `OcrProvider` soyutlaması (claude-vision / local tesseract).
+- [F1c-fix] (Opus) **D-013 gerçek PII sızıntısı bulundu ve kapatıldı** — fixture tabanlı bağımsız test, aynı Aktenzeichen'in ikinci etiket altında maskesiz kaldığını ortaya çıkardı. Maskeleme iki geçişli hâle getirildi.
+- [F1b-fix] (Opus) **D-014 onay kapısı bypass'ı bulundu ve kapatıldı** — tek çağrıda `{status:'sent', approvedAt}` insan onayını atlıyordu; üç katmanda da (memory/supabase/DB trigger) düzeltildi, yanlış davranışı doğrulayan test tersine çevrildi.
+- [F1h] (Opus) `app.module.ts` entegrasyonu + `app.module.spec.ts` DI bütünlük testi (anahtarsız boot kanıtı).
+- [F1c-fix2] (Opus) **D-015 yüksek etkili recall açığı** — profil yalnızca tam ad içerdiğinde Alman mektuplarının standart hitabındaki ("Sehr geehrter Herr Yılmaz") soyadı maskelenmiyordu. Ad parçaları artık ayrı maskeleniyor.
+- [F1e-verify] (Opus) `llm.leak-guard.spec.ts` — 8 gerçek fixture mektubu sahte istemciyle gönderilerek API payload'ında ham PII olmadığı ve sızıntı hâlinde 0 istek gittiği bağımsız olarak kanıtlandı.
+
+## Faz 2 — Çekirdek akış
+- [F2.0] (Opus) Deadline/risk yardımcıları — 30 test.
+- [F2.1/F2.2] (Opus) **AnalysisPipeline** tamamlandı: ingest → OCR/maskeleme → LLM → vault (şifreli) → deadline token çözümü → risk yükseltme → analiz kaydı → hatırlatma → audit. Uçtan uca test: DB'de ham PII yok, vault round-trip çalışıyor, kullanıcı çıktısı unmask edilmiş, hata yolunda PII loglanmıyor. 298/298 test geçiyor.
+- [F3a/F3b/F5.1/F5.3] (Opus) 4 subagent paralel başlatıldı: taslak üretimi, Playwright PoC, hatırlatma+GDPR cron, DevOps.

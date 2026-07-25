@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppConfigModule } from './config/config.module';
 import { CryptoModule } from './common/crypto/crypto.module';
 import { PiiModule } from './common/pii/pii.module';
@@ -19,6 +20,8 @@ import { AnalysisModule } from './modules/analysis/analysis.module';
 @Module({
   imports: [
     AppConfigModule,
+    // Cron altyapısı: hatırlatma gönderimi ve GDPR (Art.17) silme işleri.
+    ScheduleModule.forRoot(),
     CryptoModule,
     PiiModule,
     PersistenceModule,
