@@ -97,6 +97,12 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
 - [ ] WhatsApp adapter — v2 (ChannelAdapter arayüzü hazır)
 
 ### Güvenlik borcu (kullanıcı eylemi)
-- [!] **Anahtar rotasyonu:** `ANTHROPIC_API_KEY` ve Supabase `service_role`
-      anahtarı sohbet geçmişinde görünüyor. `service_role` RLS'i bypass eder ve
-      `pii_vault` dâhil tüm tablolara tam yetki verir → rotasyon önerilir.
+- [x] ~~Supabase `service_role` (legacy JWT) rotasyonu~~ — **2026-07-26'da İPTAL EDİLDİ.**
+      Doğrulandı: eski anahtar `HTTP 401 "Legacy API keys are disabled"`,
+      yeni `sb_secret_...` çalışıyor, 16/16 entegrasyon testi geçiyor.
+      Yan etki: legacy **anon** anahtarı da kapandı; `.env`'deki publishable
+      anahtar yeni biçim olduğu için etkilenmedi (HTTP 200 ile doğrulandı).
+- [!] **`ANTHROPIC_API_KEY` rotasyonu** — hâlâ bekliyor. Sohbet geçmişinde
+      görünüyor ve muhtemelen aktif. console.anthropic.com → API Keys → Revoke.
+- [ ] Mevcut `sb_secret_...` anahtarı da gerçek kullanıcı verisiyle çalışmaya
+      başlamadan önce döndürülmeli (o da transkriptte).

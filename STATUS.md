@@ -92,6 +92,12 @@ Kalıcı test bu sınırı sabitliyor, böylece sessizce kaymaz.
 | Şema | ✅ **8/8 tablo** |
 | Backend `DB_DRIVER=supabase` | ✅ **ÇALIŞABİLİR** |
 
+**Anahtar rotasyonu (2026-07-26):** Legacy `service_role` JWT'si iptal edildi ve
+`sb_secret_...` biçimine geçildi. Doğrulandı: eski anahtar `HTTP 401
+"Legacy API keys are disabled"`, yeni anahtarla 16/16 entegrasyon testi geçiyor.
+Legacy **anon** anahtarı da kapandı; `.env`'deki publishable anahtar yeni biçim
+olduğu için etkilenmedi.
+
 **Duman testi** (`npm run smoke:supabase`) — **16/16 geçti.**
 Bu önemliydi: 527 birim/entegrasyon testinin tamamı `memory` sürücüsüyle koşuyor;
 Supabase repository'leri, mapper'lar ve DB trigger'ları gerçek Postgres'te
