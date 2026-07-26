@@ -1,0 +1,33 @@
+=== SENTETİK TEST BELGESİ (siehe DECISIONS.md D-005) ===
+Bu belge BüKo projesi için üretilmiş KURGUSAL bir örnektir. İçindeki isim, adres,
+dosya/kimlik numaraları, telefon ve e-posta UYDURMADIR. Gerçek hiçbir kişi, kurum
+veya işlemle ilişkisi yoktur. SINIR VAKA (borderline) eval seti için üretilmiştir.
+==========================================================================
+
+Ausländerbehörde Hamburg
+Amsinckstraße 34
+20097 Hamburg
+
+Frau
+Oleksandra Bondarenko
+Eppendorfer Weg 210
+20251 Hamburg
+
+Aktenzeichen: ABH-HH-2024-30455
+Datum: 03.06.2024
+
+Betreff: Nachweis der Beschäftigung
+
+Sehr geehrte Frau Bondarenko,
+
+im Rahmen der turnusmäßigen Überprüfung bitten wir Sie, einen aktuellen
+Nachweis Ihres Beschäftigungsverhältnisses vorzulegen.
+
+Wir bitten um Vorlage bis zum 28.06.2024. Sollte der Nachweis nicht
+fristgerecht eingehen, entfällt die Grundlage Ihrer Aufenthaltserlaubnis
+und diese erlischt gemäß § 51 AufenthG.
+
+Kontakt: 040 428-39150
+
+Mit freundlichen Grüßen
+i. A. Michael Hartwig

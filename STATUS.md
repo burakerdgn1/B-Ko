@@ -11,7 +11,7 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **473 test geçiyor** (37 suite), **0 atlanan**
+- **527 test geçiyor** (37 suite), **0 atlanan**
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edildi (218 MB)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
 - 10 commit, ana dal `main`
@@ -82,25 +82,45 @@ Kalıcı test bu sınırı sabitliyor, böylece sessizce kaymaz.
 4. WhatsApp adapter (v2)
 
 ## 📊 Gerçek API ölçümü (2026-07-26, `claude-sonnet-5`)
-`npm run eval:prompts` — 8 sentetik Behördenbrief, GERÇEK Claude çağrıları:
+`npm run eval:prompts` — **14 sentetik Behördenbrief** (8 temel + 6 sınır vakası),
+GERÇEK Claude çağrıları:
 
 | Alan | Sonuç |
 |---|---|
-| authority | 8/8 (%100) |
-| deadline (token→tarih çözümü, D-009) | 8/8 (%100) |
-| riskLevel | 8/8 (%100) |
+| authority | 13/14 (%93) |
+| deadline (token→tarih çözümü, D-009) | 14/14 (%100) |
+| riskLevel | 14/14 (%100) |
 | missingDocuments (ortalama recall) | %100 |
 | **PII sızıntısı** | **YOK ✅** |
+
+Sınır vakaların tamamında (6/6) doğru risk seviyesi üretildi — bunlar naif bir
+okumanın yanılacağı tuzaklar içeriyor (bkz. aşağıda).
 
 Çekirdek akış gerçek modelle uçtan uca doğrulandı: token sözleşmesi çalışıyor,
 model yer tutucuları bozmadan koruyor, deadline doğru token'dan çözülüyor ve
 maskeli metinde sızıntı yok.
 
-### ⚠️ riskLevel rubric'i (D-031): hipotez DOĞRULANMADI
-Rubric'li/rubric'siz iki koşum **birebir aynı** sonucu verdi (8/8 vs 8/8,
-**0 vaka farkı**). Model rubric olmadan da doğru risk seviyesini üretiyordu.
-Rubric korundu (zarar yok, spesifikasyon boşluğunu kapatıyor) ama
-**iyileştirme olduğu KANITLANMADI** — eval setinde tavan etkisi var.
+### ⚠️ riskLevel rubric'i (D-031): İKİ KEZ ölçüldü, hipotez DOĞRULANMADI
+İlk ölçümde tavan etkisi vardı, bu yüzden rubric'in ayrımlarını sınamak için
+**6 sınır vakası** üretildi (09-14): "DRINGEND" tonlu ama rutin talep; sakin
+tonlu ama gömülü statü kaybı; Widerruf + itiraz süresi; son tarih olmayan
+tarih; icra tehdidi ama statü sağlam; "ausreisepflichtig" ama karar yok.
+
+| | rubric YOK | rubric VAR |
+|---|---|---|
+| sınır vakalar (n=6) | **6/6** | **6/6** |
+| tüm set (n=14) | 14/14 | 14/14 |
+| **farklı çıktı veren vaka** | — | **0** |
+| ortalama confidence (sınır) | 0.857 | 0.892 |
+
+**Model tuzakların hepsini rubric olmadan da doğru bildi**; ayrıca iki ayrı
+rubric'siz koşum arasında da 0 fark çıktı (davranış kararlı). Ölçülen tek etki,
+kendi bildirdiği confidence'ın hafif yükselmesi — bu bir doğruluk kazancı değil.
+
+**Karar:** Rubric korundu, ama "iyileştirme" olarak değil — model sürümü
+değiştiğinde beklenen ölçeği yazılı tutan bir **spesifikasyon** olarak.
+Kaldırılması da savunulabilir (~200 token/çağrı, ölçülen doğruluk kaybı yok);
+6 sınır fixture'ı her iki seçeneği de regresyona karşı koruyor.
 
 ### Ölçüm aracında bulunan hata (D-033)
 İlk koşumda `authority` 7/8 göründü; incelenince bunun bir MODEL hatası değil,

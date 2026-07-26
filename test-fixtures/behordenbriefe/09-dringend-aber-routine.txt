@@ -1,0 +1,34 @@
+=== SENTETİK TEST BELGESİ (siehe DECISIONS.md D-005) ===
+Bu belge BüKo projesi için üretilmiş KURGUSAL bir örnektir. İçindeki isim, adres,
+dosya/kimlik numaraları, telefon ve e-posta UYDURMADIR. Gerçek hiçbir kişi, kurum
+veya işlemle ilişkisi yoktur. SINIR VAKA (borderline) eval seti için üretilmiştir.
+==========================================================================
+
+Landeshauptstadt München
+Ausländerbehörde
+Ruppertstraße 19
+80337 München
+
+Herrn
+Tarek Bouazizi
+Implerstraße 44
+81371 München
+
+Aktenzeichen: ABH-M-2024-77120
+Datum: 05.06.2024
+
+Betreff: DRINGEND - Ergänzung Ihrer Antragsunterlagen
+
+Sehr geehrter Herr Bouazizi,
+
+BITTE UMGEHEND BEARBEITEN. Zu Ihrem laufenden Antrag fehlt uns noch eine
+Kopie Ihres aktuellen Mietvertrages. Bitte reichen Sie diese bis zum
+25.06.2024 nach.
+
+Ihr Antrag wird nach Eingang der Unterlage regulär weiterbearbeitet. Eine
+Entscheidung ergeht anschließend schriftlich.
+
+Für Rückfragen: 089 233-96010 oder abh.muenchen@example-behoerde.de
+
+Mit freundlichen Grüßen
+i. A. Petra Sommer

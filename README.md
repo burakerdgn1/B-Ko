@@ -152,7 +152,7 @@ Supabase/Postgres · Zod · Playwright · Jest
 
 ## Durum
 
-**473 test geçiyor** (37 suite) · TypeScript strict · gerçek API anahtarı olmadan
+**527 test geçiyor** (37 suite) · TypeScript strict · gerçek API anahtarı olmadan
 uçtan uca çalışır (mock modlar).
 
 | Faz | Durum |
@@ -179,7 +179,7 @@ uçtan uca çalışır (mock modlar).
 git clone <repo> && cd B-Ko
 npm install
 cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 473 test
+npm test                  # 527 test
 npm run start:dev
 ```
 
@@ -188,8 +188,8 @@ Dağıtım: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 
 ### Demo senaryosu
 
-`test-fixtures/behordenbriefe/` altında 8 sentetik Behördenbrief var (gerçek kişi
-verisi içermez). Örnek akış:
+`test-fixtures/behordenbriefe/` altında 14 sentetik Behördenbrief var (8 temel +
+6 sınır vakası; gerçek kişi verisi içermez). Örnek akış:
 
 ```
 Kullanıcı:  /start

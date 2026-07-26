@@ -24,7 +24,6 @@
     ],
     "notes": "Yüksek risk: somut son tarih (30.06.2024) + fristgerecht eksik belge tamamlanmazsa aufenthaltstitel'in erlöschen'i ve ausreisepflicht tehdidi açıkça yazılı. Faz-2 'yüksek risk' senaryosunun temsilcisi."
   },
-
   "02-termin-einladung": {
     "file": "02-termin-einladung.txt",
     "authority": "Ausländerbehörde München (Kreisverwaltungsreferat)",
@@ -50,7 +49,6 @@
     ],
     "notes": "Randevu daveti: 'son tarih' değil sabit tarih/saat/oda bilgisi içerir (14.08.2024, 09:30 Uhr, Zimmer 214). Getirilecek belge listesi var ama eksik-belge-talebi değil, randevuya getirilecek belgeler. deadlineToken burada randevu tarihine karşılık gelir (ReminderKind: 'appointment')."
   },
-
   "03-blaue-karte-eu": {
     "file": "03-blaue-karte-eu.txt",
     "authority": "Ausländerbehörde Frankfurt am Main",
@@ -74,7 +72,6 @@
     ],
     "notes": "§ 18g AufenthG'ye özgü maaş eşiği ve diploma denklik belgesi talebi. Orta risk: fristgerecht tamamlanmazsa gecikme var ama doğrudan red/ausreisepflicht tehdidi yok (04 numaralı mektupla kontrast için bilinçli tasarlandı)."
   },
-
   "04-ablehnung-widerspruchsfrist": {
     "file": "04-ablehnung-widerspruchsfrist.txt",
     "authority": "Ausländerbehörde Stuttgart",
@@ -93,7 +90,6 @@
     ],
     "notes": "KRİTİK senaryo: doğrudan RED kararı + Rechtsbehelfsbelehrung + 1 aylık Widerspruchsfrist (Zustellungsfiktion 06.05.2024 üzerinden hesaplanmış son tarih 06.06.2024) + 'vollziehbar ausreisepflichtig' ifadesi. missingDocuments boş çünkü bu bir eksik-belge talebi değil, bir hukuki itiraz süresi senaryosu."
   },
-
   "05-verpflichtungserklaerung-familiennachzug": {
     "file": "05-verpflichtungserklaerung-familiennachzug.txt",
     "authority": "Ausländerbehörde Hamburg",
@@ -117,7 +113,6 @@
     ],
     "notes": "Aile birleşimi (Familiennachzug) senaryosu; Verpflichtungserklärung § 68 AufenthG özel belge türü. INSURANCE (Versichertennummer) tipi testleri için tasarlandı."
   },
-
   "06-buergeramt-anmeldung": {
     "file": "06-buergeramt-anmeldung.txt",
     "authority": "Bürgeramt Berlin-Mitte",
@@ -137,7 +132,6 @@
     ],
     "notes": "Ausländerbehörde dışı bir kurum (Bürgeramt) senaryosu; düşük risk, tarih 'möglichst' ifadesiyle yumuşak/gayri resmi, doğrudan hukuki sonuç yok. Aktenzeichen etiketi burada 'Vorgangsnummer' olarak geçiyor (regex Vorgangsnummer'ı da yakalar)."
   },
-
   "07-informationsschreiben": {
     "file": "07-informationsschreiben.txt",
     "authority": "Ausländerbehörde Köln",
@@ -155,7 +149,6 @@
     ],
     "notes": "Saf bilgilendirme mektubu: 'keine Handlung Ihrerseits erforderlich' açıkça belirtilir, son tarih YOK, eksik belge YOK. Deadline/aksiyon gerektirmeyen düşük risk senaryosunun temsilcisi (deadlineToken beklentisi: null)."
   },
-
   "08-gebuehrenbescheid": {
     "file": "08-gebuehrenbescheid.txt",
     "authority": "Ausländerbehörde Düsseldorf",
@@ -174,5 +167,119 @@
       "EMAIL"
     ],
     "notes": "Harç/ücret tahakkuku senaryosu: IBAN (kurumun tahsilat hesabı, mod-97 geçerli sentetik) + ödeme son tarihi (20.06.2024) + gecikme faizi/Mahngebühr riski. missingDocuments boş çünkü bu bir belge talebi değil ödeme talebi."
+  },
+  "09-dringend-aber-routine": {
+    "file": "09-dringend-aber-routine.txt",
+    "authority": "Ausländerbehörde München",
+    "requestType": "Unterlagennachforderung",
+    "expectedDeadline": "2024-06-25",
+    "expectedRiskLevel": "medium",
+    "category": "borderline",
+    "boundary": "medium-vs-high",
+    "naiveExpectation": "high",
+    "rationale": "DRINGEND/BÜYÜK HARF tonu yüksek risk izlenimi verir, ancak içerik rutin bir belge talebidir ve hiçbir statü kaybı belirtilmemiştir. Rubric: medium.",
+    "expectedPiiTypes": [
+      "ADDRESS",
+      "AKTENZEICHEN",
+      "DATE",
+      "EMAIL",
+      "NAME",
+      "PHONE"
+    ],
+    "expectedMissingDocuments": []
+  },
+  "10-ruhiger-ton-statusverlust": {
+    "file": "10-ruhiger-ton-statusverlust.txt",
+    "authority": "Ausländerbehörde Hamburg",
+    "requestType": "Unterlagennachforderung",
+    "expectedDeadline": "2024-06-28",
+    "expectedRiskLevel": "high",
+    "category": "borderline",
+    "boundary": "high-vs-medium",
+    "naiveExpectation": "medium",
+    "rationale": "Ton sakin ve rutin (\"turnusmäßige Überprüfung\"), ama gömülü cümle açıkça statü kaybı diyor: \"entfällt die Grundlage ... und diese erlischt\". Rubric: high.",
+    "expectedPiiTypes": [
+      "ADDRESS",
+      "AKTENZEICHEN",
+      "DATE",
+      "NAME",
+      "PHONE"
+    ],
+    "expectedMissingDocuments": []
+  },
+  "11-widerruf-mit-widerspruchsfrist": {
+    "file": "11-widerruf-mit-widerspruchsfrist.txt",
+    "authority": "Ausländerbehörde Köln",
+    "requestType": "Widerruf",
+    "expectedDeadline": "2024-07-02",
+    "expectedRiskLevel": "critical",
+    "category": "borderline",
+    "boundary": "critical-vs-high",
+    "naiveExpectation": "high",
+    "rationale": "Karar ALINMIŞ (Widerruf) ve hak düşürücü Widerspruchsfrist işliyor. Rubric: critical (yalnızca tehdit değil, gerçekleşmiş karar + itiraz süresi).",
+    "expectedPiiTypes": [
+      "ADDRESS",
+      "AKTENZEICHEN",
+      "DATE",
+      "NAME"
+    ],
+    "expectedMissingDocuments": []
+  },
+  "12-datum-aber-keine-frist": {
+    "file": "12-datum-aber-keine-frist.txt",
+    "authority": "Bürgeramt Frankfurt am Main",
+    "requestType": "Information",
+    "expectedDeadline": null,
+    "expectedRiskLevel": "low",
+    "category": "borderline",
+    "boundary": "low-vs-medium",
+    "naiveExpectation": "medium",
+    "rationale": "Metinde tarihler var ama hiçbiri SON TARİH değil (geçerlilik tarihi). Açıkça \"Ein weiteres Tätigwerden ... nicht erforderlich\". Rubric: low; deadlineToken null olmalı.",
+    "expectedPiiTypes": [
+      "ADDRESS",
+      "AKTENZEICHEN",
+      "DATE",
+      "NAME",
+      "PHONE"
+    ],
+    "expectedMissingDocuments": []
+  },
+  "13-mahnung-vollstreckung": {
+    "file": "13-mahnung-vollstreckung.txt",
+    "authority": "Ausländerbehörde Düsseldorf",
+    "requestType": "Mahnung",
+    "expectedDeadline": "2024-06-24",
+    "expectedRiskLevel": "medium",
+    "category": "borderline",
+    "boundary": "medium-vs-critical",
+    "naiveExpectation": "high",
+    "rationale": "MAHNUNG + Zwangsvollstreckung tehdidi korkutucu görünür, ama parasal bir icra sürecidir ve mektup açıkça \"Ihr Aufenthaltstitel bleibt unberührt\" diyor. Rubric: medium (statü kaybı yok).",
+    "expectedPiiTypes": [
+      "ADDRESS",
+      "AKTENZEICHEN",
+      "DATE",
+      "IBAN",
+      "NAME"
+    ],
+    "expectedMissingDocuments": []
+  },
+  "14-verlaengerung-ausreisepflicht": {
+    "file": "14-verlaengerung-ausreisepflicht.txt",
+    "authority": "Ausländerbehörde Stuttgart",
+    "requestType": "Unterlagennachforderung",
+    "expectedDeadline": "2024-06-26",
+    "expectedRiskLevel": "high",
+    "category": "borderline",
+    "boundary": "high-vs-critical",
+    "naiveExpectation": "critical",
+    "rationale": "\"ausreisepflichtig\" kelimesi kritik izlenimi verir, ama HENÜZ KARAR YOK (\"Eine Entscheidung ist bislang nicht ergangen\") ve itiraz süresi işlemiyor — bu bir KOŞULLU tehdit. Rubric: high.",
+    "expectedPiiTypes": [
+      "ADDRESS",
+      "AKTENZEICHEN",
+      "DATE",
+      "NAME",
+      "PHONE"
+    ],
+    "expectedMissingDocuments": []
   }
 }

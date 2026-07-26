@@ -39,6 +39,11 @@ interface ExpectedEntry {
   expectedDeadline?: string | null;
   expectedRiskLevel: string;
   expectedMissingDocuments?: string[];
+  /** 'borderline' = rubric'i sınamak için üretilmiş zor vaka. */
+  category?: string;
+  /** Rubric OLMADAN naif bir okumanın vereceği tahmin (karşılaştırma için). */
+  naiveExpectation?: string;
+  boundary?: string;
 }
 
 interface FieldScore {
@@ -49,6 +54,9 @@ interface FieldScore {
 
 interface CaseResult {
   key: string;
+  category: string;
+  boundary?: string;
+  naiveExpectation?: string;
   authority: { expected: string; got: string | null; ok: boolean };
   requestType: { expected?: string; got: string | null };
   deadline: { expected: string | null; got: string | null; ok: boolean };
@@ -128,6 +136,9 @@ async function main(): Promise<void> {
 
       results.push({
         key,
+        category: entry.category ?? 'baseline',
+        boundary: entry.boundary,
+        naiveExpectation: entry.naiveExpectation,
         authority: {
           expected: entry.authority,
           got: r.authority,
@@ -180,13 +191,45 @@ function looselyMatches(got: string, want: string): boolean {
 }
 
 function report(results: CaseResult[], total: number): void {
+  reportSubset('TÜM VAKALAR', results);
+
+  const borderline = results.filter((r) => r.category === 'borderline');
+  const baseline = results.filter((r) => r.category !== 'borderline');
+  if (borderline.length > 0) {
+    reportSubset('temel vakalar', baseline);
+    reportSubset('SINIR VAKALAR (rubric testi)', borderline);
+
+    console.log('\n── Sınır vakalarda riskLevel detayı ──');
+    console.log(
+      '  ' +
+        'vaka'.padEnd(38) +
+        'sınır'.padEnd(18) +
+        'naif'.padEnd(10) +
+        'model'.padEnd(10) +
+        'doğru',
+    );
+    for (const r of borderline) {
+      const mark = r.riskLevel.ok ? '✓' : '✗';
+      const naiveTrap = r.riskLevel.got === r.naiveExpectation ? ' ⚠naif' : '';
+      console.log(
+        `  ${mark} ${r.key.padEnd(36)}${(r.boundary ?? '').padEnd(18)}` +
+          `${(r.naiveExpectation ?? '').padEnd(10)}${String(r.riskLevel.got).padEnd(10)}` +
+          `${r.riskLevel.expected}${naiveTrap}`,
+      );
+    }
+  }
+}
+
+function reportSubset(title: string, results: CaseResult[]): void {
+  if (results.length === 0) return;
+  const total = results.length;
   const scores: FieldScore[] = [
     { field: 'authority', correct: results.filter((r) => r.authority.ok).length, total },
     { field: 'deadline', correct: results.filter((r) => r.deadline.ok).length, total },
     { field: 'riskLevel', correct: results.filter((r) => r.riskLevel.ok).length, total },
   ];
 
-  console.log('\n\n═══════════ PROMPT DEĞERLENDİRME RAPORU ═══════════\n');
+  console.log(`\n── ${title} (n=${total}) ──`);
 
   for (const s of scores) {
     const pct = total > 0 ? Math.round((s.correct / total) * 100) : 0;
@@ -206,21 +249,6 @@ function report(results: CaseResult[], total: number): void {
     `\n  🔒 PII sızıntısı: ${leaks.length === 0 ? 'YOK ✅' : `${leaks.length} vakada VAR ❌`}`,
   );
 
-  console.log('\n── Vaka bazında ──');
-  for (const r of results) {
-    const mark = (ok: boolean) => (ok ? '✓' : '✗');
-    console.log(
-      `  ${mark(r.authority.ok)} auth  ${mark(r.deadline.ok)} deadline  ` +
-        `${mark(r.riskLevel.ok)} risk   ${r.key}`,
-    );
-    if (!r.deadline.ok) {
-      console.log(`      beklenen: ${r.deadline.expected} · gelen: ${r.deadline.got}`);
-    }
-    if (!r.riskLevel.ok) {
-      console.log(`      beklenen: ${r.riskLevel.expected} · gelen: ${r.riskLevel.got}`);
-    }
-  }
-  console.log('\n═══════════════════════════════════════════════════\n');
 }
 
 void main();

@@ -1,0 +1,37 @@
+=== SENTETİK TEST BELGESİ (siehe DECISIONS.md D-005) ===
+Bu belge BüKo projesi için üretilmiş KURGUSAL bir örnektir. İçindeki isim, adres,
+dosya/kimlik numaraları, telefon ve e-posta UYDURMADIR. Gerçek hiçbir kişi, kurum
+veya işlemle ilişkisi yoktur. SINIR VAKA (borderline) eval seti için üretilmiştir.
+==========================================================================
+
+Ausländerbehörde Düsseldorf
+Willi-Becker-Allee 7
+40227 Düsseldorf
+
+Herrn
+Nikolai Petrov
+Friedrichstraße 62
+40217 Düsseldorf
+
+Aktenzeichen: ABH-D-2024-88401
+Datum: 08.06.2024
+
+Betreff: MAHNUNG - Gebührenbescheid vom 20.04.2024
+
+Sehr geehrter Herr Petrov,
+
+trotz Fälligkeit ist die festgesetzte Gebühr in Höhe von 100,00 EUR bislang
+nicht bei uns eingegangen.
+
+Wir fordern Sie letztmalig auf, den Betrag bis zum 24.06.2024 zu begleichen.
+Nach fruchtlosem Fristablauf wird die Forderung ohne weitere Ankündigung im
+Wege der Zwangsvollstreckung beigetrieben.
+
+  Empfänger: Stadtkasse Düsseldorf
+  IBAN: DE02 3704 0044 0532 0131 11
+  Verwendungszweck: ABH-D-2024-88401
+
+Ihr Aufenthaltstitel bleibt von diesem Vorgang unberührt.
+
+Mit freundlichen Grüßen
+i. A. Thomas Wagner

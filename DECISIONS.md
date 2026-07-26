@@ -431,9 +431,46 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   spesifikasyon boşluğunu kapatıyor ve fixture setinde bulunmayan gerçek
   dünya mektupları için belirsizliği azaltması beklenir. Ancak bu bir
   **beklenti**, kanıt değil — bu şekilde işaretlendi.
-- **Sıradaki iş:** Ayırt edici gücü olan sınır vakaları eval setine ekle
-  (ör. statü kaybı ima eden ama açıkça söylemeyen mektup), sonra rubric'i
-  tekrar ölç.
+- **İKİNCİ ÖLÇÜM (2026-07-26) — sınır vakalarla, hipotez YİNE doğrulanmadı:**
+  Eval setine rubric'in ayrımlarını sınamak için özel olarak tasarlanmış
+  **6 sınır vakası** eklendi (toplam 14). Her biri, naif bir okumanın YANLIŞ
+  cevap vereceği bir tuzak içeriyor:
+
+  | fixture | sınır | tuzak | doğru |
+  |---|---|---|---|
+  | 09 | medium↔high | "DRINGEND" tonu, ama rutin talep | medium |
+  | 10 | high↔medium | sakin ton, gömülü "erlischt" | high |
+  | 11 | critical↔high | Widerruf + Widerspruchsfrist | critical |
+  | 12 | low↔medium | tarih var ama son tarih DEĞİL | low |
+  | 13 | medium↔critical | Zwangsvollstreckung tehdidi, statü sağlam | medium |
+  | 14 | high↔critical | "ausreisepflichtig" ama karar YOK | high |
+
+  Sonuç:
+
+  | | rubric YOK | rubric VAR |
+  |---|---|---|
+  | sınır vakalar riskLevel | **6/6** | **6/6** |
+  | tüm set (n=14) | 14/14 | 14/14 |
+  | farklı çıktı veren vaka | — | **0** |
+  | ortalama confidence (sınır) | 0.857 | 0.892 |
+
+  **Model, tuzakların HEPSİNİ rubric olmadan da doğru bildi.** Ayrıca iki
+  ayrı rubric'siz koşum arasında da 0 fark çıktı — yani davranış kararlı,
+  rubric tutarlılık için de gerekmiyor.
+- **Neden böyle:** Ground truth zaten rubric'ten türetilmişti ve model rubric'i
+  GÖRMEDEN aynı sonuca vardı. Yani rubric, modelin mevcut önyargısını (prior)
+  yeniden yazmıyor — onu **kodluyor**. Yeni bilgi eklemiyor.
+- **Ölçülen tek etki:** Kendi bildirdiği confidence hafif yükseliyor
+  (sınır vakalarda 0.857 → 0.892). Bu bir DOĞRULUK kazancı değildir.
+- **NİHAİ KARAR:** Rubric KORUNDU — ancak "iyileştirme" olarak değil,
+  **niyeti belgeleyen bir spesifikasyon** olarak. Gerekçe: model sürümü
+  değiştiğinde davranış kayabilir; rubric o zaman beklenen ölçeği yazılı
+  tutar ve 6 sınır fixture'ı regresyonu yakalar.
+  **Kaldırılması da savunulabilir** (~200 token/çağrı tasarruf, ölçülen
+  doğruluk kaybı YOK) — fixture'lar her iki seçeneği de koruyor.
+- **Metodolojik uyarı:** Ground truth'u rubric'ten türetip sonra rubric'i
+  test etmek dairesel bir riske sahiptir. Burada bu risk sonucu ZAYIFLATMIYOR,
+  çünkü bulgu "rubric işe yarıyor" değil, "rubric gereksiz" yönünde çıktı.
 
 ## D-032 — Testler `.env` dosyasından İZOLE edilmeli (hermetik koşum)
 - **Bağlam:** Gerçek API anahtarı `.env`'e eklenince (`LLM_MOCK=false`)

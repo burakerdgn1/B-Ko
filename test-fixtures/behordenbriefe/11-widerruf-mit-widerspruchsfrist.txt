@@ -1,0 +1,33 @@
+=== SENTETİK TEST BELGESİ (siehe DECISIONS.md D-005) ===
+Bu belge BüKo projesi için üretilmiş KURGUSAL bir örnektir. İçindeki isim, adres,
+dosya/kimlik numaraları, telefon ve e-posta UYDURMADIR. Gerçek hiçbir kişi, kurum
+veya işlemle ilişkisi yoktur. SINIR VAKA (borderline) eval seti için üretilmiştir.
+==========================================================================
+
+Ausländerbehörde Köln
+Ottmar-Pohl-Platz 1
+51103 Köln
+
+Herrn
+Ibrahim Sissoko
+Neusser Straße 88
+50670 Köln
+
+Aktenzeichen: ABH-K-2024-11908
+Datum: 01.06.2024
+
+Betreff: Widerruf der Aufenthaltserlaubnis
+
+Sehr geehrter Herr Sissoko,
+
+hiermit widerrufen wir Ihre am 12.03.2022 erteilte Aufenthaltserlaubnis
+mit Wirkung zum 01.08.2024.
+
+Gegen diesen Bescheid können Sie innerhalb eines Monats nach Bekanntgabe
+Widerspruch erheben. Die Widerspruchsfrist endet am 02.07.2024.
+
+Rechtsbehelfsbelehrung: Der Widerspruch ist schriftlich oder zur
+Niederschrift bei der oben genannten Behörde einzulegen.
+
+Mit freundlichen Grüßen
+gez. Brigitte Lehmann
