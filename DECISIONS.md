@@ -462,12 +462,28 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   yeniden yazmıyor — onu **kodluyor**. Yeni bilgi eklemiyor.
 - **Ölçülen tek etki:** Kendi bildirdiği confidence hafif yükseliyor
   (sınır vakalarda 0.857 → 0.892). Bu bir DOĞRULUK kazancı değildir.
-- **NİHAİ KARAR:** Rubric KORUNDU — ancak "iyileştirme" olarak değil,
-  **niyeti belgeleyen bir spesifikasyon** olarak. Gerekçe: model sürümü
-  değiştiğinde davranış kayabilir; rubric o zaman beklenen ölçeği yazılı
-  tutar ve 6 sınır fixture'ı regresyonu yakalar.
-  **Kaldırılması da savunulabilir** (~200 token/çağrı tasarruf, ölçülen
-  doğruluk kaybı YOK) — fixture'lar her iki seçeneği de koruyor.
+- **NİHAİ KARAR (kullanıcı kararı): Rubric KALDIRILDI.**
+  İki bağımsız ölçüm, 6'sı özel olarak tuzak amaçlı 14 vakada rubric'in
+  doğruluğa **hiçbir** etkisi olmadığını gösterdi. Ölçülen faydası olmayan
+  bir metni her analiz çağrısında taşımak gereksiz maliyettir.
+
+  | | değer |
+  |---|---|
+  | sistem promptu (rubric'li) | 3960 karakter (~990 token) |
+  | sistem promptu (rubric'siz) | 2891 karakter (~723 token) |
+  | **tasarruf** | **~267 token/çağrı (sistem promptunun %27'si)** |
+
+  Bu yapılandırma (rubric'siz) zaten **iki kez** ölçüldü: 14/14 doğruluk,
+  koşumlar arası 0 fark. Kaldırma sonrası prompt, ölçülen sürümle
+  bayt-eşdeğerdir (diff ile doğrulandı) — bu yüzden gereksiz bir doğrulama
+  koşumu yapılmadı.
+- **Riski ne koruyor:** 6 sınır fixture'ı (09-14) repoda kalıcı. Model sürümü
+  değişip risk ölçeği kayarsa `npm run eval:prompts` bunu yakalar; o noktada
+  rubric geri eklenip ölçülebilir. Yani karar geri alınabilir ve korumalı.
+- **Ders:** Bir prompt eklemesi "mantıklı göründüğü" için tutulmaz. Ölçüm
+  yoksa fayda da yoktur; ölçüm varsa ve fayda çıkmıyorsa, doğru hamle
+  eklemeyi geri almaktır. Bu projede prompt'a eklenen tek şey ölçülmüştü ve
+  ölçüm onu geri aldırdı.
 - **Metodolojik uyarı:** Ground truth'u rubric'ten türetip sonra rubric'i
   test etmek dairesel bir riske sahiptir. Burada bu risk sonucu ZAYIFLATMIYOR,
   çünkü bulgu "rubric işe yarıyor" değil, "rubric gereksiz" yönünde çıktı.

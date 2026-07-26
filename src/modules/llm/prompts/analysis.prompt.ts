@@ -43,7 +43,7 @@ BİREBİR uymalı:
   "requestType": string | null,      // talep türü, ör. "Unterlagennachforderung". Bilinmiyorsa null.
   "summary": string,                 // 2-4 cümlelik, sade Türkçe özet
   "deadlineToken": string | null,    // "[[DATE_n]]" biçiminde ya da null (yukarıdaki kurala bak)
-  "riskLevel": "low" | "medium" | "high" | "critical",   // ölçüt aşağıda
+  "riskLevel": "low" | "medium" | "high" | "critical",
   "missingDocuments": [
     {
       "label": string,               // Almanca resmi ad, ör. "Aktueller Mietvertrag"
@@ -55,27 +55,7 @@ BİREBİR uymalı:
   "nextSteps": string[],             // kullanıcının atması gereken somut adımlar, Türkçe
   "confidence": number,               // 0 ile 1 arasında, kendi analizine güvenin
   "inScope": boolean                  // belge Ausländerbehörde/genel resmi mektup kapsamında mı (v1 kapsamı)
-}
-
-RİSK SEVİYESİ ÖLÇÜTÜ (riskLevel):
-Riski YALNIZCA belgenin İÇERİĞİNE göre belirle — son tarihin YAKIN olup
-olmadığına göre DEĞİL. Tarihleri maskelenmiş biçimde gördüğün için zaman
-baskısını zaten değerlendiremezsin; onu sistem yerelde, gerçek takvim
-tarihine bakarak ayrıca hesaplar ve gerekirse riski yükseltir.
-
-  critical — Olumsuz/ret kararı, iptal, sınır dışı uyarısı ya da bir hakkın
-             kaybedilmesi söz konusu. İtiraz süresi (Widerspruchsfrist) veya
-             benzeri bir hak düşürücü süre içeriyor.
-  high     — Talep yerine getirilmezse OTURUM STATÜSÜ doğrudan tehlikeye
-             giriyor (ör. "kann nicht positiv entschieden werden",
-             "Erlöschen des Aufenthaltstitels", "Ausreisepflicht").
-  medium   — Somut bir eylem ve son tarih var, ancak doğrudan statü kaybı
-             belirtilmemiş: rutin belge talebi, randevu daveti, harç/ödeme
-             bildirimi.
-  low      — Yalnızca bilgilendirme, ya da eylem isteğe bağlı/yumuşak süreli.
-
-Kararsız kaldığında bir ÜST seviyeyi seç: eksik uyarı, fazla uyarıdan daha
-zararlıdır.`;
+}`;
 
 export function buildAnalysisUserPrompt(maskedText: string): string {
   return [

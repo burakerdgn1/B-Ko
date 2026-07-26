@@ -117,10 +117,15 @@ tarih; icra tehdidi ama statü sağlam; "ausreisepflichtig" ama karar yok.
 rubric'siz koşum arasında da 0 fark çıktı (davranış kararlı). Ölçülen tek etki,
 kendi bildirdiği confidence'ın hafif yükselmesi — bu bir doğruluk kazancı değil.
 
-**Karar:** Rubric korundu, ama "iyileştirme" olarak değil — model sürümü
-değiştiğinde beklenen ölçeği yazılı tutan bir **spesifikasyon** olarak.
-Kaldırılması da savunulabilir (~200 token/çağrı, ölçülen doğruluk kaybı yok);
-6 sınır fixture'ı her iki seçeneği de regresyona karşı koruyor.
+**KARAR: Rubric KALDIRILDI.** Ölçülen faydası olmayan bir metni her çağrıda
+taşımak gereksiz maliyet. Sistem promptu 990 → 723 token
+(**~267 token/çağrı, %27 tasarruf**). Bu yapılandırma zaten iki kez ölçülmüştü
+(14/14, koşumlar arası 0 fark) ve kaldırma sonrası prompt ölçülen sürümle
+bayt-eşdeğer — gereksiz doğrulama koşumu yapılmadı.
+
+6 sınır fixture'ı (09-14) repoda KALICI: model sürümü değişip risk ölçeği
+kayarsa `npm run eval:prompts` yakalar ve rubric ölçülerek geri eklenebilir.
+Karar geri alınabilir ve testlerle korumalı.
 
 ### Ölçüm aracında bulunan hata (D-033)
 İlk koşumda `authority` 7/8 göründü; incelenince bunun bir MODEL hatası değil,
