@@ -139,6 +139,18 @@ Ayrıca cascade silme (GDPR) gerçek DB'de doğrulandı.
 ATLANIR. `.env`'de `DB_DRIVER=supabase` olmasına rağmen normal koşum hâlâ
 hermetik: `527 passed, 16 skipped, 6s` — gerçek DB'ye çıkılmıyor (D-032).
 
+## 🔑 Anahtar durumu (2026-07-26 sonu)
+| Anahtar | Durum |
+|---|---|
+| Supabase legacy `service_role` JWT | ✅ İPTAL (401 ile doğrulandı) |
+| Supabase `sb_secret_...` | 🟢 Aktif — 16/16 entegrasyon testi geçiyor |
+| Supabase `sb_publishable_...` | 🟢 Aktif (yeni biçim, legacy iptalinden etkilenmedi) |
+| `ANTHROPIC_API_KEY` | ✅ İPTAL (401 ile doğrulandı) → `LLM_MOCK=true` |
+
+Anthropic anahtarı iptal edildiği için `.env` temizlendi ve mock moda dönüldü;
+uygulama sorunsuz açılıyor. **Aşağıdaki ölçüm sonuçları anahtar aktifken
+alınmıştır ve geçerliliğini korur** — ancak yeni ölçüm için yeni anahtar gerekir.
+
 ## 📊 Gerçek API ölçümü (2026-07-26, `claude-sonnet-5`)
 `npm run eval:prompts` — **14 sentetik Behördenbrief** (8 temel + 6 sınır vakası),
 GERÇEK Claude çağrıları:

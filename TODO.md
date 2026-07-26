@@ -102,7 +102,11 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       yeni `sb_secret_...` çalışıyor, 16/16 entegrasyon testi geçiyor.
       Yan etki: legacy **anon** anahtarı da kapandı; `.env`'deki publishable
       anahtar yeni biçim olduğu için etkilenmedi (HTTP 200 ile doğrulandı).
-- [!] **`ANTHROPIC_API_KEY` rotasyonu** — hâlâ bekliyor. Sohbet geçmişinde
-      görünüyor ve muhtemelen aktif. console.anthropic.com → API Keys → Revoke.
+- [x] ~~`ANTHROPIC_API_KEY` rotasyonu~~ — **2026-07-26'da İPTAL EDİLDİ.**
+      Doğrulandı: `HTTP 401 "API key is invalid."` (`/v1/models` ile, token
+      harcamadan). `.env` temizlendi ve `LLM_MOCK=true` yapıldı; uygulama
+      anahtarsız çalışmaya devam ediyor.
+      ⚠️ Sonuç: `npm run eval:prompts` artık çalışmaz (gerçek anahtar ister).
+      Prompt ölçümü yapılacaksa yeni bir anahtar gerekir.
 - [ ] Mevcut `sb_secret_...` anahtarı da gerçek kullanıcı verisiyle çalışmaya
       başlamadan önce döndürülmeli (o da transkriptte).
