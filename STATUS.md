@@ -108,9 +108,30 @@ HİÇ çalıştırılmamıştı. Doğrulananlar:
 
 Test verisi sentetikti ve koşum sonunda silindi (cascade).
 
-⚠️ **`.env`'de `DB_DRIVER` hâlâ `memory`.** Duman testi sürücüyü geçici olarak
-`supabase`'e alarak koştu. Kalıcı geçiş için `.env`'de değiştirin — testler
-bundan etkilenmez (D-032: testler `.env`'den izole).
+**`DB_DRIVER=supabase` YAPILDI** ve gerçek veritabanına karşı **tekrarlanabilir
+entegrasyon testi** yazıldı: `npm run test:supabase` → **16/16 geçti**
+(`src/modules/persistence/supabase/supabase.integration.spec.ts`).
+
+Kullanıcının özellikle istediği üç alan, gerçek Postgres'te kanıtlandı:
+
+1. **Mapper'lar** — `snake_case↔camelCase`; `timestamptz`/`date` → gerçek `Date`
+   (string değil); `jsonb` (iç içe nesne/dizi) yapısını koruyor;
+   **`numeric(3,2)` → `number`** (PostgREST bunu string döndürebilirdi — test
+   `typeof === 'number'` doğruluyor); enum'lar (`document_status`, `risk_level`,
+   `draft_status`, `reminder_kind`). Değerler create dönüşünde DEĞİL, ayrıca
+   yeniden `SELECT` ile de doğrulandı.
+2. **`profile_completed_at`** (0002) — yazılıyor, `Date` olarak dönüyor,
+   null bırakılabiliyor; yeniden okumayla teyit edildi.
+3. **Onay kapısı trigger'ı** — 7 senaryo: onaysız `sent` ❌ · aynı çağrıda
+   `approvedAt` bypass ❌ (D-014) · `pending_approval`→`sent` ❌ ·
+   doğrudan `sent` INSERT ❌ (D-022) · reddedilmiş taslak ❌ ·
+   `approved`→`sent` ✅ · `approvedAt`/`rejectedAt` trigger tarafından dolduruluyor.
+
+Ayrıca cascade silme (GDPR) gerçek DB'de doğrulandı.
+
+**Test izolasyonu korundu:** entegrasyon testi `RUN_SUPABASE_TESTS=1` olmadan
+ATLANIR. `.env`'de `DB_DRIVER=supabase` olmasına rağmen normal koşum hâlâ
+hermetik: `527 passed, 16 skipped, 6s` — gerçek DB'ye çıkılmıyor (D-032).
 
 ## 📊 Gerçek API ölçümü (2026-07-26, `claude-sonnet-5`)
 `npm run eval:prompts` — **14 sentetik Behördenbrief** (8 temel + 6 sınır vakası),

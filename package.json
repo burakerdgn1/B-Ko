@@ -17,7 +17,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "eval:prompts": "ts-node -T scripts/prompt-eval.ts",
     "check:supabase": "ts-node -T scripts/check-supabase.ts",
-    "smoke:supabase": "ts-node -T scripts/smoke-supabase.ts"
+    "smoke:supabase": "ts-node -T scripts/smoke-supabase.ts",
+    "test:supabase": "RUN_SUPABASE_TESTS=1 jest supabase.integration --testTimeout=30000"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
