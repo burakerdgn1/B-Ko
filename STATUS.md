@@ -81,37 +81,36 @@ Kalıcı test bu sınırı sabitliyor, böylece sessizce kaymaz.
 3. Gerçek Behördenbrief örnekleriyle (anonimleştirilmiş) doğrulama
 4. WhatsApp adapter (v2)
 
-## 🔌 Supabase bağlantı denetimi (2026-07-26) — ⛔ ŞEMA HENÜZ UYGULANMADI
+## ✅ Supabase CANLI — şema uygulandı, sürücü gerçek DB'de doğrulandı (2026-07-26)
 
-`npm run check:supabase` ile canlı denetim yapıldı:
+**Bağlantı denetimi** (`npm run check:supabase`):
 
 | Kontrol | Sonuç |
 |---|---|
-| Proje erişilebilirliği (`/auth/v1/health`) | ✅ **AYAKTA** (GoTrue v2.193.1) |
-| Anahtar kimlik doğrulaması | ✅ Kabul ediliyor |
-| Anahtar türü | ⚠️ **publishable/anon** — backend için yetersiz |
-| Şema (8 tablo) | ❌ **0/8 mevcut** — migration uygulanmamış |
-| Backend `DB_DRIVER=supabase` ile çalışır mı | ❌ **HAYIR** |
+| Proje erişilebilirliği | ✅ AYAKTA (GoTrue v2.193.1) |
+| Anahtar türü | ✅ SECRET (service_role) |
+| Şema | ✅ **8/8 tablo** |
+| Backend `DB_DRIVER=supabase` | ✅ **ÇALIŞABİLİR** |
 
-**Yapılanlar:** `SUPABASE_URL` ve publishable anahtar `.env`'e işlendi
-(anahtar, türüne uygun şekilde `SUPABASE_ANON_KEY` alanına — `SERVICE_ROLE`
-alanına DEĞİL; yanlış etiketleme sessiz bir güvenlik yanılgısı yaratırdı).
-`DB_DRIVER=memory` olarak BIRAKILDI; aksi hâlde uygulama açılışta çalışmazdı.
+**Duman testi** (`npm run smoke:supabase`) — **16/16 geçti.**
+Bu önemliydi: 527 birim/entegrasyon testinin tamamı `memory` sürücüsüyle koşuyor;
+Supabase repository'leri, mapper'lar ve DB trigger'ları gerçek Postgres'te
+HİÇ çalıştırılmamıştı. Doğrulananlar:
 
-**Neden migration uygulanamadı (gerçek engel):** DDL (`CREATE TABLE`) doğrudan
-Postgres bağlantısı gerektirir. Publishable anahtarla PostgREST üzerinden SQL
-çalıştırılamaz — bunun bir API'si yoktur. Gereken: ya SQL Editor'dan yapıştırma,
-ya da `DATABASE_URL` (veritabanı şifresi).
+- CRUD + `findByChannel`, cascade silme (user → documents)
+- Mapper'lar: snake_case↔camelCase, `timestamptz`→`Date`, `date`→`Date`
+- Enum eşlemeleri (`document_status`, `risk_level`, `draft_status`), `jsonb`, `numeric`
+- `0002` migration: `profile_completed_at` yazılabiliyor
+- `pii_vault`: yalnızca ciphertext yazımı
+- **ONAY KAPISI trigger'ı GERÇEK DB'de ilk kez çalıştı** ve üç varyantı da reddetti:
+  onaysız `sent`, aynı çağrıda `approvedAt` ile bypass (D-014), doğrudan
+  `sent` olarak INSERT (D-022). Onay sonrası `sent` başarılı.
 
-**Neden anon anahtar yetmez:** `0001_init.sql` tüm tablolarda RLS'i etkinleştirip
-**sıfır politika** tanımlıyor (bilinçli tasarım — backend `service_role` ile
-bağlanır). Anon anahtarla şema uygulansa bile her sorgu reddedilirdi.
+Test verisi sentetikti ve koşum sonunda silindi (cascade).
 
-**Kilidi açmak için 2 adım** → `MANUAL_ACTIONS_REQUIRED.md` §3
-(SQL Editor'dan iki migration + `service_role` anahtarı).
-⚠️ `service_role` anahtarı tam yetkilidir — sohbete yapıştırılmamalı, doğrudan
-`.env`'e yazılmalı. (Paylaşılan publishable anahtar zaten herkese açık
-olacak şekilde tasarlıdır; onun paylaşılması risk değildir.)
+⚠️ **`.env`'de `DB_DRIVER` hâlâ `memory`.** Duman testi sürücüyü geçici olarak
+`supabase`'e alarak koştu. Kalıcı geçiş için `.env`'de değiştirin — testler
+bundan etkilenmez (D-032: testler `.env`'den izole).
 
 ## 📊 Gerçek API ölçümü (2026-07-26, `claude-sonnet-5`)
 `npm run eval:prompts` — **14 sentetik Behördenbrief** (8 temel + 6 sınır vakası),

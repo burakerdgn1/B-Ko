@@ -32,48 +32,18 @@
 - **DİKKAT:** Sır tanımlı değilse endpoint **tüm istekleri 401 ile reddeder**
   (fail-closed). Bu bilinçlidir — sırsız bir webhook açık kapıdır.
 
-## 3. Supabase — şema uygulanmalı + GİZLİ anahtar gerekli  ⛔ AKTİF ENGEL
-**Durum (2026-07-26 denetimi — `npm run check:supabase`):**
-- ✓ Proje AYAKTA: `https://gvvsuelxvwdjlobaqmgq.supabase.co`
-- ✗ Şema UYGULANMAMIŞ — 8 tablonun hiçbiri yok
-- ⚠ Eldeki anahtar **publishable/anon** (`sb_publishable_...`) → backend için YETERSİZ
+## 3. Supabase — ✅ TAMAMLANDI (2026-07-26)
+- ✓ Proje ayakta: `https://gvvsuelxvwdjlobaqmgq.supabase.co`
+- ✓ `service_role` anahtarı `.env`'de, SECRET olarak doğrulandı
+- ✓ `0001_init.sql` + `0002_onboarding_profile.sql` uygulandı — 8/8 tablo
+- ✓ Sürücü gerçek DB'de doğrulandı: `npm run smoke:supabase` → 16/16
 
-### 3a. Migration'ları uygula (2 dakika, tarayıcıdan)
-Bu adım **API ile yapılamaz**: DDL (CREATE TABLE) için doğrudan Postgres bağlantısı
-gerekir; anon anahtarla PostgREST üzerinden SQL çalıştırılamaz.
+**Kalan tek adım (opsiyonel):** `.env`'de `DB_DRIVER=supabase` yapın.
+Şu an `memory`; uygulama kalıcı veriyle çalışsın istiyorsanız değiştirin.
 
-**En kolay yol — Supabase SQL Editor:**
-1. https://supabase.com/dashboard/project/gvvsuelxvwdjlobaqmgq/sql/new
-2. `supabase/migrations/0001_init.sql` içeriğini yapıştır → **Run**
-3. `supabase/migrations/0002_onboarding_profile.sql` için tekrarla
-4. Doğrula: `npm run check:supabase` → 8/8 tablo görünmeli
-
-**Alternatif — psql (şifre gerekir):**
-```bash
-# Dashboard → Settings → Database → Connection string (URI)
-export DATABASE_URL='postgresql://postgres:[ŞİFRE]@db.gvvsuelxvwdjlobaqmgq.supabase.co:5432/postgres'
-./scripts/apply-migrations.sh
-```
-
-### 3b. Service role anahtarını gir
-- Dashboard → **Settings → API → `service_role`** (veya yeni `sb_secret_...`)
-- `.env` → `SUPABASE_SERVICE_ROLE_KEY=...` ve `DB_DRIVER=supabase`
-
-⚠️ **Bu anahtarı sohbete YAPIŞTIRMAYIN.** service_role anahtarı RLS'i bypass eder
-ve veritabanının tamamına tam yetki verir. Doğrudan `.env` dosyanıza yazın
-(veya bu oturumda `! ` önekiyle kendiniz çalıştırın).
-Paylaştığınız publishable anahtar ise zaten herkese açık olacak şekilde
-tasarlanmıştır — onu paylaşmanız bir risk oluşturmaz.
-
-### 3c. Neden anon anahtar yetmiyor (tasarım gereği)
-`0001_init.sql` tüm tablolarda **RLS'i etkinleştiriyor ve HİÇBİR politika
-tanımlamıyor** (ARCHITECTURE §4). Bu bilinçlidir: backend `service_role` ile
-bağlanır ve RLS'i bypass eder. Anon anahtarla her sorgu **reddedilir** —
-yani şema uygulansa bile uygulama bu anahtarla çalışmaz.
-İleride web dashboard eklenirse kullanıcı-bazlı RLS politikaları yazılacak;
-o zaman anon anahtar anlamlı hâle gelir (`SUPABASE_ANON_KEY` alanı hazır).
-
-- **O ana kadar:** `DB_DRIVER=memory` — tüm testler ve akışlar çalışıyor.
+⚠️ **Anahtar rotasyonu önerilir:** `service_role` anahtarı sohbet geçmişinde
+görünüyor. RLS'i bypass eder ve `pii_vault` dâhil tüm tablolara tam yetki verir.
+Dashboard → Settings → API → Reset. Aynısı Anthropic anahtarı için de geçerli.
 
 ## 4. PII Vault master key (üretim)
 - **Neden:** PII vault AES-256-GCM şifreleme anahtarı.

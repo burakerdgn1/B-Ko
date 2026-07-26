@@ -220,14 +220,14 @@ create index if not exists reminders_user_idx on reminders (user_id);
 
 -- ── pii_vault (KRİTİK) ──────────────────────────────────────────────────────
 -- Orijinal PII değeri ASLA düz metin saklanmaz. AES-256-GCM ciphertext + iv + auth tag.
--- `token` = maskeli metindeki yer tutucu (ör. «NAME_1»).
+-- `token` = maskeli metindeki yer tutucu (ör. [[NAME_1]]) — bkz. D-008.
 -- Kapsam: doküman bazlı (document_id) veya kullanıcı bazlı (user_id, onboarding PII'si).
 create table if not exists pii_vault (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid references users(id) on delete cascade,
   document_id  uuid references documents(id) on delete cascade,
 
-  token        text not null,            -- «NAME_1»
+  token        text not null,            -- [[NAME_1]] veya 'profile:fullName'
   entity_type  text not null,            -- NAME | STEUERID | IBAN | ADDRESS | ...
 
   ciphertext   text not null,            -- base64
