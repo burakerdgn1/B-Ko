@@ -1,0 +1,242 @@
+[
+  {
+    "key": "01-aufenthaltserlaubnis-verlaengerung",
+    "authority": {
+      "expected": "Ausländerbehörde Berlin",
+      "got": "Ausländerbehörde Berlin",
+      "ok": true
+    },
+    "requestType": {
+      "expected": "Unterlagennachforderung",
+      "got": "Unterlagennachforderung"
+    },
+    "deadline": {
+      "expected": "2024-06-30",
+      "got": "2024-06-30",
+      "ok": true
+    },
+    "riskLevel": {
+      "expected": "high",
+      "got": "high",
+      "ok": true
+    },
+    "missingDocs": {
+      "expected": 4,
+      "got": 4,
+      "overlap": 4
+    },
+    "inScope": true,
+    "confidence": 0.95,
+    "leaked": []
+  },
+  {
+    "key": "02-termin-einladung",
+    "authority": {
+      "expected": "Ausländerbehörde München (Kreisverwaltungsreferat)",
+      "got": "Kreisverwaltungsreferat – Ausländerbehörde München",
+      "ok": true
+    },
+    "requestType": {
+      "expected": "Terminmitteilung",
+      "got": "Terminladung (persönlicher Termin zur Aufenthaltsverfahren-Bearbeitung)"
+    },
+    "deadline": {
+      "expected": "2024-08-14",
+      "got": "2024-08-14",
+      "ok": true
+    },
+    "riskLevel": {
+      "expected": "medium",
+      "got": "medium",
+      "ok": true
+    },
+    "missingDocs": {
+      "expected": 4,
+      "got": 5,
+      "overlap": 4
+    },
+    "inScope": true,
+    "confidence": 0.9,
+    "leaked": []
+  },
+  {
+    "key": "03-blaue-karte-eu",
+    "authority": {
+      "expected": "Ausländerbehörde Frankfurt am Main",
+      "got": "Ausländerbehörde Frankfurt am Main",
+      "ok": true
+    },
+    "requestType": {
+      "expected": "Unterlagennachforderung (Blaue Karte EU)",
+      "got": "Unterlagennachforderung"
+    },
+    "deadline": {
+      "expected": "2024-07-18",
+      "got": "2024-07-18",
+      "ok": true
+    },
+    "riskLevel": {
+      "expected": "medium",
+      "got": "medium",
+      "ok": true
+    },
+    "missingDocs": {
+      "expected": 3,
+      "got": 3,
+      "overlap": 3
+    },
+    "inScope": true,
+    "confidence": 0.9,
+    "leaked": []
+  },
+  {
+    "key": "04-ablehnung-widerspruchsfrist",
+    "authority": {
+      "expected": "Ausländerbehörde Stuttgart",
+      "got": "Ausländerbehörde Stuttgart",
+      "ok": true
+    },
+    "requestType": {
+      "expected": "Ablehnungsbescheid / Widerspruch",
+      "got": "Ablehnung des Antrags auf Verlängerung der Aufenthaltserlaubnis"
+    },
+    "deadline": {
+      "expected": "2024-06-06",
+      "got": "2024-06-06",
+      "ok": true
+    },
+    "riskLevel": {
+      "expected": "critical",
+      "got": "critical",
+      "ok": true
+    },
+    "missingDocs": {
+      "expected": 0,
+      "got": 1,
+      "overlap": 0
+    },
+    "inScope": true,
+    "confidence": 0.9,
+    "leaked": []
+  },
+  {
+    "key": "05-verpflichtungserklaerung-familiennachzug",
+    "authority": {
+      "expected": "Ausländerbehörde Hamburg",
+      "got": "Ausländerbehörde Hamburg",
+      "ok": true
+    },
+    "requestType": {
+      "expected": "Unterlagennachforderung (Familiennachzug)",
+      "got": "Unterlagennachforderung (Familiennachzug)"
+    },
+    "deadline": {
+      "expected": "2024-07-01",
+      "got": "2024-07-01",
+      "ok": true
+    },
+    "riskLevel": {
+      "expected": "medium",
+      "got": "medium",
+      "ok": true
+    },
+    "missingDocs": {
+      "expected": 3,
+      "got": 3,
+      "overlap": 3
+    },
+    "inScope": true,
+    "confidence": 0.9,
+    "leaked": []
+  },
+  {
+    "key": "06-buergeramt-anmeldung",
+    "authority": {
+      "expected": "Bürgeramt Berlin-Mitte",
+      "got": "Bürgeramt Berlin-Mitte",
+      "ok": true
+    },
+    "requestType": {
+      "expected": "Unterlagennachforderung (Meldebescheinigung)",
+      "got": "Unterlagennachforderung"
+    },
+    "deadline": {
+      "expected": "2024-07-15",
+      "got": "2024-07-15",
+      "ok": true
+    },
+    "riskLevel": {
+      "expected": "low",
+      "got": "low",
+      "ok": true
+    },
+    "missingDocs": {
+      "expected": 1,
+      "got": 1,
+      "overlap": 1
+    },
+    "inScope": true,
+    "confidence": 0.9,
+    "leaked": []
+  },
+  {
+    "key": "07-informationsschreiben",
+    "authority": {
+      "expected": "Ausländerbehörde Köln",
+      "got": "Ausländerbehörde Köln",
+      "ok": true
+    },
+    "requestType": {
+      "expected": "Informationsschreiben",
+      "got": "Bilgilendirme (Bearbeitungsstand)"
+    },
+    "deadline": {
+      "expected": null,
+      "got": null,
+      "ok": true
+    },
+    "riskLevel": {
+      "expected": "low",
+      "got": "low",
+      "ok": true
+    },
+    "missingDocs": {
+      "expected": 0,
+      "got": 0,
+      "overlap": 0
+    },
+    "inScope": true,
+    "confidence": 0.95,
+    "leaked": []
+  },
+  {
+    "key": "08-gebuehrenbescheid",
+    "authority": {
+      "expected": "Ausländerbehörde Düsseldorf",
+      "got": "Ausländerbehörde Düsseldorf",
+      "ok": true
+    },
+    "requestType": {
+      "expected": "Gebührenbescheid",
+      "got": "Gebührenbescheid (Verwaltungsgebühr)"
+    },
+    "deadline": {
+      "expected": "2024-06-20",
+      "got": "2024-06-20",
+      "ok": true
+    },
+    "riskLevel": {
+      "expected": "medium",
+      "got": "medium",
+      "ok": true
+    },
+    "missingDocs": {
+      "expected": 0,
+      "got": 0,
+      "overlap": 0
+    },
+    "inScope": true,
+    "confidence": 0.9,
+    "leaked": []
+  }
+]

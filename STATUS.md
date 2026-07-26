@@ -74,11 +74,44 @@ Kalıcı test bu sınırı sabitliyor, böylece sessizce kaymaz.
 - **Web dashboard** — CLAUDE.md §4 gereği kapsam dışı.
 
 ## Sıradaki adımlar (v1.1 önerisi)
-1. **`npm run eval:prompts` çalıştır** (ANTHROPIC_API_KEY gerekir) — prompt
-   değişikliklerinin gerçek model davranışına etkisi HENÜZ ÖLÇÜLMEDİ (D-031)
+1. **Eval setine sınır vakalar ekle** — mevcut 8 fixture'da her alan %100,
+   yani ayırt edici güç YOK (tavan etkisi). Prompt değişikliklerini ölçebilmek
+   için belirsiz/zor vakalar gerekiyor (D-031)
 2. Yerel NER → tetikleyicisiz isimler (D-028) — kalan tek gizlilik boşluğu
 3. Gerçek Behördenbrief örnekleriyle (anonimleştirilmiş) doğrulama
 4. WhatsApp adapter (v2)
+
+## 📊 Gerçek API ölçümü (2026-07-26, `claude-sonnet-5`)
+`npm run eval:prompts` — 8 sentetik Behördenbrief, GERÇEK Claude çağrıları:
+
+| Alan | Sonuç |
+|---|---|
+| authority | 8/8 (%100) |
+| deadline (token→tarih çözümü, D-009) | 8/8 (%100) |
+| riskLevel | 8/8 (%100) |
+| missingDocuments (ortalama recall) | %100 |
+| **PII sızıntısı** | **YOK ✅** |
+
+Çekirdek akış gerçek modelle uçtan uca doğrulandı: token sözleşmesi çalışıyor,
+model yer tutucuları bozmadan koruyor, deadline doğru token'dan çözülüyor ve
+maskeli metinde sızıntı yok.
+
+### ⚠️ riskLevel rubric'i (D-031): hipotez DOĞRULANMADI
+Rubric'li/rubric'siz iki koşum **birebir aynı** sonucu verdi (8/8 vs 8/8,
+**0 vaka farkı**). Model rubric olmadan da doğru risk seviyesini üretiyordu.
+Rubric korundu (zarar yok, spesifikasyon boşluğunu kapatıyor) ama
+**iyileştirme olduğu KANITLANMADI** — eval setinde tavan etkisi var.
+
+### Ölçüm aracında bulunan hata (D-033)
+İlk koşumda `authority` 7/8 göründü; incelenince bunun bir MODEL hatası değil,
+EVAL hatası olduğu anlaşıldı: model `"Bürgeramt [[ADDRESS_1]]-Mitte"` döndürmüştü
+— yani maskeleme sözleşmesine DOĞRU uymuştu. Karşılaştırma unmask edilmeden
+yapılıyordu. Düzeltildi → 8/8.
+
+### Test izolasyonu (D-032)
+`.env`'e gerçek anahtar eklenince 24 test kırıldı ve suite 7s→52s çıktı;
+testler gerçek API'ye çıkıyordu. `ignoreEnvFile` ile testler artık `.env`'den
+izole (hermetik koşum).
 
 ## v1.1'de tamamlananlar
 - **Telegram webhook endpoint'i** (D-030): gizli anahtar sabit zamanlı doğrulanır,

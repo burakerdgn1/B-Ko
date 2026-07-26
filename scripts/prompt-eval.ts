@@ -14,8 +14,13 @@
  * ⚠️ GERÇEK API çağrısı yapar ve ÜCRETLENDİRİLİR (8 mektup × 1 çağrı).
  * ⚠️ Fixture'lar sentetiktir; gerçek kişi verisi gönderilmez (D-005).
  */
+import { config as loadDotenv } from 'dotenv';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+// `.env` dosyasını Nest başlamadan ÖNCE yükle: anahtar kontrolü ve
+// ConfigModule'ün import-anındaki doğrulaması (D-023) buna bağlı.
+loadDotenv();
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from '../src/app.module';
@@ -95,7 +100,12 @@ async function main(): Promise<void> {
 
     try {
       const out = await llm.analyzeDocument({ text, profile: profiles[key] });
-      const r = out.result;
+
+      // Model MASKELİ metin görür; çıktısı da token içerir (ör. kurum adındaki
+      // şehir "[[ADDRESS_1]]" olarak döner). Karşılaştırmadan ÖNCE unmask et —
+      // aksi hâlde model, maskeleme sözleşmesine DOĞRU uyduğu için "yanlış"
+      // sayılırdı. (Bu, ilk koşumda ölçüm hatası olarak yakalandı.)
+      const r = pii.unmaskDeep(out.result, out.map);
 
       // Deadline token'ını gerçek tarihe çöz (D-009).
       const deadlineRaw = r.deadlineToken

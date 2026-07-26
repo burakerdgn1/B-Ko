@@ -410,5 +410,53 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   türetilen açık bir ölçüt eklendi. Ayrıca modele, tarihleri MASKELİ gördüğü
   için zaman baskısını değerlendirmemesi gerektiği açıkça söylendi — bunu sistem
   zaten yerelde `escalateRiskByDeadline` ile yapıyor.
-- **DOĞRULANMADI:** Bu prompt değişikliğinin gerçek model davranışına etkisi
-  ÖLÇÜLMEDİ. Anahtar geldiğinde `eval:prompts` ile doğrulanmalıdır.
+- **ÖLÇÜM SONUCU (2026-07-26, gerçek API ile — hipotez DOĞRULANMADI):**
+  Rubric'li ve rubric'siz iki koşum yapıldı (`claude-sonnet-5`, 8 fixture):
+
+  | | rubric YOK | rubric VAR |
+  |---|---|---|
+  | riskLevel doğruluğu | 8/8 | 8/8 |
+  | farklı çıktı veren vaka | — | **0** |
+  | ortalama confidence | 0.909 | 0.906 |
+
+  Model, rubric OLMADAN da 8 vakanın tamamında beklenen risk seviyesini
+  üretti; rubric hiçbir vakada çıktıyı değiştirmedi. Yani **"riskLevel
+  belirsizdi ve bu hatalara yol açıyor" hipotezim bu veri setinde
+  doğrulanmadı.**
+- **Neden ölçemedik (tavan etkisi):** 8 fixture'da temel başarı zaten %100;
+  bir iyileştirmenin görülebileceği alan YOK. Bu eval seti rubric'i test
+  edecek ayırt edici güce sahip değil — sınır vakalar (belirsiz risk içeren
+  mektuplar) gerekir.
+- **Karar:** Rubric KORUNDU. Gerekçe: ölçülebilir bir zarar yok (0 fark),
+  spesifikasyon boşluğunu kapatıyor ve fixture setinde bulunmayan gerçek
+  dünya mektupları için belirsizliği azaltması beklenir. Ancak bu bir
+  **beklenti**, kanıt değil — bu şekilde işaretlendi.
+- **Sıradaki iş:** Ayırt edici gücü olan sınır vakaları eval setine ekle
+  (ör. statü kaybı ima eden ama açıkça söylemeyen mektup), sonra rubric'i
+  tekrar ölç.
+
+## D-032 — Testler `.env` dosyasından İZOLE edilmeli (hermetik koşum)
+- **Bağlam:** Gerçek API anahtarı `.env`'e eklenince (`LLM_MOCK=false`)
+  **24 test kırıldı** ve suite 7 saniyeden 52 saniyeye çıktı — testler gerçek
+  Anthropic API'sine çıkmaya başlamıştı.
+- **Kök neden:** `ConfigModule.forRoot()` `.env`'i import anında okur (D-023);
+  geliştiricinin yerel dosyası test davranışını sessizce değiştiriyordu.
+- **Karar:** `ignoreEnvFile: process.env.NODE_ENV === 'test'`. Testler yalnızca
+  spec dosyalarının açıkça kurduğu `process.env` değerlerine dayanır.
+- **Gerekçe:** Test koşumu hermetik olmalı; aksi hâlde CI ile yerel sonuçlar
+  ayrışır ve daha kötüsü, testler farkında olmadan ücretli API çağrısı yapar.
+  Bir geliştiricinin makinesindeki dosya, testin ne doğruladığını
+  değiştirmemeli.
+
+## D-033 — Eval betiğinde ölçüm hatası: maskeli çıktı ham beklentiyle karşılaştırılıyordu
+- **Bulgu:** İlk koşumda `authority` 7/8 çıktı. Tek "hata" şuydu:
+  beklenen `"Bürgeramt Berlin-Mitte"`, gelen `"Bürgeramt [[ADDRESS_1]]-Mitte"`.
+- **Bu bir MODEL HATASI DEĞİLDİ.** Model maskeli metin gördüğü için "Berlin"i
+  bilemez ve token'ı doğru şekilde AYNEN korumuştu — yani maskeleme
+  sözleşmesine tam uymuştu. Hatalı olan ÖLÇÜMDÜ: karşılaştırma unmask
+  edilmemiş çıktıyla yapılıyordu.
+- **Düzeltme:** Eval, karşılaştırmadan önce `pii.unmaskDeep(out.result, out.map)`
+  uygular (üretim hattı zaten bunu yapıyordu). Düzeltme sonrası `authority` 8/8.
+- **Ders:** Ölçüm aracının kendisi de hatalı olabilir. "Model yanlış yaptı"
+  sonucuna varmadan önce ölçümün doğru şeyi karşılaştırdığı doğrulanmalı —
+  aksi hâlde var olmayan bir sorunu "düzeltmek" için prompt bozulurdu.
