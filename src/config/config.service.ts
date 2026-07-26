@@ -66,6 +66,10 @@ export class AppConfigService {
   get supabaseServiceRoleKey(): string | undefined {
     return this.get('SUPABASE_SERVICE_ROLE_KEY');
   }
+  /** Publishable/anon anahtar — RLS'e tabidir, backend bununla çalışmaz. */
+  get supabaseAnonKey(): string | undefined {
+    return this.get('SUPABASE_ANON_KEY');
+  }
 
   // ── PII / GDPR ──
   get piiMasterKey(): string | undefined {

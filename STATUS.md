@@ -81,6 +81,38 @@ Kalıcı test bu sınırı sabitliyor, böylece sessizce kaymaz.
 3. Gerçek Behördenbrief örnekleriyle (anonimleştirilmiş) doğrulama
 4. WhatsApp adapter (v2)
 
+## 🔌 Supabase bağlantı denetimi (2026-07-26) — ⛔ ŞEMA HENÜZ UYGULANMADI
+
+`npm run check:supabase` ile canlı denetim yapıldı:
+
+| Kontrol | Sonuç |
+|---|---|
+| Proje erişilebilirliği (`/auth/v1/health`) | ✅ **AYAKTA** (GoTrue v2.193.1) |
+| Anahtar kimlik doğrulaması | ✅ Kabul ediliyor |
+| Anahtar türü | ⚠️ **publishable/anon** — backend için yetersiz |
+| Şema (8 tablo) | ❌ **0/8 mevcut** — migration uygulanmamış |
+| Backend `DB_DRIVER=supabase` ile çalışır mı | ❌ **HAYIR** |
+
+**Yapılanlar:** `SUPABASE_URL` ve publishable anahtar `.env`'e işlendi
+(anahtar, türüne uygun şekilde `SUPABASE_ANON_KEY` alanına — `SERVICE_ROLE`
+alanına DEĞİL; yanlış etiketleme sessiz bir güvenlik yanılgısı yaratırdı).
+`DB_DRIVER=memory` olarak BIRAKILDI; aksi hâlde uygulama açılışta çalışmazdı.
+
+**Neden migration uygulanamadı (gerçek engel):** DDL (`CREATE TABLE`) doğrudan
+Postgres bağlantısı gerektirir. Publishable anahtarla PostgREST üzerinden SQL
+çalıştırılamaz — bunun bir API'si yoktur. Gereken: ya SQL Editor'dan yapıştırma,
+ya da `DATABASE_URL` (veritabanı şifresi).
+
+**Neden anon anahtar yetmez:** `0001_init.sql` tüm tablolarda RLS'i etkinleştirip
+**sıfır politika** tanımlıyor (bilinçli tasarım — backend `service_role` ile
+bağlanır). Anon anahtarla şema uygulansa bile her sorgu reddedilirdi.
+
+**Kilidi açmak için 2 adım** → `MANUAL_ACTIONS_REQUIRED.md` §3
+(SQL Editor'dan iki migration + `service_role` anahtarı).
+⚠️ `service_role` anahtarı tam yetkilidir — sohbete yapıştırılmamalı, doğrudan
+`.env`'e yazılmalı. (Paylaşılan publishable anahtar zaten herkese açık
+olacak şekilde tasarlıdır; onun paylaşılması risk değildir.)
+
 ## 📊 Gerçek API ölçümü (2026-07-26, `claude-sonnet-5`)
 `npm run eval:prompts` — **14 sentetik Behördenbrief** (8 temel + 6 sınır vakası),
 GERÇEK Claude çağrıları:

@@ -42,7 +42,18 @@ export const envSchema = z
     // ── Persistence ──
     DB_DRIVER: z.enum(['memory', 'supabase']).default('memory'),
     SUPABASE_URL: z.string().optional(),
+    /**
+     * Backend'in kullandığı GİZLİ anahtar (RLS'i bypass eder).
+     * `sb_secret_...` / `service_role` JWT biçiminde olur.
+     */
     SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+    /**
+     * Herkese açık (publishable/anon) anahtar — `sb_publishable_...`.
+     * İstemci tarafı içindir; RLS'e TABİDİR ve backend repository'leri
+     * bununla ÇALIŞMAZ (politikasız RLS her sorguyu reddeder).
+     * Yalnızca ileride bir web dashboard/istemci eklenirse kullanılır.
+     */
+    SUPABASE_ANON_KEY: z.string().optional(),
 
     // ── PII vault ──
     // 32 byte = 64 hex karakter. Boşsa dev-only türetilmiş anahtar kullanılır.
