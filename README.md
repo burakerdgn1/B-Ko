@@ -152,7 +152,7 @@ Supabase/Postgres · Zod · Playwright · Jest
 
 ## Durum
 
-**527 test geçiyor** (37 suite) · TypeScript strict · gerçek API anahtarı olmadan
+**547 test geçiyor** (40 suite) · TypeScript strict · gerçek API anahtarı olmadan
 uçtan uca çalışır (mock modlar).
 
 | Faz | Durum |
@@ -169,6 +169,7 @@ uçtan uca çalışır (mock modlar).
 | Onboarding PII profili (bilinen-değer maskeleme) | ✅ |
 | Üçüncü taraf isimleri — bağlamsal tetikleyici (D-029) | ✅ |
 | Tetikleyicisiz isimler için yerel NER | ⏳ v2 (bkz. D-028) |
+| Dağıtım hazırlığı (`railway.json`, `/health`, `check:deploy`) | ✅ gerçek Docker ile doğrulandı |
 | Web dashboard | ⏳ kapsam dışı |
 
 ---
