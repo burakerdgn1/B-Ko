@@ -93,7 +93,11 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       gerçek veriye karşı saldırıyla doğrulandı.
 - [ ] Gerçek (anonimleştirilmiş) Behördenbrief örnekleriyle doğrulama —
       şu ana kadarki tüm doğrulama SENTETİK fixture'larla yapıldı
-- [ ] `PII_MASTER_KEY` üretim değeri + anahtar rotasyon prosedürü (şu an dev anahtarı)
+- [x] ~~`PII_MASTER_KEY` üretim değeri + rotasyon prosedürü~~ — **2026-07-29'da YAPILDI.**
+      Üretim anahtarı üretildi (`openssl rand -hex 32`) ve `.env`'e işlendi.
+      Mevcut 48 şifreli kayıt KAYBEDİLMEDEN rotate edildi (`npm run rotate:pii-key`,
+      key_version 1→2). Doğrulandı: profil 6/6 alan, 3 belgenin 42 token'ı tamamen
+      çözülüyor, `DEV-ONLY` uyarısı kayboldu.
 - [ ] RLS politikaları — yalnızca web dashboard eklenirse gerekli (şu an service_role)
 - [ ] Deployment (Railway/Coolify) — Dockerfile ve CI hazır, hesap bağlanmadı
 - [ ] F4.2 minimal web dashboard — **ertelendi** (v1 kapsam dışı, CLAUDE.md §4)

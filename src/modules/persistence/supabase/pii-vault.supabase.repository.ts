@@ -92,6 +92,15 @@ export class PiiVaultSupabaseRepository extends PiiVaultRepository {
     assertNoError(error, `deleteByDocument(${TABLE})`);
   }
 
+  async findAllForRotation(): Promise<SealedPiiRecordRow[]> {
+    const { data, error } = await this.supabase.client
+      .from(TABLE)
+      .select('*')
+      .order('created_at', { ascending: true });
+    assertNoError(error, `findAllForRotation(${TABLE})`);
+    return (data as PiiVaultRow[] | null)?.map(mapPiiVaultRow) ?? [];
+  }
+
   async purgeExpired(now: Date): Promise<number> {
     const { data, error } = await this.supabase.client
       .from(TABLE)

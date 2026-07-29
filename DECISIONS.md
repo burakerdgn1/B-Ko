@@ -535,3 +535,27 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **Ders:** "Testler geçiyor" ile "sahada çalışıyor" farkı tam olarak burada.
   Dış sistemlerin sözleşmesi (Telegram'ın file_path'i) ancak gerçek entegrasyonda
   görülür; mock'lar kendi varsayımımızı doğrular, dış dünyayı değil.
+
+## D-035 — PII anahtar rotasyonu veri kaybetmeden yapılır
+- **Bağlam:** `PII_MASTER_KEY` üretim değerine geçilecekti. Ancak vault'ta canlı
+  testten kalan **48 şifreli kayıt** vardı (6 profil alanı + 42 belge token'ı),
+  hepsi DEV türetilmiş anahtarla şifreliydi. Anahtarı yalnızca `.env`'de
+  değiştirmek AES-GCM auth tag doğrulamasını bozar ve bu kayıtları **kalıcı
+  olarak okunamaz** hâle getirirdi:
+    - profil kayıtları giderse bilinen-değer maskelemesi (D-027) çalışmaz
+    - belge token'ları giderse `masked_text` bir daha ASLA çözülemez
+- **Karar:** `scripts/rotate-pii-key.ts` (`npm run rotate:pii-key`) yazıldı.
+  Üç fazlı ve **fail-safe**:
+    1. **Çöz** — tüm kayıtlar eski anahtarla çözülür. Bir tanesi bile
+       başarısızsa HİÇBİR ŞEY YAZILMADAN iptal edilir (yarım rotasyon en kötü sonuç).
+    2. **Yeniden şifrele + doğrula** — her kayıt yeni anahtarla mühürlenip
+       yazmadan ÖNCE geri çözülerek round-trip kanıtlanır.
+    3. **Yaz** — yalnızca `--apply` ile; `key_version` artırılır.
+  Varsayılan mod KURU KOŞUM'dur; yanlışlıkla çalıştırmak veri değiştirmez.
+- **Sonuç (gerçek veri üzerinde):** 48/48 çözüldü, 48/48 round-trip doğrulandı,
+  48/48 yazıldı, `key_version` 1→2. Rotasyon sonrası doğrulama: profil 6/6 alan
+  çözülüyor, 3 belgenin 42 token'ı tamamen geri kuruluyor (kalan token 0),
+  açılıştaki `DEV-ONLY` uyarısı kayboldu.
+- **Gerekçe:** Anahtar rotasyonu bir güvenlik gereğidir ama veri kaybı riski
+  taşır. "Anahtarı değiştir" ile "anahtarı güvenle değiştir" arasındaki fark bu
+  script'tir; `.env` yorumuna da bu uyarı yazıldı.

@@ -67,6 +67,10 @@ export class PiiVaultMemoryRepository extends PiiVaultRepository {
     }
   }
 
+  async findAllForRotation(): Promise<SealedPiiRecordRow[]> {
+    return this.store.all();
+  }
+
   async purgeExpired(now: Date): Promise<number> {
     return this.store.purgeExpired(now, (r) => r.deleteAfter ?? null);
   }
