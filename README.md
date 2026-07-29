@@ -179,12 +179,27 @@ uçtan uca çalışır (mock modlar).
 git clone <repo> && cd B-Ko
 npm install
 cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 527 test
+npm test                  # 547 test
 npm run start:dev
 ```
 
 Gerçek anahtarlarla çalıştırmak için: [`MANUAL_ACTIONS_REQUIRED.md`](MANUAL_ACTIONS_REQUIRED.md)
 Dağıtım: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+
+### Operasyon komutları
+
+| Komut | Ne yapar |
+|---|---|
+| `npm run check:deploy` | Dağıtım öncesi GO/NO-GO. Gerçek `validateEnv()` + `PUBLIC_BASE_URL` / webhook sırrı / Supabase / Anthropic kontrolü. **Token harcamaz.** `railway run` ile platformdaki gerçek değişkenlere karşı da koşar. |
+| `npm run check:supabase` | Bağlantı + anahtar türü + şema teşhisi (salt-okunur). |
+| `npm run test:supabase` | Gerçek Postgres'e karşı entegrasyon testleri (16). |
+| `npm run live:check` | Gerçek Claude + gerçek Supabase tam yığın (⚠️ ücretlendirilir). |
+| `npm run eval:prompts` | 14 sentetik mektupla prompt doğruluk ölçümü (⚠️ ücretlendirilir). |
+| `npm run rotate:supabase-key` | Supabase secret anahtar rotasyonu — fail-safe, varsayılan kuru koşum. |
+| `npm run rotate:pii-key` | PII vault anahtar rotasyonu — şifreli veriyi kaybetmeden. |
+
+Sağlık kontrolü: `GET /health` → `{"status":"ok","uptime":N}` (liveness;
+bilinçli olarak dış bağımlılıklara dokunmaz ve hiçbir yapılandırma sızdırmaz).
 
 ### Demo senaryosu
 

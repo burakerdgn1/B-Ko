@@ -698,3 +698,26 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **Yan düzeltme:** `docs/DEPLOYMENT.md` iki KAPANMIŞ sorunu hâlâ açık gibi
   anlatıyordu (D-020 boş `PII_MASTER_KEY` çöküşü, D-021 eksik
   `class-validator`). Dağıtımı yapan kişiyi yanlış yönlendirirdi; düzeltildi.
+
+## D-039 — CI artık HEDEFSİZ build eder (regresyon guard'ı, kendi hatasını yakaladı)
+- **Bağlam:** D-038'de Dockerfile aşama sırası düzeltildi, ama düzeltmeyi koruyan
+  hiçbir şey yoktu. CI `target: runtime` yazdığı için sıra tekrar bozulsa CI yeşil
+  kalır, Railway ise yanlış imajı üretirdi — yani düzeltme sessizce geri alınabilirdi.
+- **Karar:** CI hedefsiz build eder (Railway ile AYNI yol) ve ardından üretilen
+  imajın gerçekten `runtime` olduğunu KANITLAR: Node 22 + Alpine tabanı +
+  tarayıcı binary'si yok. `load: true` eklendi (build-push-action imajı
+  varsayılan olarak yerel daemon'a aktarmaz, `docker run` doğrulaması buna muhtaç).
+- **Guard'ın ilk kurbanı kendi varsayımım oldu:** ilk yazdığım kontrol
+  "`node_modules/playwright` bulunmamalı" diyordu. Yerelde çalıştırınca KIRILDI —
+  paket imajda GERÇEKTEN var (~18 MB), çünkü `playwright` bir
+  `optionalDependency` ve `npm ci --omit=dev` optional'ları atmaz. Kaçınılan
+  asıl maliyet tarayıcı binary'leri (~1.8 GB) ve onları `--ignore-scripts`
+  engelliyor. Kontrol doğru ayrımla değiştirildi: `/ms-playwright` yokluğu.
+  Dockerfile'daki "tarayıcı içermez" ifadesi binary'ler için doğru, JS paketi
+  için değildi; DEPLOYMENT.md §6'ya bu ayrım yazıldı.
+- **Guard İKİ YÖNLÜ doğrulandı** (varsayım değil, çalıştırıldı):
+  | İmaj | Sonuç |
+  |---|---|
+  | hedefsiz build (`runtime`) | ✓ Node 22 · ✓ Alpine · ✓ binary yok · exit 0 |
+  | `--target with-browsers` | ✗ Node 20 yakalandı · **exit 1** |
+  `with-browsers` hedefi hâlâ derleniyor (2.08 GB — dokümandaki rakamla aynı).

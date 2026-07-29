@@ -55,12 +55,50 @@ jobs:
       - name: Docker Buildx kur
         uses: docker/setup-buildx-action@v3
 
-      - name: Üretim imajını (runtime hedefi) build et — sadece doğrulama
+      # HEDEF BİLİNÇLİ OLARAK VERİLMİYOR (D-038).
+      # Railway'in Dockerfile builder'ı da hedefsiz build eder ve daima SON
+      # aşamayı derler. CI burada `target: runtime` yazsaydı, aşamalar yanlış
+      # sıraya alındığında (eskiden öyleydi) CI yeşil kalır, Railway ise
+      # sessizce ~2 GB'lık Playwright imajını üretirdi. Hedefsiz build ederek
+      # CI, üretimde gerçekte ne derleneceğini doğrular.
+      - name: Varsayılan imajı build et (hedefsiz — Railway ile aynı yol)
         uses: docker/build-push-action@v6
         with:
           context: .
-          target: runtime
           push: false
+          # load: imajı yerel docker daemon'a aktarır — aşağıdaki
+          # `docker run` doğrulaması buna ihtiyaç duyar.
+          load: true
           tags: bueko:ci-check
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Yukarıdaki build'in GERÇEKTEN `runtime` aşamasını ürettiğini kanıtla.
+      # Ayırt edici işaretler: `runtime` Alpine + Node 22; `with-browsers`
+      # Debian/jammy + Node 20 + önceden kurulu tarayıcı binary'leri.
+      # Aşama sırası bozulursa (D-038) bu adım kırılır.
+      - name: Varsayılan hedefin runtime olduğunu doğrula
+        run: |
+          NODE_VER="$(docker run --rm bueko:ci-check node -v)"
+          echo "Node sürümü: $NODE_VER"
+          case "$NODE_VER" in
+            v22.*) echo "✓ Node 22" ;;
+            *) echo "✗ Beklenen Node 22 — with-browsers (Node 20) derlenmiş olabilir"; exit 1 ;;
+          esac
+
+          if docker run --rm bueko:ci-check sh -c 'test -f /etc/alpine-release'; then
+            echo "✓ Alpine tabanlı (runtime aşaması)"
+          else
+            echo "✗ Alpine DEĞİL — varsayılan hedef runtime değil, Dockerfile aşama sırası bozulmuş (D-038)"
+            exit 1
+          fi
+
+          # NOT: `node_modules/playwright` bu imajda BULUNUR — playwright bir
+          # optionalDependency ve `npm ci --omit=dev` optional'ları atmaz (~18 MB).
+          # Asıl maliyet tarayıcı BINARY'leridir; `--ignore-scripts` sayesinde
+          # onlar indirilmez. Doğrulanması gereken budur:
+          if docker run --rm bueko:ci-check sh -c 'test -d /ms-playwright -o -d "$HOME/.cache/ms-playwright"'; then
+            echo "✗ Üretim imajında tarayıcı binary'leri var — imaj gereksiz büyümüş"
+            exit 1
+          fi
+          echo "✓ tarayıcı binary'si içermiyor"

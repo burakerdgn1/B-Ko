@@ -1,7 +1,27 @@
 # STATUS.md — Şu An Neredeyiz
 
-**Güncelleme:** MVP tamamlandı — Definition of Done karşılandı
+**Güncelleme:** 2026-07-29 — v1.4: güvenlik borcu aracı + Railway dağıtım hazırlığı
 **Genel durum:** 🟢 Çalışır durumda, testli, dağıtıma hazır
+
+## ⏭️ SIRADAKİ ADIM — sende (2 dakikalık iki Dashboard işi)
+
+Kod tarafında yapılabilecek her şey bitti. Kalan iki iş yalnızca hesap sahibinin
+yapabileceği türden:
+
+**1) Supabase anahtar rotasyonu** (tek güvenlik borcu) — araç hazır, fail-safe:
+```
+Dashboard → Project Settings → API Keys → "Create new secret key"   ← 🧑 sen
+SUPABASE_KEY_NEW=sb_secret_... npm run rotate:supabase-key           ← kuru koşum
+SUPABASE_KEY_NEW=sb_secret_... npm run rotate:supabase-key -- --apply
+Dashboard → eski secret key → "Revoke"                               ← 🧑 sen
+SUPABASE_KEY_OLD=<eski> npm run rotate:supabase-key -- --check-revoked
+```
+Araç, yeni anahtarı TAM doğrulamadan `.env`'e dokunmaz (bkz. D-037).
+
+**2) Railway dağıtımı** — `railway.json`, `/health`, `check:deploy` hazır ve
+gerçek Docker ile doğrulandı. Adım adım liste: `MANUAL_ACTIONS_REQUIRED.md` §8.
+
+Ayrıntı ve gerekçeler: `MANUAL_ACTIONS_REQUIRED.md` §3b + §8.
 
 ## Tek cümlede
 Kullanıcı Telegram'dan bir Behördenbrief gönderdiğinde; kimlik bilgileri maskeleniyor,
@@ -11,10 +31,10 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **539 test geçiyor** (38 suite) + **16 canlı DB testi** (bayrakla koşulur) = 555 toplam
-- `tsc --noEmit` temiz · Docker imajı gerçekten build edildi (218 MB)
+- **547 test geçiyor** (40 suite) + **16 canlı DB testi** (bayrakla koşulur) = 563 toplam
+- `tsc --noEmit` temiz · Docker imajı gerçekten build edilip ÇALIŞTIRILDI (218 MB, `healthy`)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
-- 32 commit, ana dal `main` · 36 kayıtlı mühendislik kararı (D-001…D-036)
+- 34 commit, ana dal `main` · 39 kayıtlı mühendislik kararı (D-001…D-039)
 
 ## Definition of Done (CLAUDE.md §10) — doğrulama
 
@@ -220,8 +240,36 @@ hermetik: `527 passed, 16 skipped, 6s` — gerçek DB'ye çıkılmıyor (D-032).
 
 ⚠️ **Kalan güvenlik borcu:** `sb_secret_...` anahtarı sohbet geçmişinde göründü;
 gerçek kullanıcı verisiyle çalışmaya başlamadan önce döndürülmeli.
-Rotasyon prosedürü hazır: `npm run rotate:pii-key` (PII anahtarı için),
-Supabase için Dashboard → Settings → API.
+**Rotasyon aracı YAZILDI ve doğrulandı** (D-037) — bkz. yukarıdaki "Sıradaki adım".
+
+## 🚢 Railway dağıtımı — kod tarafı BİTTİ, gerçek Docker ile doğrulandı (D-038, D-039)
+
+Dağıtım yolu incelenince **üç sessiz arıza** bulundu; üçü de deploy'u "yeşil"
+gösterip ürünü çalışmaz bırakırdı. Hepsi kapatıldı:
+
+| # | Arıza | Sahada ne olurdu |
+|---|---|---|
+| 1 | Hedefsiz `docker build` son aşamayı derler; son aşama `with-browsers` idi | Railway sessizce ~2 GB / **Node 20** Playwright imajını üretirdi (compose ve CI `target: runtime` yazdığı için yerelde HİÇ görünmüyordu) |
+| 2 | `/health` yoktu; Dockerfile 404 dönen `/`'ı yokluyordu | Railway healthcheck'i dağıtımı unhealthy sayıp yeniden başlatma döngüsüne sokabilirdi |
+| 3 | `PUBLIC_BASE_URL` ilk deploy'dan önce bilinemez ama webhook kaydı açılışta gerekir | Webhook `localhost`'a kaydolurdu → **bot sessizce hiçbir mesaj almazdı** |
+
+Eklenenler: `railway.json` (`numReplicas: 1` — cron süreç içinde, ikinci replika
+hatırlatmaları çift gönderir), `/health` liveness probe (bilinçli olarak
+readiness DEĞİL, sıfır bilgi sızıntısı), `PUBLIC_BASE_URL ← RAILWAY_PUBLIC_DOMAIN`
+otomatiği, `npm run check:deploy` GO/NO-GO aracı (gerçek `validateEnv()` +
+ortamı okur → `railway run` ile platformda koşar, **token harcamaz**).
+
+**Gerçekten çalıştırıldı** (iddia değil): hedefsiz build → 218 MB / Node 22 ·
+üretim modunda konteyner temiz açıldı (0 hata) · `GET /health` → `200
+{"status":"ok","uptime":8}` · Docker HEALTHCHECK → `healthy` · `check:deploy`
+gerçek ortamda 0 hata, bozuk konfigürasyonlarla NO-GO senaryoları tetiklendi.
+
+**CI regresyon guard'ı (D-039):** CI artık Railway ile AYNI yolu izliyor
+(hedefsiz build) ve imajın gerçekten `runtime` olduğunu kanıtlıyor. Guard
+yazılırken kendi yanlış varsayımımı yakaladı: `node_modules/playwright` imajda
+GERÇEKTEN var (~18 MB, `optionalDependency`); kaçınılan asıl maliyet tarayıcı
+binary'leri. Guard iki yönlü doğrulandı — `runtime` → exit 0,
+`--target with-browsers` → exit 1.
 
 ## 📊 Gerçek API ölçümü (2026-07-26, `claude-sonnet-5`)
 `npm run eval:prompts` — **14 sentetik Behördenbrief** (8 temel + 6 sınır vakası),
@@ -289,4 +337,6 @@ izole (hermetik koşum).
 - **riskLevel ölçütü** prompt'a eklendi (ölçüm gerektirmeyen belirsizlik giderme).
 
 ## Engel
-Yok. Kalan tek şey gerçek API anahtarları/hesaplar: `MANUAL_ACTIONS_REQUIRED.md`.
+Yok. Kalan iki iş yalnızca hesap sahibinin yapabileceği Dashboard eylemleri
+(Supabase anahtar rotasyonu + Railway hesabı) — ikisi de yukarıda "Sıradaki
+adım" bölümünde, ayrıntısı `MANUAL_ACTIONS_REQUIRED.md` §3b ve §8'de.

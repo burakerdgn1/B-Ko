@@ -252,6 +252,13 @@ Alpine'in musl libc'si üzerinde Chromium/WebKit/Firefox resmi olarak desteklenm
 opsiyonel bir PoC modülü (ARCHITECTURE.md §3) olduğu için ana kullanım senaryosunu
 (Telegram bot) gereksiz yere ~1GB+ büyütmemek adına iki ayrı hedef tanımlandı.
 
+> **Küçük ama önemli düzeltme:** `runtime` imajında `node_modules/playwright`
+> **vardır** (~18 MB) — `playwright` bir `optionalDependency` ve
+> `npm ci --omit=dev` optional bağımlılıkları atmaz. Kaçınılan asıl maliyet
+> tarayıcı BINARY'leridir (~1.8 GB); `--ignore-scripts` onların indirilmesini
+> engeller. Yani "tarayıcı içermez" ifadesi binary'ler için doğrudur, JS paketi
+> için değil. CI bu ayrımı tam olarak böyle doğrular (`/ms-playwright` yokluğu).
+
 **Gerçek ölçüm (lokal `docker build` ile doğrulandı):**
 
 | Hedef | Ölçülen imaj boyutu | Node sürümü |
@@ -273,8 +280,10 @@ Her PR ve `main` push'unda otomatik çalışır:
 2. `npx tsc --noEmit` — tip kontrolü.
 3. `npx jest --ci` — birim testleri.
 4. `npm run build` — üretim derlemesi.
-5. `docker build --target runtime` (push YOK, sadece build edilebilirlik doğrulaması,
-   GitHub Actions cache ile hızlandırılmış).
+5. `docker build` **hedefsiz** (push YOK) — Railway ile aynı yol. Ardından
+   üretilen imajın gerçekten `runtime` olduğu kanıtlanır: Node 22 + Alpine +
+   tarayıcı binary'si yok. Hedef verilseydi, aşama sırası bozulduğunda CI yeşil
+   kalır ama Railway yanlış imajı üretirdi (D-038).
 
 ## 8. Bilinen Sorunlar — hepsi KAPANDI
 

@@ -93,6 +93,31 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
 - [x] L-10 (O) Belge tutarlılık denetimi: heredoc çakışması yüzünden sessizce
       yazılmayan STATUS/TODO güncellemeleri tespit edilip tamamlandı
 
+## v1.4 — Güvenlik borcu + dağıtım hazırlığı (2026-07-29)
+- [x] R-1 (O) **D-037** — `npm run rotate:supabase-key` fail-safe rotasyon aracı.
+      Yeni anahtar TAM doğrulanmadan (`/rest/v1/` tür kontrolü + 8/8 tablo +
+      gerçek insert/read-back/delete round-trip) `.env` yazılmaz. Atomik
+      tmp+rename, yedek dosya YOK (sızmış kopya sayısını artırmamak için).
+      4 senaryo gerçek projeye karşı koşuldu; 3 ret senaryosunda `.env` md5'i
+      değişmedi. Yan bulgu: `rotate:pii-key` package.json'da yokmuş, eklendi.
+- [~] R-2 (Kullanıcı) **Dashboard'da yeni secret key üret + eskisini revoke et**
+      → `MANUAL_ACTIONS_REQUIRED.md` §3b. Aracın kalan adımları otomatik.
+- [x] D-1 (O) **D-038** — Railway dağıtım yolundaki üç sessiz arıza kapatıldı:
+      hedefsiz build yanlış imajı üretiyordu · `/health` yoktu · webhook
+      `localhost`'a kaydolacaktı (`PUBLIC_BASE_URL` tavuk-yumurta).
+- [x] D-2 (O) `railway.json` (numReplicas=1 — cron süreç içinde) +
+      `npm run check:deploy` GO/NO-GO aracı (gerçek `validateEnv()`, ortamı
+      okur → `railway run` ile platformda koşar, token harcamaz).
+- [x] D-3 (O) Gerçek Docker doğrulaması: hedefsiz build → 218 MB / Node 22,
+      üretim modunda temiz açılış, `/health` 200, HEALTHCHECK `healthy`.
+- [x] D-4 (O) **D-039** — CI hedefsiz build edip imajın `runtime` olduğunu
+      kanıtlıyor (regresyon guard'ı). Guard iki yönlü doğrulandı ve yazarken
+      yaptığım yanlış varsayımı (playwright JS paketi imajda VAR) yakaladı.
+- [x] D-5 (O) `docs/DEPLOYMENT.md` kapanmış iki sorunu (D-020, D-021) hâlâ açık
+      gibi anlatıyordu — dağıtımı yapanı yanlış yönlendirirdi; düzeltildi.
+- [ ] D-6 (Kullanıcı) **Railway hesabı + repo bağlama + Variables**
+      → `MANUAL_ACTIONS_REQUIRED.md` §8 (adım adım, kopyalanabilir liste).
+
 ---
 
 ## Açık işler
@@ -118,7 +143,9 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       çözülüyor, `DEV-ONLY` uyarısı kayboldu. Prosedür: **D-035**,
       araç: `npm run rotate:pii-key` (üç fazlı, fail-safe, varsayılan kuru koşum).
 - [ ] RLS politikaları — yalnızca web dashboard eklenirse gerekli (şu an service_role)
-- [ ] Deployment (Railway/Coolify) — Dockerfile ve CI hazır, hesap bağlanmadı
+- [~] Deployment (Railway) — **kod tarafı BİTTİ ve gerçek Docker ile doğrulandı**
+      (`railway.json`, `/health`, `PUBLIC_BASE_URL` otomatiği, `check:deploy`,
+      CI regresyon guard'ı). Kalan tek şey hesap bağlama → MANUAL §8.
 - [ ] F4.2 minimal web dashboard — **ertelendi** (v1 kapsam dışı, CLAUDE.md §4)
 - [ ] WhatsApp adapter — v2 (ChannelAdapter arayüzü hazır)
 
@@ -134,5 +161,13 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       anahtarsız çalışmaya devam ediyor.
       ⚠️ Sonuç: `npm run eval:prompts` artık çalışmaz (gerçek anahtar ister).
       Prompt ölçümü yapılacaksa yeni bir anahtar gerekir.
-- [ ] Mevcut `sb_secret_...` anahtarı da gerçek kullanıcı verisiyle çalışmaya
+- [~] Mevcut `sb_secret_...` anahtarı da gerçek kullanıcı verisiyle çalışmaya
       başlamadan önce döndürülmeli (o da transkriptte).
+      **Araç HAZIR** (`npm run rotate:supabase-key`, D-037) ve fail-safe
+      davranışı gerçek projeye karşı doğrulandı. Kalan iki adım yalnızca
+      insanın yapabileceği Dashboard eylemleri:
+      1. Project Settings → API Keys → **Create new secret key**
+      2. `SUPABASE_KEY_NEW=sb_secret_... npm run rotate:supabase-key -- --apply`
+      3. Dashboard → eski secret key → **Revoke**
+      4. `SUPABASE_KEY_OLD=<eski> npm run rotate:supabase-key -- --check-revoked`
+      5. Railway Variables'ı da güncelle (dağıtım yapıldıysa)
