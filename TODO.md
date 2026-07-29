@@ -100,8 +100,18 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       tmp+rename, yedek dosya YOK (sızmış kopya sayısını artırmamak için).
       4 senaryo gerçek projeye karşı koşuldu; 3 ret senaryosunda `.env` md5'i
       değişmedi. Yan bulgu: `rotate:pii-key` package.json'da yokmuş, eklendi.
-- [~] R-2 (Kullanıcı) **Dashboard'da yeni secret key üret + eskisini revoke et**
-      → `MANUAL_ACTIONS_REQUIRED.md` §3b. Aracın kalan adımları otomatik.
+- [x] R-2 (Kullanıcı+O) **ROTASYON TAMAMLANDI (2026-07-29).** Yeni secret key
+      (`bukov`) üretildi, `--apply` ile `.env`'e işlendi, eski anahtar (`bukov2`)
+      Dashboard'dan silindi. Doğrulandı: eski anahtar `HTTP 401 "Unregistered
+      API key"` · yeni anahtarla 16/16 entegrasyon testi · `pii_vault` 48/48
+      kayıt sağlam (`key_version: 2`) · `check:deploy` GO.
+      **Yeni anahtar sohbete hiç girmedi** — rotasyon kullanıcının kendi
+      terminalinde koşuldu, buraya yalnızca maskeli parmak izi ulaştı.
+- [ ] R-3 (Kullanıcı) **`default` adlı üçüncü secret anahtarı sil** (isteğe
+      bağlı sıkılaştırma). Proje onu kullanmıyor — kodda ve `.env`'de tek
+      secret anahtar var, doğrulandı. Kullanılmayan tam yetkili kimlik bilgisi
+      saf saldırı yüzeyi. Silmeden önce Dashboard'daki "Last used" kontrol
+      edilmeli; doluysa başka bir tüketici var demektir.
 - [x] D-1 (O) **D-038** — Railway dağıtım yolundaki üç sessiz arıza kapatıldı:
       hedefsiz build yanlış imajı üretiyordu · `/health` yoktu · webhook
       `localhost`'a kaydolacaktı (`PUBLIC_BASE_URL` tavuk-yumurta).
@@ -169,13 +179,8 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       anahtarsız çalışmaya devam ediyor.
       ⚠️ Sonuç: `npm run eval:prompts` artık çalışmaz (gerçek anahtar ister).
       Prompt ölçümü yapılacaksa yeni bir anahtar gerekir.
-- [~] Mevcut `sb_secret_...` anahtarı da gerçek kullanıcı verisiyle çalışmaya
-      başlamadan önce döndürülmeli (o da transkriptte).
-      **Araç HAZIR** (`npm run rotate:supabase-key`, D-037) ve fail-safe
-      davranışı gerçek projeye karşı doğrulandı. Kalan iki adım yalnızca
-      insanın yapabileceği Dashboard eylemleri:
-      1. Project Settings → API Keys → **Create new secret key**
-      2. `SUPABASE_KEY_NEW=sb_secret_... npm run rotate:supabase-key -- --apply`
-      3. Dashboard → eski secret key → **Revoke**
-      4. `SUPABASE_KEY_OLD=<eski> npm run rotate:supabase-key -- --check-revoked`
-      5. Railway Variables'ı da güncelle (dağıtım yapıldıysa)
+- [x] ~~Mevcut `sb_secret_...` anahtarı da döndürülmeli~~ — **2026-07-29'da
+      YAPILDI.** Bkz. R-2. Sızmış anahtar `HTTP 401` ile ölü, uygulama yeni
+      anahtarla çalışıyor, vault 48/48 sağlam.
+      ⚠️ Railway'e dağıtım yapıldığında Variables'a **yeni** anahtar girilecek
+      (`.env` yalnızca yereldir).

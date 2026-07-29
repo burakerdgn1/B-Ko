@@ -3,22 +3,33 @@
 **Güncelleme:** 2026-07-29 — v1.4: güvenlik borcu aracı + Railway dağıtım hazırlığı
 **Genel durum:** 🟢 Çalışır durumda, testli, dağıtıma hazır
 
-## ⏭️ SIRADAKİ ADIM — sende (2 dakikalık iki Dashboard işi)
+## ✅ GÜVENLİK BORCU KAPANDI — Supabase secret anahtarı rotate edildi (2026-07-29)
 
-Kod tarafında yapılabilecek her şey bitti. Kalan iki iş yalnızca hesap sahibinin
-yapabileceği türden:
+Sızmış anahtar (`bukov2`, `sb_secret_Xtn…Pg8z`) iptal edildi; uygulama yeni
+anahtarla (`bukov`, `sb_secret_rDq…ID3_`) çalışıyor.
 
-**1) Supabase anahtar rotasyonu** (tek güvenlik borcu) — araç hazır, fail-safe:
-```
-Dashboard → Project Settings → API Keys → "Create new secret key"   ← 🧑 sen
-SUPABASE_KEY_NEW=sb_secret_... npm run rotate:supabase-key           ← kuru koşum
-SUPABASE_KEY_NEW=sb_secret_... npm run rotate:supabase-key -- --apply
-Dashboard → eski secret key → "Revoke"                               ← 🧑 sen
-SUPABASE_KEY_OLD=<eski> npm run rotate:supabase-key -- --check-revoked
-```
-Araç, yeni anahtarı TAM doğrulamadan `.env`'e dokunmaz (bkz. D-037).
+| Doğrulama | Sonuç |
+|---|---|
+| Eski anahtar | ✅ **İPTAL** — `HTTP 401 "Unregistered API key"` |
+| Yeni anahtar — gerçek DB entegrasyon testleri | ✅ **16/16** |
+| `pii_vault` bütünlüğü | ✅ **48/48 kayıt**, hepsi `key_version: 2` |
+| Şema | ✅ 8/8 tablo |
+| `npm run check:deploy` | ✅ **GO** (0 hata) |
 
-**2) Railway dağıtımı** — `railway.json`, `/health`, `check:deploy` hazır ve
+**Yeni anahtar hiçbir zaman sohbete girmedi** — rotasyon kullanıcının kendi
+terminalinde koşuldu, bu oturuma yalnızca maskeli parmak izi (`sb_secret_rDq…ID3_`)
+ulaştı. Rotasyonun sebebi zaten eski anahtarın transkriptte görünmesiydi;
+yenisini buraya yazmak aynı borcu anında yeniden yaratırdı.
+
+⚠️ **Kalan sıkılaştırma (isteğe bağlı, açık):** Supabase'de `default` adlı
+ÜÇÜNCÜ bir secret anahtar daha var. Proje onu kullanmıyor — kodda ve `.env`'de
+tek secret anahtar var, doğrulandı. Kullanılmayan tam yetkili bir kimlik bilgisi
+saf saldırı yüzeyi olduğu için silinmesi önerilir; önce Dashboard'daki
+"Last used" sütununa bakılmalı.
+
+## ⏭️ SIRADAKİ ADIM — sende
+
+**1) Railway dağıtımı** — `railway.json`, `/health`, `check:deploy` hazır ve
 gerçek Docker ile doğrulandı. Adım adım liste: `MANUAL_ACTIONS_REQUIRED.md` §8.
 
 Ayrıntı ve gerekçeler: `MANUAL_ACTIONS_REQUIRED.md` §3b + §8.
@@ -32,11 +43,14 @@ Ayrıntı ve gerekçeler: `MANUAL_ACTIONS_REQUIRED.md` §3b + §8.
 | GitHub `burakerdgn1/B-Ko` | ⚠️ var, private, ama **BOŞ** (`isEmpty: true`) |
 | Yerel commit'ler | 35 commit, **hiçbiri push edilmemiş** (uzak dal yok) |
 | Telegram webhook | ölü cloudflared tünelinde — ayakta uygulama olmadığı için beklenen |
-| Supabase `sb_secret` | ❌ **hâlâ canlı**, rotasyon yapılmadı |
+| Supabase `sb_secret` | ✅ **rotate edildi** (yukarı bkz.) — engel kalktı |
 
-**Sıralama kararı (kullanıcı):** deploy şimdilik yapılmayacak; önce Supabase
-rotasyonu tamamlanacak. Gerekçe: şu an dağıtım yapmak, sohbet geçmişinde
-görünen anahtarı üretime taşımak olurdu (MANUAL §8 adım 3).
+**Sıralama kararı (kullanıcı):** deploy, anahtar rotasyonundan sonraya
+bırakıldı — şimdi dağıtım yapmak sızmış anahtarı üretime taşımak olurdu
+(MANUAL §8 adım 3). **Rotasyon tamamlandı, bu engel artık yok.**
+Deploy için kalan tek karar: kod GitHub'a push edilip Railway oradan mı
+çeksin (CI de devreye girer), yoksa `railway init` + `railway up` ile
+doğrudan mı yüklensin. İkisi de dışa dönük eylem, onay bekliyor.
 
 ## Tek cümlede
 Kullanıcı Telegram'dan bir Behördenbrief gönderdiğinde; kimlik bilgileri maskeleniyor,

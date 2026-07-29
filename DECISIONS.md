@@ -721,3 +721,37 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   | hedefsiz build (`runtime`) | ✓ Node 22 · ✓ Alpine · ✓ binary yok · exit 0 |
   | `--target with-browsers` | ✗ Node 20 yakalandı · **exit 1** |
   `with-browsers` hedefi hâlâ derleniyor (2.08 GB — dokümandaki rakamla aynı).
+
+## D-040 — Rotasyonun altın kuralı: yeni anahtar, sızıntı kanalından geçmemeli
+- **Bağlam:** D-037'de araç yazılmıştı; 2026-07-29'da gerçekten uygulandı.
+  Rotasyonun SEBEBİ eski anahtarın sohbet transkriptinde görünmesiydi.
+- **Karar:** `--apply` adımı Claude Code oturumunda DEĞİL, kullanıcının kendi
+  terminalinde koşuldu. Bu oturuma yalnızca maskeli parmak izi ulaştı
+  (`sb_secret_rDq…ID3_`). Gerekçe basit ama kolayca gözden kaçıyor: yeni
+  anahtarı `SUPABASE_KEY_NEW=... npm run ...` biçiminde buraya yazmak, onu da
+  transkripte sokar — yani rotasyon, kapattığı borcu aynı anda yeniden yaratır.
+  Araç bu ayrımı destekleyecek şekilde tasarlanmıştı: sır içeren adım (`--apply`)
+  ile doğrulama adımları (`--check-revoked`, `test:supabase`, `check:deploy`)
+  ayrı komutlar, ve doğrulama adımlarının hiçbiri yeni anahtarın DEĞERİNİ
+  istemiyor — `.env`'den okuyorlar.
+- **Eski anahtar için kural farklı:** o zaten sızmış kabul edildiği için
+  paylaşılabilir — ama yalnızca **revoke edildikten SONRA**. Bu turda sıra
+  karıştı: anahtar revoke'tan önce paylaşıldı, ilk `--check-revoked` `HTTP 200`
+  döndü ve anahtar kısa bir süre hem canlı hem tam olarak transkriptte kaldı.
+  Zarar sınırlıydı (`pii_vault` içeriği ayrıca `PII_MASTER_KEY` ile şifreli ve
+  o anahtar hiç paylaşılmadı), ama doğru sıra netleştirilip
+  MANUAL_ACTIONS_REQUIRED.md §3b'ye yazıldı.
+- **Yayılma gecikmesi gözlendi:** revoke'tan hemen sonraki kontrol `HTTP 200`,
+  kısa süre sonraki `HTTP 401 "Unregistered API key"` döndü. Yani tek bir
+  "hâlâ canlı" ölçümü kesin kanıt değil — iptal doğrulaması tekrarlanmalı.
+- **Sonuç doğrulaması:** eski anahtar 401 · yeni anahtarla 16/16 gerçek DB
+  entegrasyon testi · `pii_vault` 48/48 kayıt (`key_version: 2`, D-035'ten
+  beri değişmemiş — Supabase anahtarı şifreleme yapmadığı için etkilenmemesi
+  gerekiyordu ve etkilenmedi) · 8/8 tablo · `check:deploy` GO.
+- **Yan bulgu — kullanılmayan üçüncü anahtar:** projede `default` adlı bir
+  secret anahtar daha var. Kod envanteri çıkarıldı: `src/` ve `scripts/`
+  yalnızca `SUPABASE_SERVICE_ROLE_KEY` ve `SUPABASE_ANON_KEY` okuyor, `.env`'de
+  de tek secret anahtar var. Kullanılmayan ama RLS'i bypass eden bir kimlik
+  bilgisi saf saldırı yüzeyidir; silinmesi önerildi ("Last used" kontrolünden
+  sonra). Değeri KASITLI olarak istenmedi — test etmek için onu transkripte
+  sokmak, tam da bu kararın yasakladığı şey olurdu.

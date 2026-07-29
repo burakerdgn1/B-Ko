@@ -41,13 +41,29 @@
 **Kalan tek adım (opsiyonel):** `.env`'de `DB_DRIVER=supabase` yapın.
 Şu an `memory`; uygulama kalıcı veriyle çalışsın istiyorsanız değiştirin.
 
-## 3b. 🔴 AÇIK — `sb_secret_...` anahtar rotasyonu (tek kalan güvenlik borcu)
+## 3b. ✅ TAMAMLANDI (2026-07-29) — `sb_secret_...` anahtar rotasyonu
 
-**Neden:** Mevcut `sb_secret_...` anahtarı sohbet geçmişinde göründü. Bu anahtar
-RLS'i **bypass eder** ve `pii_vault` dâhil tüm tablolara tam yetki verir. Gerçek
-kullanıcı verisiyle çalışmaya başlamadan önce döndürülmeli.
+Sızmış anahtar (`bukov2`) **iptal edildi**, uygulama yeni anahtarla (`bukov`)
+çalışıyor. Doğrulandı: eski anahtar `HTTP 401 "Unregistered API key"` · yeni
+anahtarla 16/16 entegrasyon testi · `pii_vault` 48/48 kayıt sağlam · GO.
 
-**Araç hazır:** `npm run rotate:supabase-key` (fail-safe; yeni anahtar tam olarak
+> **Rotasyonun altın kuralı — bir dahaki sefere de geçerli:**
+> Yeni anahtar, rotasyonu tetikleyen kanaldan (burada: sohbet transkripti)
+> GEÇMEMELİ. Bu yüzden `--apply` adımı kullanıcının kendi terminalinde koşuldu;
+> bu oturuma yalnızca maskeli parmak izi ulaştı. Aksi hâlde rotasyon,
+> kapattığı borcu aynı anda yeniden yaratır.
+> **Eski** anahtarı paylaşmak serbesttir — ama yalnızca revoke edildikten
+> SONRA. (Bu turda sıra karıştı: anahtar revoke'tan önce paylaşıldı ve kısa
+> süre canlı kaldı.)
+
+**⚠️ Kalan sıkılaştırma:** Supabase'de `default` adlı ÜÇÜNCÜ bir secret anahtar
+daha var. Proje onu kullanmıyor (kodda ve `.env`'de tek secret anahtar var,
+doğrulandı). Kullanılmayan tam yetkili kimlik bilgisi saf saldırı yüzeyidir —
+Dashboard'da "Last used" boşsa silin.
+
+### Prosedür (ileride tekrar gerekirse)
+
+**Araç:** `npm run rotate:supabase-key` (fail-safe; yeni anahtar tam olarak
 doğrulanmadan `.env`'e YAZMAZ). Yalnızca 1. ve 4. adımlar insan eylemi:
 
 1. 🧑 **Dashboard → Project Settings → API Keys → "Create new secret key"**
