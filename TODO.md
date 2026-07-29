@@ -147,6 +147,14 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       **Kullanıcı kararı: şimdilik girilmeyecek.**
 
 ### Sıradaki aday işler (öncelik sırasız)
+- [ ] **CI'da Playwright testleri sessizce atlanıyor.** `appointment-checker.spec.ts`
+      gerçek Chromium istiyor (`isPlaywrightBrowserAvailable() ? describe : describe.skip`);
+      CI `npx playwright install chromium` çalıştırmadığı için 3 test atlanıyor
+      (CI: 544 geçti/19 atlandı · yerel: 547/16). Yani randevu izleme PoC'sinin
+      TEK gerçek testi CI'da hiç koşmuyor. Bu projede aynı desen iki kez ısırdı
+      (D-032, D-034). Düzeltme tek satır: CI'a `npx playwright install chromium`
+      eklemek (~1-2 dk maliyet). Bilinçli boşluk olarak bırakılabilir de —
+      watcher opsiyonel bir modül ve üretim imajında tarayıcı yok.
 - [x] ~~Telegram canlı uçtan uca deneme~~ — **2026-07-29'da YAPILDI** (@BuKo749_bot
       + cloudflared tüneli). /start → rıza → onboarding → metin VE fotoğraf analizi
       → taslak üretimi → onay/ret akışı, hepsi gerçek Claude + gerçek Supabase ile
