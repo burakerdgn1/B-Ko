@@ -586,3 +586,44 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   sınanması, belge iddiası olmaktan çıkıp kanıt olmasını sağlar.
 - **Not:** Bu bir "karar" değil bir DOĞRULAMA kaydıdır; kararların (D-014/D-022/
   D-030/D-010) üretimde tuttuğunu belgelemek için buraya işlendi.
+
+## D-037 — Supabase secret anahtar rotasyonu: doğrulama ÖNCE, yazma SONRA
+- **Bağlam:** Kalan tek güvenlik borcu, sohbet geçmişinde görünen
+  `sb_secret_...` (service-role) anahtarıydı. Bu anahtar RLS'i bypass eder ve
+  `pii_vault` dâhil her tabloya tam yetki verir.
+- **Karar:** Rotasyon için ayrı bir araç yazıldı (`npm run rotate:supabase-key`).
+  Faz sırası D-035'in (PII anahtarı) TERSİ:
+  - D-035'te risk **veri kaybıydı** (yanlış anahtar → AES-GCM auth tag bozulur →
+    kayıtlar kalıcı olarak okunamaz). Orada sıra: çöz → round-trip doğrula → yaz.
+  - Burada anahtar veri şifrelemez, yalnızca kimlik doğrular. Risk **veri kaybı
+    değil, hizmet kaybı**: hatalı bir anahtarla `.env`'i bozmak uygulamayı
+    çalışamaz hâle getirir. Bu yüzden sıra: yeni anahtarı TAM doğrula → yaz →
+    diskten geri oku → eski anahtarın öldüğünü ayrıca kanıtla.
+- **"Tam doğrulama" neyi kapsıyor:** salt-okunur kontroller YETMEZ. Secret anahtar
+  hem okuma hem yazma yetkisi gerektirdiği için gerçek bir yazma round-trip'i
+  yapılır (insert → read-back → delete, sentetik `rotation-probe-*` kaydıyla,
+  her hâlükârda temizlenir). Ayrıca `/rest/v1/` kökü ile anahtar TÜRÜ doğrulanır —
+  en olası insan hatası publishable anahtarı yapıştırmaktır ve o anahtar
+  salt-okunur bazı probe'ları geçebilirdi.
+- **`.env` yedeği bilinçli olarak YAZILMIYOR:** bir `.env.bak`, canlı bir
+  secret'ın diskte ikinci kopyası demektir — rotasyonun amacı tam olarak sızmış
+  kopya sayısını azaltmak. Bunun yerine geçici dosya + `rename()` ile atomik
+  yazma kullanılır (mode 0600), yarım yazılmış `.env` bırakmaz. Ek koruma:
+  hedef satır tam olarak 1 kez bulunmazsa (0 veya 2+) yazma iptal edilir.
+- **Doğrulama (gerçek projeye karşı koşuldu):**
+  | Senaryo | Sonuç |
+  |---|---|
+  | geçerli secret anahtar (kuru koşum) | ✓ 8/8 tablo · yazma round-trip ✓ |
+  | publishable (`sb_publishable_...`) anahtar `--apply` ile | ✗ önek kontrolünde reddedildi |
+  | sahte `sb_secret_...` anahtar `--apply` ile | ✗ 0/8 tablo · iptal |
+  | `.env` yazma (geçici kopya üzerinde) | ✓ yalnızca hedef satır değişti, yorumlar korundu |
+  | hedef satır 0 kez / 2 kez | ✗ iki durumda da yazma iptal |
+  | `--check-revoked`, hâlâ canlı anahtarla | ✗ "HÂLÂ CANLI" + exit 1 |
+  Reddedilen üç senaryonun ardından `.env` md5'i değişmedi; ayrıca
+  `rotation-probe-*` kaydı DB'de kalmadı (sorguyla teyit).
+- **Yazma yolu nasıl test edildi:** `ROTATE_ENV_PATH` ile hedef dosya
+  değiştirilebilir yapıldı; böylece gerçek `.env`'e dokunmadan geçici bir kopya
+  üzerinde tam yazma yolu koşuldu. (Betikler `src/` dışında olduğu için jest
+  kapsamına girmiyor — bu, script'ler için repodaki mevcut yaklaşımla tutarlı.)
+- **Yan bulgu:** `rotate:pii-key` (D-035) `package.json`'a hiç eklenmemişti; üç
+  dokümanda `npm run rotate:pii-key` diye anılmasına rağmen komut yoktu. Eklendi.

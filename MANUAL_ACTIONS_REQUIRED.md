@@ -41,9 +41,41 @@
 **Kalan tek adım (opsiyonel):** `.env`'de `DB_DRIVER=supabase` yapın.
 Şu an `memory`; uygulama kalıcı veriyle çalışsın istiyorsanız değiştirin.
 
-⚠️ **Anahtar rotasyonu önerilir:** `service_role` anahtarı sohbet geçmişinde
-görünüyor. RLS'i bypass eder ve `pii_vault` dâhil tüm tablolara tam yetki verir.
-Dashboard → Settings → API → Reset. Aynısı Anthropic anahtarı için de geçerli.
+## 3b. 🔴 AÇIK — `sb_secret_...` anahtar rotasyonu (tek kalan güvenlik borcu)
+
+**Neden:** Mevcut `sb_secret_...` anahtarı sohbet geçmişinde göründü. Bu anahtar
+RLS'i **bypass eder** ve `pii_vault` dâhil tüm tablolara tam yetki verir. Gerçek
+kullanıcı verisiyle çalışmaya başlamadan önce döndürülmeli.
+
+**Araç hazır:** `npm run rotate:supabase-key` (fail-safe; yeni anahtar tam olarak
+doğrulanmadan `.env`'e YAZMAZ). Yalnızca 1. ve 4. adımlar insan eylemi:
+
+1. 🧑 **Dashboard → Project Settings → API Keys → "Create new secret key"**
+   (eskisini HENÜZ silmeyin — ikisi de canlı kalsın, kesintisiz geçiş için)
+2. 🤖 Kuru koşum — yeni anahtarı doğrular, hiçbir şey yazmaz:
+   ```bash
+   SUPABASE_KEY_NEW=sb_secret_... npm run rotate:supabase-key
+   ```
+   Doğruladıkları: proje ayakta · anahtar SECRET türünde · 8/8 tabloya erişim ·
+   gerçek yazma round-trip'i (insert → read-back → delete)
+3. 🤖 Uygula (`.env` atomik olarak güncellenir, yedek dosya bırakılmaz):
+   ```bash
+   SUPABASE_KEY_NEW=sb_secret_... npm run rotate:supabase-key -- --apply
+   npm run test:supabase          # 16/16 geçmeli
+   ```
+4. 🧑 **Dashboard → API Keys → ESKİ secret key → Revoke**
+5. 🤖 İptali bağımsız kanıtla (401 beklenir):
+   ```bash
+   SUPABASE_KEY_OLD=<eski anahtar> npm run rotate:supabase-key -- --check-revoked
+   ```
+6. 🧑 Deployment ortam değişkenlerini de güncelleyin (Railway → Variables).
+
+**Fail-safe davranışı canlı doğrulandı:** publishable anahtar ❌ · geçersiz
+`sb_secret_` ❌ · `.env` satırı 0 veya 2 kez bulunursa yazma iptal ❌ —
+üç durumda da `.env` bit-bit değişmeden kaldı (md5 karşılaştırmasıyla).
+
+⚠️ Anthropic anahtarı için de aynısı geçerliydi; o **2026-07-26'da iptal edildi**
+(401 ile doğrulandı) ve yerine yeni anahtar konuldu.
 
 ## 4. PII Vault master key (üretim)
 - **Neden:** PII vault AES-256-GCM şifreleme anahtarı.

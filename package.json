@@ -17,8 +17,10 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "eval:prompts": "ts-node -T scripts/prompt-eval.ts",
     "check:supabase": "ts-node -T scripts/check-supabase.ts",
+    "rotate:supabase-key": "ts-node -T scripts/rotate-supabase-key.ts",
     "smoke:supabase": "ts-node -T scripts/smoke-supabase.ts",
     "test:supabase": "RUN_SUPABASE_TESTS=1 jest supabase.integration --testTimeout=30000",
+    "rotate:pii-key": "ts-node -T scripts/rotate-pii-key.ts",
     "live:check": "ts-node -T scripts/live-check.ts"
   },
   "dependencies": {
