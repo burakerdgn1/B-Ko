@@ -11,10 +11,10 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **555 test geçiyor** (39 suite), **0 atlanan**
+- **539 test geçiyor** (38 suite) + **16 canlı DB testi** (bayrakla koşulur) = 555 toplam
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edildi (218 MB)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
-- 10 commit, ana dal `main`
+- 32 commit, ana dal `main` · 36 kayıtlı mühendislik kararı (D-001…D-036)
 
 ## Definition of Done (CLAUDE.md §10) — doğrulama
 
@@ -116,6 +116,27 @@ Denetim izi eksiksiz ve ham PII içermiyor (yalnızca id/model adı).
 "İnsan onayı olmadan hiçbir şey gönderilmez" kuralı artık yalnızca birim
 testlerinde değil, gerçek Postgres verisinde de kanıtlı.
 
+### D-035 — PII üretim anahtarı, veri kaybetmeden rotate edildi
+
+Canlı testten sonra vault'ta **48 şifreli kayıt** vardı (6 profil alanı + 42 belge
+token'ı), hepsi DEV türetilmiş anahtarla. `PII_MASTER_KEY`'i yalnızca `.env`'de
+değiştirmek AES-GCM auth tag'ini bozar ve bunları **kalıcı olarak okunamaz**
+yapardı — profil giderse bilinen-değer maskelemesi çalışmaz, belge token'ları
+giderse `masked_text` bir daha asla çözülemez.
+
+Bu yüzden üç fazlı **fail-safe** rotasyon aracı yazıldı (`npm run rotate:pii-key`):
+çöz → *yazmadan önce* round-trip doğrula → yaz. Varsayılan kuru koşum; bir kayıt
+bile çözülemezse hiçbir şey yazılmadan iptal eder.
+
+```
+Faz 1: çözme       ✓ 48/48
+Faz 2: round-trip  ✓ 48/48
+Faz 3: yazma       ✓ 48/48 · key_version 1→2
+
+Rotasyon sonrası: profil 6/6 alan · 3 belgenin 42 token'ı tam çözülüyor
+                  (kalan token 0) · DEV-ONLY uyarısı kayboldu
+```
+
 ### D-034 — canlı testin bulduğu gerçek hata
 İlk fotoğraf denemesi başarısız oldu (`mime=application/octet-stream`). MIME tipi
 Telegram'ın `file_path` uzantısından tahmin ediliyordu; uzantı eşleşmeyince Claude
@@ -186,17 +207,21 @@ Ayrıca cascade silme (GDPR) gerçek DB'de doğrulandı.
 ATLANIR. `.env`'de `DB_DRIVER=supabase` olmasına rağmen normal koşum hâlâ
 hermetik: `527 passed, 16 skipped, 6s` — gerçek DB'ye çıkılmıyor (D-032).
 
-## 🔑 Anahtar durumu (2026-07-26 sonu)
+## 🔑 Anahtar durumu (2026-07-29)
 | Anahtar | Durum |
 |---|---|
-| Supabase legacy `service_role` JWT | ✅ İPTAL (401 ile doğrulandı) |
+| `PII_MASTER_KEY` | 🟢 **ÜRETİM değeri** — 48 kayıt kaybedilmeden rotate edildi (D-035, `key_version=2`) |
+| `ANTHROPIC_API_KEY` | 🟢 Aktif (yeni anahtar; eski anahtar iptal edildi, 401 ile doğrulandı) |
+| `TELEGRAM_BOT_TOKEN` | 🟢 Aktif — @BuKo749_bot |
+| `TELEGRAM_WEBHOOK_SECRET` | 🟢 Üretildi (64 hex) — fail-closed doğrulama canlı test edildi |
 | Supabase `sb_secret_...` | 🟢 Aktif — 16/16 entegrasyon testi geçiyor |
-| Supabase `sb_publishable_...` | 🟢 Aktif (yeni biçim, legacy iptalinden etkilenmedi) |
-| `ANTHROPIC_API_KEY` | ✅ İPTAL (401 ile doğrulandı) → `LLM_MOCK=true` |
+| Supabase legacy `service_role` JWT | ✅ İPTAL (401 "Legacy API keys are disabled") |
+| Eski `ANTHROPIC_API_KEY` | ✅ İPTAL (401 "API key is invalid.") |
 
-Anthropic anahtarı iptal edildiği için `.env` temizlendi ve mock moda dönüldü;
-uygulama sorunsuz açılıyor. **Aşağıdaki ölçüm sonuçları anahtar aktifken
-alınmıştır ve geçerliliğini korur** — ancak yeni ölçüm için yeni anahtar gerekir.
+⚠️ **Kalan güvenlik borcu:** `sb_secret_...` anahtarı sohbet geçmişinde göründü;
+gerçek kullanıcı verisiyle çalışmaya başlamadan önce döndürülmeli.
+Rotasyon prosedürü hazır: `npm run rotate:pii-key` (PII anahtarı için),
+Supabase için Dashboard → Settings → API.
 
 ## 📊 Gerçek API ölçümü (2026-07-26, `claude-sonnet-5`)
 `npm run eval:prompts` — **14 sentetik Behördenbrief** (8 temel + 6 sınır vakası),

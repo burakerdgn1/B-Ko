@@ -75,6 +75,24 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
 - [x] DB-4 (O) `DB_DRIVER=supabase` + gerçek DB entegrasyon testleri → **16/16**
 - [x] DB-5 (O) Test izolasyonu doğrulandı (527 passed / 16 skipped, gerçek DB'ye çıkılmıyor)
 
+## v1.3 — Canlı üretim doğrulaması — tamamlandı
+- [x] L-1 (Kullanıcı+O) Anahtar rotasyonu turu: legacy Supabase JWT + eski Anthropic
+      anahtarı iptal edildi, ikisi de `HTTP 401` ile bağımsız doğrulandı
+- [x] L-2 (O) cloudflared tüneli + webhook kaydı (ilk adres düştü, teşhis edilip yenilendi)
+- [x] L-3 (O) `npm run live:check` — gerçek Claude + gerçek Supabase birlikte (11/11)
+- [x] L-4 (Kullanıcı+O) **Canlı uçtan uca test**: /start → rıza → onboarding →
+      metin ✅ → fotoğraf (ilk denemede başarısız)
+- [x] L-5 (O) **D-034** — fotoğraf yolu kırıktı (MIME uzantıdan tahmin ediliyordu);
+      içerik-imzası tespitiyle düzeltildi + 12 regresyon testi + HEIC yönlendirmesi
+- [x] L-6 (O) Düzeltme sonrası fotoğraf doğrulandı; gerçek DB'de ham PII YOK
+- [x] L-7 (Kullanıcı+O) **Taslak onay/ret akışı canlı doğrulandı** — reddedilmiş
+      gerçek taslağa saldırı: `rejected→sent` ❌, `approvedAt` uydurma ❌ (D-014)
+- [x] L-8 (O) **D-035** — PII üretim anahtarı, 48 kayıt kaybedilmeden rotate edildi
+- [x] L-9 (O) **D-036** — güvenlik kararları (D-010/D-014/D-022/D-030) canlı
+      ortamda, gerçek veriye karşı yeniden doğrulandı
+- [x] L-10 (O) Belge tutarlılık denetimi: heredoc çakışması yüzünden sessizce
+      yazılmayan STATUS/TODO güncellemeleri tespit edilip tamamlandı
+
 ---
 
 ## Açık işler
@@ -97,7 +115,8 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       Üretim anahtarı üretildi (`openssl rand -hex 32`) ve `.env`'e işlendi.
       Mevcut 48 şifreli kayıt KAYBEDİLMEDEN rotate edildi (`npm run rotate:pii-key`,
       key_version 1→2). Doğrulandı: profil 6/6 alan, 3 belgenin 42 token'ı tamamen
-      çözülüyor, `DEV-ONLY` uyarısı kayboldu.
+      çözülüyor, `DEV-ONLY` uyarısı kayboldu. Prosedür: **D-035**,
+      araç: `npm run rotate:pii-key` (üç fazlı, fail-safe, varsayılan kuru koşum).
 - [ ] RLS politikaları — yalnızca web dashboard eklenirse gerekli (şu an service_role)
 - [ ] Deployment (Railway/Coolify) — Dockerfile ve CI hazır, hesap bağlanmadı
 - [ ] F4.2 minimal web dashboard — **ertelendi** (v1 kapsam dışı, CLAUDE.md §4)

@@ -559,3 +559,30 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **Gerekçe:** Anahtar rotasyonu bir güvenlik gereğidir ama veri kaybı riski
   taşır. "Anahtarı değiştir" ile "anahtarı güvenle değiştir" arasındaki fark bu
   script'tir; `.env` yorumuna da bu uyarı yazıldı.
+
+## D-036 — Güvenlik kararları CANLI ortamda doğrulandı (birim testi değil, gerçek veri)
+- **Bağlam:** D-014 (onay kapısı bypass), D-022 (INSERT tarafı kapısı) ve D-030
+  (fail-closed webhook) birim/entegrasyon testleriyle kanıtlanmıştı. Ancak bu
+  projede tekrar tekrar görüldü ki (D-024, D-032, D-034) testlerin doğruladığı
+  şey ile sahada olan şey ayrışabilir. Bu yüzden kararlar gerçek kurulum üzerinde
+  yeniden sınandı: gerçek Telegram botu → cloudflared tüneli → gerçek Claude →
+  gerçek Supabase.
+- **Doğrulanan sonuçlar (2026-07-29):**
+  - **D-030 fail-closed webhook:** tünel üzerinden doğru gizli anahtar → 200,
+    yanlış anahtar → 401, başlık yok → 401.
+  - **D-014 / D-022 onay kapısı:** kullanıcı bir taslağı onayladı
+    (`generated → presented → approved → sent`), başka bir belgeninkini reddetti
+    (`→ rejected`). Ardından GERÇEK reddedilmiş kayıt üzerinde saldırı denendi:
+    `rejected → sent` REDDEDİLDİ, aynı çağrıda `approvedAt` uydurma REDDEDİLDİ,
+    durum bozulmadı, `sent_at` boş kaldı.
+  - **PII sözleşmesi:** gerçek fotoğraf akışında `documents.masked_text`,
+    `analyses` ve `pii_vault` tarandı → ham PII YOK. Taslak içeriği de maskeli
+    saklanıyor (27 yer tutucu).
+  - **D-010 OCR istisnası:** beklenen uyarı loglandı (ham görsel sağlayıcıya
+    gitti), sonraki tüm adımlar maskeli metinle çalıştı — ilan edildiği gibi.
+- **Gerekçe:** "Testler geçiyor" ile "sahada çalışıyor" arasındaki fark bu projede
+  somut bir bedelle görüldü (D-034: fotoğraf yolu tamamen kırıktı ve 555 testin
+  hiçbiri fark etmedi). En güvenlik-kritik iddiaların gerçek veriye karşı
+  sınanması, belge iddiası olmaktan çıkıp kanıt olmasını sağlar.
+- **Not:** Bu bir "karar" değil bir DOĞRULAMA kaydıdır; kararların (D-014/D-022/
+  D-030/D-010) üretimde tuttuğunu belgelemek için buraya işlendi.
