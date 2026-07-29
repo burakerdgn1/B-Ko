@@ -11,7 +11,7 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **527 test geçiyor** (37 suite), **0 atlanan**
+- **555 test geçiyor** (39 suite), **0 atlanan**
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edildi (218 MB)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
 - 10 commit, ana dal `main`
@@ -80,6 +80,53 @@ Kalıcı test bu sınırı sabitliyor, böylece sessizce kaymaz.
 2. Yerel NER → tetikleyicisiz isimler (D-028) — kalan tek gizlilik boşluğu
 3. Gerçek Behördenbrief örnekleriyle (anonimleştirilmiş) doğrulama
 4. WhatsApp adapter (v2)
+
+## 🚀 CANLI UÇTAN UCA TEST (2026-07-29) — gerçek Telegram + gerçek Claude + gerçek Supabase
+
+İlk kez tüm zincir gerçek bileşenlerle çalıştırıldı: @BuKo749_bot → cloudflared
+tüneli → webhook → OCR → maskeleme → Claude → Supabase.
+
+| Adım | Sonuç |
+|---|---|
+| Webhook kaydı + gizli anahtar | ✅ doğru anahtar 200 · yanlış 401 |
+| /start → rıza → onboarding (3 adım) | ✅ profil vault'a şifreli yazıldı |
+| **Metin** mektup analizi | ✅ analyzed |
+| **Fotoğraf** analizi | ✅ `image/jpeg` · 160 KB · analyzed |
+| Model çıktısı | Ausländerbehörde Berlin · Unterlagennachforderung · **critical** · son tarih 2024-06-30 · güven 0.95 · 4 eksik belge |
+| **Gizlilik denetimi** | ✅ **HAM PII YOK** — `masked_text`, `analyses` ve `pii_vault` tarandı |
+| Vault | 14 şifreli token · `masked_text` içinde 16 yer tutucu |
+
+### Taslak akışı — insan onayı canlı doğrulandı
+Kullanıcı bir taslağı ONAYLADI, farklı bir belge için üretilen ikincisini REDDETTİ:
+
+| Taslak | Akış | approved_at | rejected_at | sent_at |
+|---|---|---|---|---|
+| #1 | generated → presented → **approved** → sent | ✓ | — | ✓ |
+| #2 | generated → presented → **rejected** | — | ✓ | — |
+
+Denetim izi eksiksiz ve ham PII içermiyor (yalnızca id/model adı).
+
+**Kapı canlı veriye karşı SALDIRIYLA test edildi** (gerçek reddedilmiş taslak):
+```
+✓ reddedilmiş → sent          REDDEDİLDİ
+✓ approvedAt uydurma (D-014)  REDDEDİLDİ
+✓ durum hâlâ 'rejected' · sent_at yok
+✓ taslak içeriğinde ham PII YOK (27 yer tutucu)
+```
+"İnsan onayı olmadan hiçbir şey gönderilmez" kuralı artık yalnızca birim
+testlerinde değil, gerçek Postgres verisinde de kanıtlı.
+
+### D-034 — canlı testin bulduğu gerçek hata
+İlk fotoğraf denemesi başarısız oldu (`mime=application/octet-stream`). MIME tipi
+Telegram'ın `file_path` uzantısından tahmin ediliyordu; uzantı eşleşmeyince Claude
+vision reddediyordu — **yani kullanıcı bota fotoğraf gönderemiyordu.** 555 birim
+testinin hiçbiri bunu yakalayamazdı (hepsi `MockChannelAdapter` kullanıyor, gerçek
+`getFile` yanıtından geçmiyor). Düzeltme: tür artık İÇERİKTEN (sihirli baytlar)
+tespit ediliyor; 12 regresyon testi. HEIC (iPhone varsayılanı) için de net
+yönlendirme mesajı eklendi.
+
+OCR adımında beklenen uyarı loglandı: ham görsel Anthropic'e gitti (D-010 —
+ilan edilmiş mimari istisna); sonraki tüm adımlar maskeli metinle çalıştı.
 
 ## ✅ Supabase CANLI — şema uygulandı, sürücü gerçek DB'de doğrulandı (2026-07-26)
 

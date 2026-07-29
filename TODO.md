@@ -86,8 +86,11 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       **Kullanıcı kararı: şimdilik girilmeyecek.**
 
 ### Sıradaki aday işler (öncelik sırasız)
-- [ ] Telegram bot token'ı ile canlı uçtan uca deneme (MANUAL_ACTIONS §2)
-      — webhook kodu yazıldı ve test edildi, ancak GERÇEK Telegram'a karşı hiç çalışmadı
+- [x] ~~Telegram canlı uçtan uca deneme~~ — **2026-07-29'da YAPILDI** (@BuKo749_bot
+      + cloudflared tüneli). /start → rıza → onboarding → metin VE fotoğraf analizi
+      → taslak üretimi → onay/ret akışı, hepsi gerçek Claude + gerçek Supabase ile
+      çalıştı. Canlı test **D-034**'ü buldu (fotoğraf yolu kırıktı) ve onay kapısı
+      gerçek veriye karşı saldırıyla doğrulandı.
 - [ ] Gerçek (anonimleştirilmiş) Behördenbrief örnekleriyle doğrulama —
       şu ana kadarki tüm doğrulama SENTETİK fixture'larla yapıldı
 - [ ] `PII_MASTER_KEY` üretim değeri + anahtar rotasyon prosedürü (şu an dev anahtarı)
