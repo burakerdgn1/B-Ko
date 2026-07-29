@@ -230,12 +230,15 @@ export class ConversationService implements OnModuleInit {
         { markdown: true },
       );
     } catch (error) {
-      this.logger.error(
-        `Analiz başarısız (userId=${user.id}): ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      await this.send(user, m.error);
+      const raw = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Analiz başarısız (userId=${user.id}): ${raw}`);
+
+      // Desteklenmeyen görsel biçimi, kullanıcının DÜZELTEBİLECEĞİ bir durumdur;
+      // genel "tekrar deneyin" mesajı yanıltıcı olur (canlı testte HEIC/octet-stream
+      // ile yaşandı). Ne yapması gerektiğini açıkça söylüyoruz.
+      const unsupported =
+        /Desteklenmeyen görsel|unsupported image|image type|media type/i.test(raw);
+      await this.send(user, unsupported ? m.unsupportedImage : m.error);
     }
   }
 

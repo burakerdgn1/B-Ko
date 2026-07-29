@@ -16,10 +16,52 @@ const EXTENSION_MIME: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
+  gif: 'image/gif',
   pdf: 'application/pdf',
   heic: 'image/heic',
+  heif: 'image/heic',
   webp: 'image/webp',
 };
+
+/**
+ * Dosya türünü İÇERİKTEN (sihirli baytlar) tespit eder.
+ *
+ * Neden uzantıya güvenilmez: Telegram `getFile.file_path` her zaman anlamlı bir
+ * uzantı vermez (bazı fotoğraf/doküman gönderimlerinde uzantısız ya da beklenmedik
+ * olur). Uzantıya güvenen sürüm canlı testte `application/octet-stream` üretti ve
+ * Claude vision çağrısı reddedildi — yani KULLANICI FOTOĞRAF GÖNDEREMİYORDU.
+ * Bayt imzası, kaynak ne derse desin doğruyu verir.
+ */
+export function detectMimeFromBytes(buf: Buffer): string | null {
+  if (buf.length < 12) return null;
+
+  // JPEG: FF D8 FF
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return 'image/png';
+  }
+  // GIF87a / GIF89a
+  if (buf.subarray(0, 6).toString('ascii') === 'GIF87a' ||
+      buf.subarray(0, 6).toString('ascii') === 'GIF89a') {
+    return 'image/gif';
+  }
+  // WebP: 'RIFF' .... 'WEBP'
+  if (buf.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      buf.subarray(8, 12).toString('ascii') === 'WEBP') {
+    return 'image/webp';
+  }
+  // PDF: %PDF
+  if (buf.subarray(0, 4).toString('ascii') === '%PDF') return 'application/pdf';
+  // HEIC/HEIF: ....ftyp{heic,heix,hevc,mif1,msf1}
+  if (buf.subarray(4, 8).toString('ascii') === 'ftyp') {
+    const brand = buf.subarray(8, 12).toString('ascii');
+    if (['heic', 'heix', 'hevc', 'heim', 'mif1', 'msf1'].includes(brand)) {
+      return 'image/heic';
+    }
+  }
+  return null;
+}
 
 /**
  * `ChannelAdapter` sözleşmesinin Telegram (grammY) implementasyonu.
@@ -82,8 +124,14 @@ export class TelegramAdapter extends ChannelAdapter {
     }
 
     const buffer = Buffer.from(await res.arrayBuffer());
+
+    // ÖNCE içerik imzası, SONRA uzantı — uzantı güvenilmez (bkz. detectMimeFromBytes).
     const ext = file.file_path.split('.').pop()?.toLowerCase() ?? '';
-    const mimeType = EXTENSION_MIME[ext] ?? 'application/octet-stream';
+    const mimeType =
+      detectMimeFromBytes(buffer) ??
+      EXTENSION_MIME[ext] ??
+      'application/octet-stream';
+
     return { buffer, mimeType };
   }
 

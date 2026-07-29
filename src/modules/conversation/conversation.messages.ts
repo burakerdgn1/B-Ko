@@ -60,6 +60,10 @@ const T = {
       'Bağlayıcı konularda bir avukata veya ilgili kuruma danışın.',
     error:
       '⚠️ Belgeyi işlerken bir sorun oluştu. Lütfen daha net bir fotoğrafla tekrar deneyin.',
+    unsupportedImage:
+      '⚠️ Bu görsel biçimini okuyamıyorum (ör. iPhone HEIC).\n\n'    +
+      'Telegram\'da gönderirken *Dosya* yerine *Fotoğraf* olarak seçin, ya da '  +
+      'görseli JPEG/PNG olarak kaydedip tekrar gönderin. PDF de olur.',
     unsupported:
       'Bana bir mektup fotoğrafı, PDF veya metin gönderebilirsiniz. Yardım için /yardim.',
     help:
@@ -117,6 +121,10 @@ const T = {
       'Bei verbindlichen Fragen wenden Sie sich an eine Anwältin/einen Anwalt oder die Behörde.',
     error:
       '⚠️ Beim Verarbeiten ist ein Problem aufgetreten. Bitte versuchen Sie es mit einem klareren Foto.',
+    unsupportedImage:
+      '⚠️ Dieses Bildformat kann ich nicht lesen (z. B. iPhone HEIC).\n\n' +
+      'Senden Sie es in Telegram als *Foto* statt als *Datei*, oder speichern Sie ' +
+      'es als JPEG/PNG. PDF geht auch.',
     unsupported:
       'Senden Sie mir ein Foto, PDF oder Text eines Briefes. Hilfe: /hilfe.',
     help:
@@ -171,6 +179,10 @@ const T = {
       'For binding matters, consult a lawyer or the authority directly.',
     error:
       '⚠️ Something went wrong while processing. Please try again with a clearer photo.',
+    unsupportedImage:
+      '⚠️ I can\'t read this image format (e.g. iPhone HEIC).\n\n' +
+      'In Telegram, send it as a *Photo* rather than a *File*, or save it as ' +
+      'JPEG/PNG. PDF works too.',
     unsupported: 'Send me a photo, PDF or text of a letter. Help: /help.',
     help:
       'Commands:\n/start — intro\n/agree — data consent\n/draft — draft reply\n/delete — delete my data\n/help — this message',

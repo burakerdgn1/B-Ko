@@ -513,3 +513,25 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **Ders:** Ölçüm aracının kendisi de hatalı olabilir. "Model yanlış yaptı"
   sonucuna varmadan önce ölçümün doğru şeyi karşılaştırdığı doğrulanmalı —
   aksi hâlde var olmayan bir sorunu "düzeltmek" için prompt bozulurdu.
+
+## D-034 — Dosya türü uzantıdan değil İÇERİKTEN tespit edilir (canlı test bulgusu)
+- **Bağlam:** İlk gerçek Telegram fotoğraf gönderiminde analiz başarısız oldu:
+  `Desteklenmeyen görsel türü: "application/octet-stream"`. MIME tipi
+  `getFile.file_path` uzantısından tahmin ediliyordu; uzantı eşleşmeyince
+  `application/octet-stream` üretiliyor ve Claude vision çağrısı reddediliyordu.
+  **Sonuç: kullanıcı bota fotoğraf gönderemiyordu** — ürünün ana giriş yolu kırıktı.
+- **Neden testler yakalamadı:** 555 test `MockChannelAdapter` veya doğrudan metin
+  girdisi kullanıyordu; hiçbiri Telegram'ın gerçek `getFile` yanıtından geçmiyordu.
+  Bu, yalnızca gerçek kanal üzerinden yapılan canlı testle görülebilirdi.
+- **Karar:** Tür artık **sihirli baytlardan** tespit ediliyor
+  (`detectMimeFromBytes`): JPEG, PNG, GIF, WebP, PDF, HEIC/HEIF. Uzantı haritası
+  yalnızca yedek. Kaynak ne iddia ederse etsin, içerik doğruyu söyler.
+- **Ek bulgu — HEIC:** iPhone varsayılanı HEIC'tir ve Claude vision desteklemez.
+  Eski kod bu durumda "daha net bir fotoğrafla deneyin" gibi YANILTICI bir mesaj
+  veriyordu (sorun netlik değil, biçimdi). Artık ayrı bir mesaj kullanıcıya ne
+  yapacağını söylüyor (Dosya yerine Fotoğraf gönder ya da JPEG/PNG kaydet).
+- **Doğrulama:** Düzeltme sonrası gerçek fotoğraf `image/jpeg` (160 KB) olarak
+  tanındı ve uçtan uca analiz edildi; DB'de ham PII bulunmadığı ayrıca denetlendi.
+- **Ders:** "Testler geçiyor" ile "sahada çalışıyor" farkı tam olarak burada.
+  Dış sistemlerin sözleşmesi (Telegram'ın file_path'i) ancak gerçek entegrasyonda
+  görülür; mock'lar kendi varsayımımızı doğrular, dış dünyayı değil.
