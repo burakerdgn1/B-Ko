@@ -22,20 +22,11 @@ npm run start:dev
 Varsayılan `.env.example` değerleriyle proje **hiçbir gerçek anahtar olmadan** ayağa kalkması
 gerekir (mock LLM, in-memory DB, Telegram devre dışı) — bkz. `MANUAL_ACTIONS_REQUIRED.md`.
 
-> ⚠️ **Bilinen sorun (doğrulandı, `env.schema.ts` kapsamında — bu agent'ın dosya
-> sahipliği dışında, config/backend sahibine bildirilmeli):** `.env.example`'da
-> `PII_MASTER_KEY=` satırı BOŞ bırakılmış. `dotenv`/`@nestjs/config` bunu `""` (boş
-> string) olarak okur — `undefined` değil. `env.schema.ts`'deki
-> `z.string().regex(/^[0-9a-fA-F]{64}$/).optional()` tanımı yalnızca `undefined`'ı
-> "yok" sayar; `""` regex'e karşı test edilir ve BAŞARISIZ olur. Sonuç: `cp .env.example .env`
-> sonrası hiçbir değişiklik yapmadan `npm run start:prod` / `docker compose up` çalıştırmak
-> "PII_MASTER_KEY 64 hex karakter olmalı" hatasıyla **process'i başlatmadan çökertir** —
-> bu, `node dist/main.js` ile lokal olarak ve Docker içinde bağımsız olarak doğrulandı.
-> **Geçici çözüm:** `.env` dosyanızda `PII_MASTER_KEY=` satırını tamamen SİLİN (veya
-> yorum satırı yapın) ki değişken gerçekten tanımsız sayılsın; ya da
-> `openssl rand -hex 32` ile gerçek bir dev anahtarı girin. **Kalıcı düzeltme** için
-> `env.schema.ts`'de bu alanın boş string'i `undefined`'a çeviren bir `transform`
-> eklemesi önerilir (örn. `z.string().optional().refine(v => !v || regex.test(v), ...)`).
+> ✅ **Çözüldü (D-020):** Bu bölümde eskiden `PII_MASTER_KEY=` boş satırının
+> uygulamayı çökerttiği bir uyarı vardı. `env.schema.ts` artık `blankToUndefined()`
+> ile boş string'leri "tanımsız" sayıyor; `cp .env.example .env` sonrası hiçbir
+> değişiklik yapmadan açılış temiz. Regresyon testi: `env.schema.spec.ts` →
+> "boş değerler (D-020 regresyonu)".
 
 ### 1b. docker-compose ile
 
@@ -70,22 +61,84 @@ servisi ekler (bağlantı: `postgresql://bueko:bueko_dev_only@localhost:5432/bue
 
 ## 2. Railway Dağıtımı
 
-1. Railway'de yeni proje oluşturun, bu repo'yu bağlayın.
-2. Railway, `Dockerfile`'ı otomatik algılar. **Build ayarlarında hedefi `runtime` olarak
-   sabitleyin** (Playwright/watcher gerekmedikçe — varsayılan zaten `runtime`, ekstra ayar
-   gerekmez, sadece Railway arayüzünde "Dockerfile target" alanı varsa boş bırakmayın).
-3. Ortam değişkenlerini Railway'in "Variables" sekmesinde girin (bkz. §4 tablo).
-   Özellikle: `NODE_ENV=production`, `LLM_MOCK=false`, `ANTHROPIC_API_KEY`, `DB_DRIVER=supabase`,
-   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PII_MASTER_KEY`.
-4. Railway otomatik olarak bir `PORT` değişkeni enjekte eder — uygulama zaten
-   `process.env.PORT`'u okuyor (`src/config/env.schema.ts`), ekstra ayar gerekmez.
-5. Deploy öncesi migration'ları uygulayın:
+Repoda `railway.json` hazır: Dockerfile builder, `/health` healthcheck'i,
+`ON_FAILURE` yeniden başlatma politikası ve **`numReplicas: 1`**.
+
+> **Neden tek replika?** Cron işleri (`@nestjs/schedule`) süreç İÇİNDE çalışıyor:
+> GDPR silme (`DELETION_CRON`) ve hatırlatma gönderimi. İki replika = aynı
+> hatırlatmanın kullanıcıya İKİ KEZ gitmesi ve silme işinin çakışması demek.
+> Yatay ölçekleme istenirse önce zamanlayıcı ayrı bir servise çıkarılmalı (v2).
+
+### 2.1 Kurulum
+
+1. Railway'de yeni proje → "Deploy from GitHub repo" → bu repo.
+2. Build ayarı gerekmez: `railway.json` builder'ı `DOCKERFILE` olarak sabitler.
+   **Dockerfile hedefi de ayarlanmaz** — `runtime` bilinçli olarak dosyanın SON
+   aşamasıdır, hedefsiz build daima onu üretir (bkz. Dockerfile başlığı ve §6).
+3. Variables sekmesine §4'teki değişkenleri girin. Asgari üretim seti:
+   ```
+   NODE_ENV=production
+   LLM_MOCK=false
+   ANTHROPIC_API_KEY=sk-ant-...
+   DB_DRIVER=supabase
+   SUPABASE_URL=https://<proje>.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
+   PII_MASTER_KEY=<openssl rand -hex 32>
+   TELEGRAM_MODE=webhook
+   TELEGRAM_BOT_TOKEN=...
+   TELEGRAM_WEBHOOK_SECRET=<openssl rand -hex 32>
+   ```
+4. **`PORT` ve `PUBLIC_BASE_URL` girmeyin.** Railway `PORT`'u kendisi enjekte eder;
+   `PUBLIC_BASE_URL` ise Railway'in `RAILWAY_PUBLIC_DOMAIN` değişkeninden otomatik
+   türetilir (`https://<domain>`). Bu, "tavuk-yumurta" sorununu çözer: uygulamanın
+   genel adresi ancak ilk dağıtımdan sonra bilinir, ama webhook kaydı AÇILIŞTA
+   gerekir. Özel alan adı kullanıyorsanız `PUBLIC_BASE_URL`'i açıkça girin —
+   açık değer her zaman kazanır.
+5. Networking → "Generate Domain" ile genel alan adını üretin (yoksa
+   `RAILWAY_PUBLIC_DOMAIN` tanımlı olmaz ve webhook `localhost`'a kaydolur).
+6. Migration'lar Supabase tarafında zaten uygulanmış olmalı (8/8 tablo). Yeni bir
+   proje ise:
    ```bash
    DATABASE_URL="<Supabase connection string>" scripts/apply-migrations.sh
    ```
    (Supabase panelinde: Project Settings → Database → Connection string.)
-6. Deploy sonrası `scripts/check-env.sh` ile üretim değişkenlerini yerelde/CI'da
-   simüle edip doğrulayabilirsiniz (bkz. §5).
+
+### 2.2 Deploy öncesi ve sonrası doğrulama
+
+```bash
+# YEREL değişkenlerle (.env):
+npm run check:deploy
+
+# RAILWAY'deki GERÇEK değişken setiyle — asıl önemli olan bu:
+railway run npm run check:deploy
+```
+
+`check:deploy` token harcamaz (yalnızca ücretsiz uç noktalar) ve şunları doğrular:
+gerçek `validateEnv()` üretim modunda geçiyor mu · `PUBLIC_BASE_URL` dış dünyadan
+erişilebilir ve https mi · `TELEGRAM_MODE=webhook` iken sır tanımlı ve Telegram'ın
+kabul ettiği biçimde mi (yoksa endpoint fail-closed davranır ve bot **sessizce
+sağır** olur — D-030) · Supabase anahtarı SECRET türünde ve 8/8 tablo erişilebilir
+mi · Anthropic anahtarı ve `LLM_MODEL` geçerli mi.
+
+Deploy sonrası:
+
+```bash
+curl -s https://<domain>/health          # {"status":"ok","uptime":N}
+```
+
+Telegram webhook'unun gerçekten kayıtlı olduğunu Telegram'a sorarak doğrulayın:
+
+```bash
+curl -s "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+# url alanı https://<domain>/webhook/telegram olmalı,
+# last_error_message boş olmalı.
+```
+
+### 2.3 Anahtar rotasyonundan sonra
+
+Supabase/Anthropic anahtarını döndürdüğünüzde **Railway Variables'ı da güncelleyin** —
+`.env` yalnızca yereldir. Rotasyon prosedürleri: `MANUAL_ACTIONS_REQUIRED.md` §3b
+(`npm run rotate:supabase-key`) ve `DECISIONS.md` D-035/D-037.
 
 ## 3. Coolify Dağıtımı
 
@@ -93,8 +146,10 @@ servisi ekler (bağlantı: `postgresql://bueko:bueko_dev_only@localhost:5432/bue
 2. Dockerfile tabanlı dağıtımda **Build Target: `runtime`** olarak ayarlayın.
 3. Port: `3000` (veya `.env`'deki `PORT` neyse) — Coolify'ın proxy'sine bu portu bağlayın.
 4. Ortam değişkenlerini Coolify'ın "Environment Variables" panelinden girin (§4 tablo).
-5. Healthcheck: Dockerfile'daki `HEALTHCHECK` talimatı Coolify tarafından otomatik
-   algılanır; ek yapılandırma gerekmez.
+5. Healthcheck: Dockerfile'daki `HEALTHCHECK` talimatı (`GET /health`) Coolify
+   tarafından otomatik algılanır; ek yapılandırma gerekmez.
+   ⚠️ Coolify'da `PUBLIC_BASE_URL`'i **elle** girin — `RAILWAY_PUBLIC_DOMAIN`
+   otomatiği yalnızca Railway'e özgüdür.
 6. Migration'ları deploy öncesi elle çalıştırın (§2 madde 5 ile aynı script).
 
 ## 4. Ortam Değişkenleri (`.env.example` ile birebir tutarlı)
@@ -103,7 +158,8 @@ servisi ekler (bağlantı: `postgresql://bueko:bueko_dev_only@localhost:5432/bue
 |---|---|---|
 | `NODE_ENV` | Hayır (varsayılan `development`) | `production` iken sıkı doğrulama devreye girer (§6). |
 | `PORT` | Hayır (varsayılan `3000`) | HTTP portu. |
-| `PUBLIC_BASE_URL` | Hayır | Webhook/URL üretimi için temel adres. |
+| `PUBLIC_BASE_URL` | Railway'de HAYIR, başka yerde webhook için EVET | Webhook adresinin temeli. Railway'de `RAILWAY_PUBLIC_DOMAIN`'den otomatik türetilir; açıkça verilen değer her zaman kazanır. |
+| `RAILWAY_PUBLIC_DOMAIN` | Platform enjekte eder | Elle GİRMEYİN. Yalnızca `PUBLIC_BASE_URL` boşsa okunur. |
 | `ANTHROPIC_API_KEY` | Üretimde EVET | Claude API anahtarı; yoksa `LLM_MOCK=true` gerekir. |
 | `LLM_MOCK` | Üretimde `false` olmalı | `true` iken deterministik mock LLM yanıtı kullanılır. |
 | `LLM_MODEL` | Hayır (varsayılan `claude-sonnet-5`) | Kullanılacak model kimliği. |
@@ -114,7 +170,8 @@ servisi ekler (bağlantı: `postgresql://bueko:bueko_dev_only@localhost:5432/bue
 | `TELEGRAM_WEBHOOK_SECRET` | `TELEGRAM_MODE=webhook` ise önerilir | Webhook doğrulama sırrı. |
 | `DB_DRIVER` | Üretimde `supabase` olmalı | `memory` \| `supabase`. |
 | `SUPABASE_URL` | `DB_DRIVER=supabase` ise EVET | Supabase proje URL'i (AB bölgesi). |
-| `SUPABASE_SERVICE_ROLE_KEY` | `DB_DRIVER=supabase` ise EVET | Supabase servis rolü anahtarı (gizli!). |
+| `SUPABASE_SERVICE_ROLE_KEY` | `DB_DRIVER=supabase` ise EVET | Supabase gizli anahtarı — `sb_secret_...` (RLS'i bypass eder). Rotasyon: `npm run rotate:supabase-key`. |
+| `SUPABASE_ANON_KEY` | Hayır | Publishable anahtar (`sb_publishable_...`). Backend bununla ÇALIŞMAZ; yalnızca ileride istemci eklenirse. |
 | `PII_MASTER_KEY` | Üretimde EVET | `openssl rand -hex 32` — 64 hex karakter. |
 | `DATA_RETENTION_DAYS` | Hayır (varsayılan `30`) | GDPR Art.17 saklama süresi. |
 | `DELETION_CRON` | Hayır (varsayılan `0 3 * * *`) | Otomatik silme cron ifadesi. |
@@ -122,11 +179,17 @@ servisi ekler (bağlantı: `postgresql://bueko:bueko_dev_only@localhost:5432/bue
 
 ## 5. Üretim Öncesi Kontrol Listesi
 
-`scripts/check-env.sh` bu listeyi otomatik kontrol eder:
+İki araç var, ikisi de aynı listeyi farklı açıdan kontrol eder:
 
 ```bash
-NODE_ENV=production scripts/check-env.sh .env.production
+npm run check:deploy                 # ÖNERİLEN — gerçek validateEnv() + canlı yoklama
+railway run npm run check:deploy     # platformdaki GERÇEK değişken setiyle
+scripts/check-env.sh .env.production # bash tabanlı, dosya okur, ağ erişimi gerektirmez
 ```
+
+`check:deploy` gerçek `validateEnv()`'i çağırdığı için `env.schema.ts` ile
+kayması mümkün değildir; `check-env.sh` ise kuralları bash'te tekrarlar
+(ağ olmayan ortamlar için hâlâ yararlı, ama kural kopyasıdır).
 
 Kontrol listesi:
 
@@ -139,6 +202,11 @@ Kontrol listesi:
 - [ ] `supabase/migrations/0001_init.sql` hedef veritabanına uygulanmış
      (`scripts/apply-migrations.sh`)
 - [ ] Telegram kullanılacaksa `TELEGRAM_BOT_TOKEN` + uygun `TELEGRAM_MODE` ayarlı
+- [ ] `TELEGRAM_MODE=webhook` ise `TELEGRAM_WEBHOOK_SECRET` DOLU (boşsa endpoint
+      fail-closed davranır ve bot hiçbir mesaj almaz — D-030)
+- [ ] `PUBLIC_BASE_URL` dış dünyadan erişilebilir bir **https** adresi
+      (Railway'de otomatik; başka yerde elle)
+- [ ] Deploy sonrası `GET /health` → 200 ve `getWebhookInfo` → doğru url, hatasız
 
 ### Kod seviyesinde zorlanan güvenlik kapısı
 
@@ -164,12 +232,19 @@ gösterir; ama son söz her zaman `env.schema.ts`'dedir.
 | `with-browsers` | Randevu izleme (WatcherService/Playwright) gerçekten kullanılacaksa | Debian tabanlı (`mcr.microsoft.com/playwright`), Chromium önceden kurulu, çok daha büyük |
 
 ```bash
-# Varsayılan (küçük, tarayıcısız)
-docker build --target runtime -t bueko:latest .
+# Varsayılan (küçük, tarayıcısız) — hedef belirtmeye GEREK YOK
+docker build -t bueko:latest .
 
-# Watcher/Playwright'ı gerçekten çalıştırmak için
+# Watcher/Playwright'ı gerçekten çalıştırmak için (açıkça istenir)
 docker build --target with-browsers -t bueko:with-browsers .
 ```
+
+> ⚠️ **`runtime` aşaması Dockerfile'ın SONUNDA olmalı — sırasını değiştirmeyin.**
+> `--target` verilmeyen bir build (Railway'in Dockerfile builder'ı dâhil) daima
+> son aşamayı derler. Aşamalar eskiden `runtime` → `with-browsers` sırasındaydı;
+> bu hâliyle Railway sessizce ~2 GB'lık, Node 20 tabanlı Playwright imajını
+> üretirdi. Sıra düzeltildi ve `docker build` (hedefsiz) ile doğrulandı:
+> üretilen imaj 218 MB / Node 22.
 
 Neden ayrım var: `playwright` `package.json`'da `optionalDependencies` altında ve
 Alpine'in musl libc'si üzerinde Chromium/WebKit/Firefox resmi olarak desteklenmiyor
@@ -201,24 +276,31 @@ Her PR ve `main` push'unda otomatik çalışır:
 5. `docker build --target runtime` (push YOK, sadece build edilebilirlik doğrulaması,
    GitHub Actions cache ile hızlandırılmış).
 
-## 8. Bilinen Sorunlar (Docker build/run doğrulaması sırasında bulundu)
+## 8. Bilinen Sorunlar — hepsi KAPANDI
 
-Bu bulgular `src/**` / `package.json` kapsamında — bu agent'ın dosya sahipliği dışında,
-ama gerçek `docker build` + `docker run` denemesiyle doğrulandığı için burada not edildi:
+Bu bölümde eskiden iki açık bulgu vardı; ikisi de düzeltildi ve testle korunuyor:
 
-1. **`PII_MASTER_KEY=` boş satırı çöküşe sebep olur** — bkz. §1a üstündeki uyarı kutusu.
-2. **`class-validator` / `class-transformer` bağımlılığı eksik.** `src/main.ts`,
-   `app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))`
-   çağırıyor; NestJS'in `ValidationPipe`'ı bu iki paketi runtime'da lazy-require eder.
-   `package.json`'da (`dependencies` VE `devDependencies` içinde) bu paketler **hiç yok**
-   (doğrulandı: `package-lock.json`'da da yok, `node_modules`'ta da yok — devDependency
-   hoisting'ten değil, tamamen eksik). Sonuç: hem lokalde tam `npm ci` ile hem de üretim
-   Docker imajında (`--omit=dev`) başlangıçta
-   `[PackageLoader] The "class-validator" package is missing` hatası loglanıyor.
-   Şu an DTO'larda `class-validator` dekoratörü kullanılmıyorsa etkisiz olabilir, ama
-   `ValidationPipe`'ın `transform: true` ile global kullanılması bu paketlerin üretim
-   bağımlılığı olarak eklenmesini gerektirir. **Öneri:** `npm i class-validator
-   class-transformer --save` (backend/config sahibine iletilmeli).
+1. ~~`PII_MASTER_KEY=` boş satırı çöküşe sebep olur~~ → **D-020**, `blankToUndefined()`.
+2. ~~`class-validator` / `class-transformer` bağımlılığı eksik~~ → **D-021**: global
+   `ValidationPipe` KALDIRILDI (sıfır DTO için iki çalışma-zamanı bağımlılığı
+   eklemek yerine). Gerekçe `src/main.ts` içinde yorum olarak duruyor; HTTP DTO
+   doğrulaması gerektiğinde oradaki iki satırlık talimat izlenir.
+
+**Gerçek `docker build` + `docker run` ile son doğrulama (2026-07-29):**
+hedefsiz build → `runtime` (218 MB, Node 22) · `NODE_ENV=production` +
+gerçek `.env` ile temiz açılış (0 hata) · `GET /health` → `200
+{"status":"ok","uptime":N}` · Docker HEALTHCHECK → `healthy`.
+
+## 8b. Ölçekleme Sınırı (bilinçli)
+
+Uygulama **tek replika** varsayar. Zamanlayıcı (`@nestjs/schedule`) süreç içinde
+çalıştığı için ikinci bir replika:
+
+- aynı hatırlatmayı kullanıcıya iki kez gönderir,
+- GDPR silme işini (`purge_expired_data()`) eşzamanlı iki kez tetikler.
+
+`railway.json` bu yüzden `numReplicas: 1` sabitler. Yatay ölçekleme gerekirse
+zamanlayıcının ayrı bir servise (veya dağıtık kilide) taşınması gerekir — v2.
 
 ## 9. Şeffaflık ve Konumlandırma Hatırlatması
 

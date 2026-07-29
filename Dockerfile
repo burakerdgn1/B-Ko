@@ -4,11 +4,18 @@
 # Aşamalar:
 #   deps      → yalnızca üretim (prod) node_modules
 #   builder   → dev bağımlılıklarla TypeScript derleme (nest build → dist/)
+#   with-browsers → OPSİYONEL hedef: Playwright/watcher modülünü gerçekten
+#               çalıştırmak isteyenler için Debian tabanlı, Chromium önceden kurulu imaj.
 #   runtime   → VARSAYILAN hedef: küçük Alpine imajı, root olmayan kullanıcı,
 #               dumb-init ile sinyal yönetimi (Nest enableShutdownHooks() ile birlikte
 #               SIGTERM'de düzgün kapanış sağlar).
-#   with-browsers → OPSİYONEL hedef: Playwright/watcher modülünü gerçekten
-#               çalıştırmak isteyenler için Debian tabanlı, Chromium önceden kurulu imaj.
+#
+# ⚠️ AŞAMA SIRASI BİLİNÇLİ: `runtime` DOSYANIN SON AŞAMASI olmalı.
+# `--target` verilmeden yapılan bir `docker build` (Railway'in Dockerfile
+# builder'ı dâhil) DAİMA son aşamayı derler. `with-browsers` sonda olsaydı
+# Railway sessizce ~2 GB'lık, Node 20 tabanlı Playwright imajını üretirdi —
+# oysa üretimde istenen küçük Alpine imajıdır. Bu aşamaları yeniden
+# sıralamayın; `with-browsers` açıkça `--target with-browsers` ile istenir.
 #
 # ── Playwright / Alpine kararı (bkz. docs/DEPLOYMENT.md) ──────────────────────
 # `playwright` package.json'da optionalDependencies altında (bkz. package.json).
@@ -42,31 +49,7 @@ COPY tsconfig.json nest-cli.json ./
 COPY src ./src
 RUN npm run build
 
-# ---- Stage 3: runtime — VARSAYILAN üretim imajı (tarayıcısız, Alpine, küçük) ----
-FROM node:22-alpine AS runtime
-# dumb-init: PID 1 olarak SIGTERM/SIGINT'i doğru şekilde Node sürecine iletir
-# (Nest'in enableShutdownHooks() ile düzgün graceful shutdown yapabilmesi için gerekli;
-# çıplak `node` PID 1 olarak sinyalleri doğru forward etmez).
-RUN apk add --no-cache dumb-init \
-    && addgroup -S bueko \
-    && adduser -S bueko -G bueko
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY package.json ./
-USER bueko
-EXPOSE 3000
-# Not: Uygulamada henüz özel bir /health endpoint'i yok (src/app.module.ts'de
-# controller tanımlı değil). Bu healthcheck, sürecin HTTP portunu dinlediğini
-# doğrular (5xx veya bağlantı hatası dışındaki her yanıt "sağlıklı" sayılır).
-# İleride dedike bir /health endpoint'i eklenirse bu komut sadeleştirilebilir.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||3000,path:'/',timeout:4000},(r)=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main.js"]
-
-# ---- Stage 4 (opsiyonel hedef): with-browsers — Playwright watcher için ----
+# ---- Stage 3 (opsiyonel hedef): with-browsers — Playwright watcher için ----
 # `docker build --target with-browsers -t bueko:with-browsers .`
 # Microsoft'un resmi Playwright imajını temel alır (Debian/Ubuntu, glibc; Chromium
 # ve gerekli sistem kütüphaneleri önceden kurulu). Yalnızca WatcherService'i
@@ -88,5 +71,29 @@ RUN groupadd -r bueko 2>/dev/null || true \
 USER bueko
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||3000,path:'/',timeout:4000},(r)=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||3000,path:'/health',timeout:4000},(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+CMD ["node", "dist/main.js"]
+
+# ---- Stage 4: runtime — VARSAYILAN üretim imajı (tarayıcısız, Alpine, küçük) ----
+# SON AŞAMA OLMASI ZORUNLU — bkz. dosya başındaki "AŞAMA SIRASI BİLİNÇLİ" notu.
+FROM node:22-alpine AS runtime
+# dumb-init: PID 1 olarak SIGTERM/SIGINT'i doğru şekilde Node sürecine iletir
+# (Nest'in enableShutdownHooks() ile düzgün graceful shutdown yapabilmesi için gerekli;
+# çıplak `node` PID 1 olarak sinyalleri doğru forward etmez).
+RUN apk add --no-cache dumb-init \
+    && addgroup -S bueko \
+    && adduser -S bueko -G bueko
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY package.json ./
+USER bueko
+EXPOSE 3000
+# `/health` — HealthModule'ün sunduğu liveness probe'u (src/modules/health).
+# 200 dışındaki her yanıt sağlıksızdır: eskiden `/` yoklanıyordu ve orası 404
+# döndüğü için "5xx değilse sağlıklı" gibi gevşek bir kural gerekiyordu.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||3000,path:'/health',timeout:4000},(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/main.js"]

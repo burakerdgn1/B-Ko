@@ -627,3 +627,74 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   kapsamına girmiyor — bu, script'ler için repodaki mevcut yaklaşımla tutarlı.)
 - **Yan bulgu:** `rotate:pii-key` (D-035) `package.json`'a hiç eklenmemişti; üç
   dokümanda `npm run rotate:pii-key` diye anılmasına rağmen komut yoktu. Eklendi.
+
+## D-038 — Railway dağıtımı: üç sessiz arıza kapatıldı
+- **Bağlam:** Dockerfile, CI ve docker-compose MVP'den beri hazırdı; eksik olan
+  yalnızca hesap bağlamak sanılıyordu. Dağıtım yolu gerçekten incelenince
+  **kod tarafında üç ayrı sessiz arıza** bulundu — üçü de deploy'u "yeşil"
+  gösterip ürünü çalışmaz bırakırdı.
+
+- **(1) Hedefsiz `docker build` YANLIŞ imajı üretiyordu.** Dockerfile'ın son
+  aşaması `with-browsers` idi. `--target` verilmeyen her build (Railway'in
+  Dockerfile builder'ı dâhil) daima SON aşamayı derler. `docker-compose.yml` ve
+  CI `target: runtime` yazdığı için bu yerelde hiç görünmüyordu; Railway ise
+  sessizce ~2 GB'lık, **Node 20** tabanlı Playwright imajını üretecekti
+  (`runtime` Node 22). **Karar:** aşamalar `deps → builder → with-browsers →
+  runtime` sırasına alındı; `runtime` artık SON. Dosya başına ve §6'ya
+  "sırasını değiştirmeyin" uyarısı eklendi. Doğrulandı: hedefsiz
+  `docker build` → 218 MB, Node 22.
+
+- **(2) Healthcheck yolu yoktu.** Uygulamada hiç HTTP controller'ı yoktu, bu
+  yüzden Dockerfile `/`'ı yokluyor ve "5xx değilse sağlıklı" gibi gevşek bir
+  kural kullanıyordu (`/` zaten 404 döner). Railway healthcheck'i 404'te
+  dağıtımı unhealthy sayıp yeniden başlatma döngüsüne sokabilirdi.
+  **Karar:** `GET /health` (HealthModule) eklendi; Dockerfile ve `railway.json`
+  bu yolu kullanıyor, kural `statusCode === 200`'e sıkılaştırıldı.
+  - **Bilinçli olarak LIVENESS, readiness değil:** Supabase/Anthropic'e
+    dokunulmuyor. Sağlayıcı kesintisi çalışan bir süreci öldürmemeli —
+    yeniden başlatmak dış servisi düzeltmez, yalnızca bekleyen işi kaybettirir.
+    Bağımlılıkların gerçekten çalıştığı `npm run live:check` ile ayrıca ölçülüyor.
+  - **Bilinçli olarak SIFIR bilgi:** endpoint kimlik doğrulaması isteyemez
+    (platform probe'unun anahtarı yoktur), yani herkese açıktır. Yanıt sadece
+    `{status, uptime}`; sürüm/ortam/sürücü ASLA yazılmaz. Alan listesini TAM
+    eşleştiren bir test var, böylece ileride "debug için" eklenen bir alan
+    testi kırar ve karar bilinçli olarak yeniden verilir.
+
+- **(3) `PUBLIC_BASE_URL` tavuk-yumurta sorunu.** Webhook kaydı AÇILIŞTA
+  `PUBLIC_BASE_URL` ister, ama Railway'de genel adres ancak İLK dağıtımdan
+  sonra bilinir. Elle girilemediği için ilk deploy `http://localhost:3000`
+  adresine webhook kaydeder → **bot sessizce hiçbir mesaj almaz.**
+  **Karar:** `PUBLIC_BASE_URL` boşsa `RAILWAY_PUBLIC_DOMAIN`'den
+  `https://<domain>` olarak türetilir. Açıkça verilen değer HER ZAMAN kazanır
+  (özel alan adı bozulmasın). Boş string tuzağı D-020 ile aynı sırayla çözüldü:
+  önce `blankToUndefined`, sonra platform varsayılanı — 4 test bunu sabitliyor.
+
+- **`railway.json` — `numReplicas: 1` bilinçli:** cron (`@nestjs/schedule`)
+  süreç İÇİNDE çalışıyor. İkinci replika aynı hatırlatmayı kullanıcıya iki kez
+  gönderir ve GDPR silme işini çakıştırır. Yatay ölçekleme için önce
+  zamanlayıcı ayrı bir servise çıkarılmalı (v2). `restartPolicyType=ON_FAILURE`
+  + 10 deneme: env doğrulaması fail-fast olduğu için hatalı bir değişken
+  sonsuz döngü yerine BAŞARISIZ DEPLOY olarak görünür.
+
+- **`npm run check:deploy` (yeni) — neden `check-env.sh` yetmedi:** o script
+  bir `.env` DOSYASI okur ve `env.schema.ts` kurallarını bash'te TEKRARLAR
+  (kural kopyası = kayma riski). Yenisi gerçek `validateEnv()`'i çağırır
+  (kopya yok) ve süreç ORTAMINI okur — yani `railway run npm run check:deploy`
+  ile platformdaki GERÇEK değişken seti denetlenebilir. Ayrıca şemanın
+  göremediği tuzakları yakalar: yerel/http `PUBLIC_BASE_URL`, `webhook` modunda
+  eksik veya geçersiz biçimli sır (D-030 fail-closed → bot sağır olur),
+  publishable Supabase anahtarı, geçersiz `LLM_MODEL`. Token HARCAMAZ:
+  Anthropic yalnızca ücretsiz `/v1/models` ile yoklanır.
+  `check-env.sh` ağ erişimi olmayan ortamlar için korundu.
+
+- **Doğrulama (gerçekten çalıştırıldı, iddia değil):** hedefsiz `docker build`
+  → 218 MB / Node 22 · `NODE_ENV=production` + gerçek `.env` ile konteyner
+  temiz açıldı (0 hata) · `GET /health` → `200 {"status":"ok","uptime":8}` ·
+  `/` → 404 (beklenen) · Docker HEALTHCHECK → `healthy` · `check:deploy`
+  gerçek ortamda 0 hata, ve bozuk konfigürasyonlarla NO-GO senaryoları
+  (localhost adres, sırsız webhook, `LLM_MOCK=true`, sahte Supabase/Anthropic
+  anahtarı) tek tek tetiklendi.
+
+- **Yan düzeltme:** `docs/DEPLOYMENT.md` iki KAPANMIŞ sorunu hâlâ açık gibi
+  anlatıyordu (D-020 boş `PII_MASTER_KEY` çöküşü, D-021 eksik
+  `class-validator`). Dağıtımı yapan kişiyi yanlış yönlendirirdi; düzeltildi.

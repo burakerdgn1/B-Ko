@@ -53,6 +53,36 @@ describe('validateEnv', () => {
     });
   });
 
+  describe('platform varsayılanı: PUBLIC_BASE_URL ← RAILWAY_PUBLIC_DOMAIN', () => {
+    it('PUBLIC_BASE_URL verilmediğinde Railway alan adından türetilir', () => {
+      const env = validateEnv({ RAILWAY_PUBLIC_DOMAIN: 'bueko-production.up.railway.app' });
+      expect(env.PUBLIC_BASE_URL).toBe('https://bueko-production.up.railway.app');
+    });
+
+    it('açıkça verilen PUBLIC_BASE_URL kazanır (özel alan adı bozulmasın)', () => {
+      const env = validateEnv({
+        PUBLIC_BASE_URL: 'https://bueko.example.com',
+        RAILWAY_PUBLIC_DOMAIN: 'bueko-production.up.railway.app',
+      });
+      expect(env.PUBLIC_BASE_URL).toBe('https://bueko.example.com');
+    });
+
+    it('BOŞ PUBLIC_BASE_URL Railway varsayılanını bloke ETMEZ (D-020 ile aynı tuzak)', () => {
+      const env = validateEnv({
+        PUBLIC_BASE_URL: '',
+        RAILWAY_PUBLIC_DOMAIN: 'bueko-production.up.railway.app',
+      });
+      expect(env.PUBLIC_BASE_URL).toBe('https://bueko-production.up.railway.app');
+    });
+
+    it('Railway dışında davranış değişmez — localhost varsayılanı korunur', () => {
+      expect(validateEnv({}).PUBLIC_BASE_URL).toBe('http://localhost:3000');
+      expect(validateEnv({ RAILWAY_PUBLIC_DOMAIN: '' }).PUBLIC_BASE_URL).toBe(
+        'http://localhost:3000',
+      );
+    });
+  });
+
   describe('üretim kapıları (mock kaçış yolları kapalı)', () => {
     const prodBase = {
       NODE_ENV: 'production',

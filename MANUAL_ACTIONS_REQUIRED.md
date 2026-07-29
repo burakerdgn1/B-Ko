@@ -98,7 +98,48 @@ doğrulanmadan `.env`'e YAZMAZ). Yalnızca 1. ve 4. adımlar insan eylemi:
 - **Aksiyon:** `sudo xcode-select --switch /Library/Developer/CommandLineTools`
 - **O ana kadar:** CLT git tam yol ile kullanılıyor (bkz. DECISIONS D-001).
 
-## 8. Deployment hosting hesabı (teslim aşaması)
-- **Neden:** Railway/Coolify canlı dağıtım.
-- **Aksiyon:** Hesap + repo bağla + env değişkenlerini gir.
-- **O ana kadar:** Dockerfile + docker-compose ile lokal çalışır.
+## 8. 🔴 AÇIK — Railway dağıtımı (hesap gerektirir)
+
+**Kod tarafı HAZIR ve doğrulandı** (2026-07-29): `railway.json`, `/health`
+liveness probe, `PUBLIC_BASE_URL` otomatiği, `npm run check:deploy` GO/NO-GO
+aracı. Hedefsiz `docker build` gerçekten çalıştırıldı → 218 MB / Node 22,
+konteyner `healthy`. Kalan tek şey hesap bağlama:
+
+1. 🧑 [railway.app](https://railway.app) → hesap aç → **New Project →
+   Deploy from GitHub repo** → bu repo.
+2. 🧑 **Settings → Networking → Generate Domain** (bu yapılmazsa
+   `RAILWAY_PUBLIC_DOMAIN` tanımlanmaz ve webhook `localhost`'a kaydolur).
+3. 🧑 **Variables** sekmesine şunları girin (`PORT` ve `PUBLIC_BASE_URL` HARİÇ —
+   ikisi de otomatik):
+   ```
+   NODE_ENV=production
+   LLM_MOCK=false
+   ANTHROPIC_API_KEY=<.env'deki değer>
+   DB_DRIVER=supabase
+   SUPABASE_URL=<.env'deki değer>
+   SUPABASE_SERVICE_ROLE_KEY=<ROTASYON SONRASI yeni sb_secret_...>
+   PII_MASTER_KEY=<.env'deki değer — vault bu anahtarla şifrelendi, DEĞİŞTİRMEYİN>
+   TELEGRAM_MODE=webhook
+   TELEGRAM_BOT_TOKEN=<.env'deki değer>
+   TELEGRAM_WEBHOOK_SECRET=<.env'deki değer>
+   OCR_PROVIDER=claude-vision
+   DATA_RETENTION_DAYS=30
+   DELETION_CRON=0 3 * * *
+   ```
+   ⚠️ `PII_MASTER_KEY` mevcut değerle AYNI olmalı — vault'taki 48 kayıt onunla
+   şifreli (D-035). Farklı bir değer girmek onları okunamaz yapar.
+   ⚠️ Supabase anahtarını **§3b rotasyonundan SONRA** girin, yoksa sızmış
+   anahtarı üretime taşımış olursunuz.
+4. 🤖 Deploy sonrası doğrulama:
+   ```bash
+   railway run npm run check:deploy      # platformdaki gerçek değişkenlerle
+   curl -s https://<domain>/health       # {"status":"ok","uptime":N}
+   curl -s "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+   ```
+5. 🧑 Bota Telegram'dan bir mektup gönderip uçtan uca akışı canlı ortamda teyit edin.
+
+**Ölçekleme sınırı:** `railway.json` `numReplicas: 1` sabitler — cron süreç
+içinde çalışıyor, ikinci replika hatırlatmaları çift gönderir
+(bkz. docs/DEPLOYMENT.md §8b). Bu değeri artırmayın.
+
+Ayrıntılı rehber: `docs/DEPLOYMENT.md` §2.

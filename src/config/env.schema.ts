@@ -131,9 +131,45 @@ function blankToUndefined(raw: Record<string, unknown>): Record<string, unknown>
   return out;
 }
 
+/**
+ * Platform tarafından enjekte edilen değişkenlerden türetilen varsayılanlar.
+ *
+ * `PUBLIC_BASE_URL` ← `RAILWAY_PUBLIC_DOMAIN`:
+ * Railway'de bir "tavuk-yumurta" sorunu var — uygulamanın genel adresi ancak İLK
+ * dağıtımdan sonra belli olur, ama `PUBLIC_BASE_URL` webhook kaydı için AÇILIŞTA
+ * gerekir (`telegram.service.ts` → `setWebhook`). Elle girilirse ilk deploy
+ * `http://localhost:3000` ile webhook kaydeder ve bot sessizce çalışmaz.
+ * Railway her dağıtıma `RAILWAY_PUBLIC_DOMAIN`'i (şema içermeyen host adı)
+ * enjekte ettiği için ondan türetiyoruz.
+ *
+ * Açıkça verilen `PUBLIC_BASE_URL` HER ZAMAN kazanır — özel alan adı (custom
+ * domain) kullananların davranışı değişmesin diye.
+ */
+function applyPlatformDefaults(
+  raw: Record<string, unknown>,
+): Record<string, unknown> {
+  const out = { ...raw };
+  const railwayDomain = out.RAILWAY_PUBLIC_DOMAIN;
+
+  if (
+    out.PUBLIC_BASE_URL === undefined &&
+    typeof railwayDomain === 'string' &&
+    railwayDomain.trim() !== ''
+  ) {
+    out.PUBLIC_BASE_URL = `https://${railwayDomain.trim()}`;
+  }
+
+  return out;
+}
+
 /** Zod hatalarını okunabilir tek bir mesaja çevirir (fail-fast log'u için). */
 export function validateEnv(raw: Record<string, unknown>): AppEnv {
-  const parsed = envSchema.safeParse(blankToUndefined(raw));
+  // Sıra önemli: önce boş string'ler "tanımsız"a çevrilir, SONRA platform
+  // varsayılanı uygulanır — aksi hâlde `PUBLIC_BASE_URL=` (boş) satırı
+  // Railway varsayılanını bloke ederdi.
+  const parsed = envSchema.safeParse(
+    applyPlatformDefaults(blankToUndefined(raw)),
+  );
   if (!parsed.success) {
     const lines = parsed.error.issues.map(
       (i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`,

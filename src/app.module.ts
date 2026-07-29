@@ -12,6 +12,7 @@ import { WatcherModule } from './modules/watcher/watcher.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { ConversationModule } from './modules/conversation/conversation.module';
+import { HealthModule } from './modules/health/health.module';
 
 /**
  * Kök modül.
@@ -27,6 +28,8 @@ import { ConversationModule } from './modules/conversation/conversation.module';
     AppConfigModule,
     // Cron altyapısı: hatırlatma gönderimi ve GDPR (Art.17) silme işleri.
     ScheduleModule.forRoot(),
+    // Bağımlılığı olmayan liveness probe — platform healthcheck'i için.
+    HealthModule,
     CryptoModule,
     PiiModule,
     PersistenceModule,
