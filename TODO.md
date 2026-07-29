@@ -115,8 +115,16 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       yaptığım yanlış varsayımı (playwright JS paketi imajda VAR) yakaladı.
 - [x] D-5 (O) `docs/DEPLOYMENT.md` kapanmış iki sorunu (D-020, D-021) hâlâ açık
       gibi anlatıyordu — dağıtımı yapanı yanlış yönlendirirdi; düzeltildi.
-- [ ] D-6 (Kullanıcı) **Railway hesabı + repo bağlama + Variables**
+- [~] D-6 (Kullanıcı) **Railway hesabı + repo bağlama + Variables**
       → `MANUAL_ACTIONS_REQUIRED.md` §8 (adım adım, kopyalanabilir liste).
+      **Durum (2026-07-29, CLI ile doğrulandı):** hesap ✅ açık, ama **0 proje**
+      var — deploy henüz yapılmadı. Ayrıca GitHub repo'su BOŞ (35 commit hiç
+      push edilmemiş), yani Railway'in çekeceği bir kaynak da yok.
+      **Kullanıcı kararı: deploy ertelendi, önce Supabase rotasyonu.**
+      Gerekçe: şimdi dağıtmak sızmış `sb_secret` anahtarını üretime taşırdı.
+- [ ] D-7 (Kullanıcı) Kod GitHub'a push edilecek mi, yoksa `railway up` ile
+      doğrudan mı dağıtılacak — karar verilmedi (ikisi de dışa dönük eylem,
+      onay bekliyor). GitHub yolu CI'ı (D-039 guard'ı) da devreye sokar.
 
 ---
 

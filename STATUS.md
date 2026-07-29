@@ -23,6 +23,21 @@ gerçek Docker ile doğrulandı. Adım adım liste: `MANUAL_ACTIONS_REQUIRED.md`
 
 Ayrıntı ve gerekçeler: `MANUAL_ACTIONS_REQUIRED.md` §3b + §8.
 
+### Dağıtım ön-durumu — doğrulandı (2026-07-29, `railway` CLI ile)
+
+| Kontrol | Durum |
+|---|---|
+| Railway hesabı | ✅ giriş yapıldı (1 workspace) |
+| Railway projesi | ❌ **0 proje** (`railway list --json` → `[]`) — deploy YOK |
+| GitHub `burakerdgn1/B-Ko` | ⚠️ var, private, ama **BOŞ** (`isEmpty: true`) |
+| Yerel commit'ler | 35 commit, **hiçbiri push edilmemiş** (uzak dal yok) |
+| Telegram webhook | ölü cloudflared tünelinde — ayakta uygulama olmadığı için beklenen |
+| Supabase `sb_secret` | ❌ **hâlâ canlı**, rotasyon yapılmadı |
+
+**Sıralama kararı (kullanıcı):** deploy şimdilik yapılmayacak; önce Supabase
+rotasyonu tamamlanacak. Gerekçe: şu an dağıtım yapmak, sohbet geçmişinde
+görünen anahtarı üretime taşımak olurdu (MANUAL §8 adım 3).
+
 ## Tek cümlede
 Kullanıcı Telegram'dan bir Behördenbrief gönderdiğinde; kimlik bilgileri maskeleniyor,
 belge analiz ediliyor, son tarih/risk/eksik belgeler çıkarılıyor, hatırlatmalar
