@@ -34,7 +34,7 @@ function isPlausibleSteuerId(raw: string): boolean {
 }
 
 /** IBAN mod-97 checksum (ISO 13616). */
-function isValidIban(raw: string): boolean {
+function isValidIbanExact(raw: string): boolean {
   const iban = raw.replace(/[\s-]/g, '').toUpperCase();
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban)) return false;
 
@@ -49,6 +49,72 @@ function isValidIban(raw: string): boolean {
     remainder = (remainder * 10 + Number(digit)) % 97;
   }
   return remainder === 1;
+}
+
+/**
+ * OCR'da harfe dönüşmesi beklenen rakamlar — yalnızca IBAN'ın SAYISAL
+ * konumlarında (3. karakterden sonrası) geri çevrilir.
+ *
+ * Bir harf BİRDEN ÇOK rakama karşılık gelebilir: `g` hem `9` hem `6` okunmuş
+ * olabilir (gözlenen vaka `DE94` → `DEg4`, yani `g`→`9`). Tek bir "doğru"
+ * onarım seçmek yerine adayların HEPSİ denenir ve kararı mod-97 checksum'ı
+ * verir. Bu, tahmin etmeyi değil, doğrulamayı esas alır.
+ */
+const IBAN_DIGIT_REPAIRS: Record<string, string[]> = {
+  g: ['9', '6'], G: ['6', '9'],
+  o: ['0'], O: ['0'], Q: ['0'], D: ['0'],
+  l: ['1'], L: ['1'], I: ['1'], i: ['1'], '|': ['1'],
+  s: ['5'], S: ['5'], B: ['8'], Z: ['2'], z: ['2'], T: ['7'], q: ['9'],
+};
+
+/** Onarım araması için üst sınır — kombinatoryal patlamayı engeller. */
+const IBAN_MAX_REPAIR_SITES = 6;
+
+/**
+ * IBAN doğrulaması — OCR onarımı checksum'a TABİ (D-046).
+ *
+ * Gözlenen bozulma: `DE94 1007 …` → `DEg4 1007 …` (`9` → `g`). Ham eşleşme
+ * hem regex'i hem checksum'ı düşürüyordu ve **IBAN maskelenmeden LLM'e
+ * gidiyordu** (fixture 08: IBAN token 1 → 0).
+ *
+ * Buradaki tasarım bilinçli: harf↔rakam karışıklıklarını desene gömüp
+ * kapsamı genişletmek yerine, aday dizeyi ONARIP mod-97'ye doğrulatıyoruz.
+ * Checksum, yanlış pozitif savunmasının TAMAMI — gevşetilmez. Rastgele bir
+ * karakter dizisinin onarımdan sonra mod-97'yi tutturma olasılığı ~1/97'dir
+ * ve onarım yalnızca sabit bir karışıklık tablosunu uygular, serbest arama
+ * yapmaz. Yani kapsam artar, kesinlik düşmez.
+ */
+function isValidIban(raw: string): boolean {
+  if (isValidIbanExact(raw)) return true;
+
+  const compact = raw.replace(/[\s-]/g, '');
+  if (compact.length < 5) return false;
+
+  // İlk 2 karakter ülke kodu — harf kalmalı, onarılmaz.
+  const head = compact.slice(0, 2).toUpperCase();
+  const body = [...compact.slice(2)];
+
+  const sites = body
+    .map((c, i) => (IBAN_DIGIT_REPAIRS[c] ? i : -1))
+    .filter((i) => i >= 0);
+
+  if (sites.length === 0 || sites.length > IBAN_MAX_REPAIR_SITES) return false;
+
+  // Her onarım noktasında "olduğu gibi bırak" + aday rakamlar denenir.
+  const options = sites.map((i) => [body[i], ...IBAN_DIGIT_REPAIRS[body[i]]]);
+
+  const total = options.reduce((acc, o) => acc * o.length, 1);
+  for (let n = 0; n < total; n++) {
+    const candidate = [...body];
+    let rest = n;
+    for (let s = 0; s < sites.length; s++) {
+      const opt = options[s];
+      candidate[sites[s]] = opt[rest % opt.length];
+      rest = Math.floor(rest / opt.length);
+    }
+    if (isValidIbanExact(head + candidate.join('').toUpperCase())) return true;
+  }
+  return false;
 }
 
 /**
@@ -205,7 +271,12 @@ export const PII_PATTERNS: PiiPattern[] = [
   // ── IBAN ──
   {
     type: PiiEntityType.IBAN,
-    regex: /\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]{4}){2,7}(?:[ ]?[A-Z0-9]{1,4})?\b/g,
+    // Kontrol haneleri ve gövde, OCR'da harfe dönüşmüş rakamları da kabul
+    // eder (`DEg4…`). Bu genişletme kesinliği DÜŞÜRMEZ: `validate` mod-97
+    // checksum'ını uygular ve onarılmış aday da checksum'dan geçmek
+    // zorundadır (D-046).
+    regex:
+      /\b[A-Z]{2}[\dGgOoQDLlIi|SsBZzTq]{2}(?:[ ]?[A-Z0-9gioqdlszt|]{4}){2,7}(?:[ ]?[A-Z0-9gioqdlszt|]{1,4})?\b/g,
     validate: isValidIban,
   },
 
@@ -257,16 +328,44 @@ export const PII_PATTERNS: PiiPattern[] = [
   },
 
   // ── PLZ + şehir (adres imzası) ──
-  {
-    type: PiiEntityType.ADDRESS,
-    regex: /\b\d{5}\s+[A-ZÄÖÜ][a-zäöüß]+(?:[ -][A-ZÄÖÜ][a-zäöüß]+)*/g,
-  },
-
-  // ── Sokak + kapı no ──
+  // Şehir adları da OCR'dan bozuk çıkar (`Düsseldorf` → `Diisseldorf`);
+  // harf sınıfları buna göre genişletildi (D-046).
   {
     type: PiiEntityType.ADDRESS,
     regex:
-      /\b[A-ZÄÖÜ][a-zäöüß]+(?:straße|strasse|str\.|weg|allee|platz|gasse|ring|damm|ufer)\s+\d{1,4}[a-zA-Z]?\b/g,
+      /\b\d{5}\s+[A-ZÄÖÜÀÁÉÓÚ][a-zäöüßàáéóúâôû]+(?:[ -][A-ZÄÖÜÀÁÉÓÚ][a-zäöüßàáéóúâôû]+)*/g,
+  },
+
+  // ── Sokak + kapı no ──
+  //
+  // OCR toleransı (D-046): tesseract `ß`'yi `B` okur, yani `Amtsstraße 5`
+  // belgede `AmtsstraBe 5` olarak durur. Sabit `straße|strasse` alternasyonu
+  // bunu kaçırıyordu ve KURUM adresi maskelenmeden LLM'e gidiyordu — bilinen
+  // değer maskelemesi bu adresi kapsamaz (kullanıcının kendi adresi değil).
+  //
+  // Gövde harf sınıfına da bozulmuş biçimler eklendi: aksan düşmesi/kayması
+  // (`ä`→`a`,`à`) ve `ü`→`ii` (D-044'te `Düsseldorf`→`Diisseldorf` gözlendi).
+  //
+  // Tireli/çok parçalı sokak adları (D-046): `Karl-Marx-Allee`,
+  // `Rosa-Luxemburg-Straße`, `Ernst-Reuter-Platz` Almanya'da çok yaygın ve
+  // eski desen bunları HİÇ yakalamıyordu — iki sebeple: (a) gövde sınıfı
+  // ilk harften sonra büyük harf kabul etmiyordu, (b) son ek alternasyonu
+  // yalnızca küçük harfliydi, oysa tireli adlarda ek de büyük harfle başlar
+  // (`-Allee`). Bu OCR'dan bağımsız, ÖNCEDEN VAR OLAN bir boşluktu; OCR
+  // ölçümünün artık taraması ortaya çıkardı (fixture 06).
+  {
+    type: PiiEntityType.ADDRESS,
+    // Kapı numarası da OCR toleranslıdır: gözlenen vaka `Ottmar-Pohl-Platz 1`
+    // → `Ottmar-Pohl-Platz ı` (rakam `1`, Türkçe noktasız `ı` okundu).
+    // İki alternatif: (a) en az BİR gerçek rakam içeren kısa dizi,
+    // (b) tek bir rakam-benzeri glif. (a)'daki "en az bir rakam" şartı
+    // `Straße Berlin` gibi yanlış eşleşmeleri eler.
+    //
+    // Sonlandırıcı `\b` DEĞİL `(?![A-Za-z0-9])`: JS'te `\b` ASCII tabanlıdır,
+    // `ı` (U+0131) kelime karakteri sayılmaz ve `\b` satır sonunda tutmazdı —
+    // yani düzeltme sessizce etkisiz kalırdı.
+    regex:
+      /\b[A-ZÄÖÜÀÁÉÓÚ][a-zäöüßàáéóúâôû]*(?:-[A-ZÄÖÜÀÁÉÓÚ]?[a-zäöüßàáéóúâôû]+)*-?(?:[Ss]tra(?:ß|ss|B|b|fs)e|[Ss]tr\.|[Ww]eg|[Aa]llee|[Pp]latz|[Gg]asse|[Rr]ing|[Dd]amm|[Uu]fer)\s+(?:[\dOolIiı|SsBZzGgq]{0,3}\d[\dOolIiı|SsBZzGgq]{0,3}|[OolIiı|SsBZzGgq])[a-zA-Z]?(?![A-Za-z0-9])/g,
   },
 
   // ── Tarihler (DOB dâhil; deadline çıkarımı token üzerinden yapılır — D-009) ──

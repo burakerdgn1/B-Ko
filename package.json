@@ -22,7 +22,8 @@
     "smoke:supabase": "ts-node -T scripts/smoke-supabase.ts",
     "test:supabase": "RUN_SUPABASE_TESTS=1 jest supabase.integration --testTimeout=30000",
     "rotate:pii-key": "ts-node -T scripts/rotate-pii-key.ts",
-    "live:check": "ts-node -T scripts/live-check.ts"
+    "live:check": "ts-node -T scripts/live-check.ts",
+    "bench:ocr-mask": "ts-node -T scripts/ocr-mask-bench.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

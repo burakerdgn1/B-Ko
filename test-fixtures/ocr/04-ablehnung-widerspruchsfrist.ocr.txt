@@ -1,0 +1,40 @@
+=== SENTETIK TEST BELGESI (siehe DECISIONS.md D-005) ===
+Bu belge BiiKo projesi icin üretilmis KURGUSAL bir örnektir. Icindeki isim, adres,
+dosya/kimlik numaralari, telefon ve e-posta UYDURMADIR. Gergek higbir kisi, kurum
+veya iglemle iligkisi yoktur. Yalnizca otomatik test ve gelistirme amachdir.
+Landeshauptstadt Stuttgart
+Ausldnderbehérde
+EberhardstraBe 33
+70173 Stuttgart
+Frau
+Amina Yusuf
+Königstraße 21
+70173 Stuttgart
+Ausldndernummer: D556677889
+Aktenzeichen: STG-AUS-2023-99871
+Stuttgart, den 02.05.2024
+Betreff: Ablehnung Ihres Antrags auf Verlängerung der Aufenthaltserlaubnis
+Sehr geehrte Frau Yusuf,
+Ihr Antrag vom 14.01.2024 auf Verlängerung Ihrer Aufenthaltserlaubnis wird
+hiermit abgelehnt.
+Begründung:
+Nach Prüfung der von Ihnen eingereichten Unterlagen konnte die Sicherung Ihres
+Lebensunterhalts im Sinne von 8 5 Abs. ı Nr. ı AufenthG nicht nachgewiesen
+werden. Die vorgelegten Einkommensnachweise erreichen nicht die erforderliche
+Bedarfsgrenze. Die Voraussetzungen für eine Verlängerung der Aufenthaltserlaubnis
+liegen daher nicht vor.
+Mit Ablauf Ihrer bisherigen Aufenthaltserlaubnis sind Sie vollziehbar
+ausreisepflichtig, sofern nicht rechtzeitig Widerspruch eingelegt wird.
+Rechtsbehelfsbelehrung:
+Gegen diesen Bescheid können Sie innerhalb eines Monats nach Zustellung
+Widerspruch einlegen. Dieser Bescheid gilt gemäß Zustellungsfiktion am
+06.05.2024 als zugestellt. Die Widerspruchsfrist endet daher am
+
+06.06.2024
+Der Widerspruch ist schriftlich oder zur Niederschrift bei der Ausländerbehörde
+Stuttgart, Eberhardstraße 33, 70173 Stuttgart, einzulegen.
+Für Rückfragen steht Ihnen das zuständige Sachgebiet unter +49 711 4455667 oder
+per E-Mail an amina.yusuf@mail.example zur Verfügung.
+Mit freundlichen Grüßen
+i. A. R. Lehmann
+Ausländerbehörde Stuttgart

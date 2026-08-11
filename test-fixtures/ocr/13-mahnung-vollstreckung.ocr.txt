@@ -1,0 +1,26 @@
+=== SENTETIK TEST BELGESI (siehe DECISIONS.md D-005) ===
+Bu belge BiiKo projesi icin üretilmis KURGUSAL bir örnektir. Icindeki isim, adres,
+dosya/kimlik numaralari, telefon ve e-posta UYDURMADIR. Gergek higbir kisi, kurum
+veya iglemle iligkisi yoktur. SINIR VAKA (borderline) eval seti icin iiretilmigtir.
+Ausldnderbehérde Düsseldorf
+Willi-Becker-Allee 7
+40227 Diisseldorf
+Herrn
+Nikolai Petrov
+Friedrichstraße 62
+40217 Diisseldorf
+Aktenzeichen: ABH-D-2024-88401
+Datum: 08.06.2024
+Betreff: MAHNUNG - Gebiihrenbescheid vom 20.04.2024
+Sehr geehrter Herr Petrov,
+trotz Fälligkeit ist die festgesetzte Gebühr in Höhe von 100,00 EUR bislang
+nicht bei uns eingegangen.
+Wir fordern Sie letztmalig auf, den Betrag bis zum 24.06.2024 zu begleichen.
+Nach fruchtlosem Fristablauf wird die Forderung ohne weitere Ankündigung im
+Wege der Zwangsvollstreckung beigetrieben.
+Empfänger: Stadtkasse Düsseldorf
+IBAN: DE02 3704 0044 0532 0131 11
+Verwendungszweck: ABH-D-2024-88401
+Ihr Aufenthaltstitel bleibt von diesem Vorgang unberührt.
+Mit freundlichen Grüßen
+i. A. Thomas Wagner

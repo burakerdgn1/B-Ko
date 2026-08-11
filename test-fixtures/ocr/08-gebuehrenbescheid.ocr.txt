@@ -1,0 +1,36 @@
+=== SENTETIK TEST BELGESI (siehe DECISIONS.md D-005) ===
+Bu belge BiiKo projesi icin üretilmis KURGUSAL bir örnektir. Icindeki isim, adres,
+dosya/kimlik numaralari, telefon, e-posta, Steuer-ID ve IBAN UYDURMADIR (IBAN
+kontrol basamagi [mod-97] gegerli olacak sekilde matematiksel olarak iiretilmigtir
+ama gercek bir banka hesabina ait DEGILDIR). Gercek hicbir kisi, kurum veya
+iglemle iligkisi yoktur. Yalnizca otomatik test ve geligtirme amaclıdır.
+Landeshauptstadt Diisseldorf
+Ausldnderbehérde
+Willi-Becker-Allee 8
+40227 Diisseldorf
+Frau
+Elena Popescu
+Konigsallee 12
+40212 Diisseldorf
+Steuer-ID: 45 678 901 231
+Aktenzeichen: DUS-GEB-2024-55678
+Diisseldorf, den 05.06.2024
+Betreff: Gebiihrenbescheid nach 8 47 AufenthV
+Sehr geehrte Frau Popescu,
+fiir die Bearbeitung Ihres Antrags auf Verlängerung der Aufenthaltserlaubnis
+wird gemäß § 47 AufenthV eine Verwaltungsgebiihr in Hohe von
+100,00 EUR
+festgesetzt. Bitte überweisen Sie den Betrag unter Angabe des Aktenzeichens
+DUS-GEB-2024-55678 auf folgendes Konto:
+Empfänger: Stadtkasse Düsseldorf
+IBAN: DEg4 1007 0000 1234 5678 90
+Verwendungszweck: DUS-GEB-2024-55678
+Der Betrag ist bis spätestens
+20.06.2024
+zu entrichten. Bei nicht fristgerechtem Zahlungseingang können zusätzliche
+Mahngebühren sowie Säumniszuschläge anfallen.
+Bei Rückfragen erreichen Sie die Kasse unter +49 211 1122334 oder per E-Mail
+an elena.popescu@mail.example.
+Mit freundlichen Grüßen
+i. A. T. Weiß
+Ausländerbehörde Düsseldorf

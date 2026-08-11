@@ -1,0 +1,39 @@
+=== SENTETIK TEST BELGESI (siehe DECISIONS.md D-005) ===
+
+Bu belge BiiKo projesi icin üretilmis KURGUSAL bir örnektir. Icindeki isim, adres,
+dosya/kimlik numaralari, telefon ve e-posta UYDURMADIR. Gergek higbir kisi, kurum
+veya iglemle iligkisi yoktur. SINIR VAKA (borderline) eval seti icin iiretilmigtir.
+Biirgeramt Frankfurt am Main
+
+Zeil 3
+
+60313 Frankfurt am Main
+
+Frau
+
+Mariam Tesfaye
+
+Berger Straße 145
+
+60385 Frankfurt am Main
+
+Aktenzeichen: BA-F-2024-55231
+
+Datum: 10.06.2024
+
+Betreff: Information zu Ihrer Meldebescheinigung
+
+Sehr geehrte Frau Tesfaye,
+
+zu Ihrer Information: Die von Ihnen am 02.05.2024 beantragte
+Meldebescheinigung wurde ausgestellt und ist bis zum 02.05.2025 gültig.
+
+Ein weiteres Tatigwerden IThrerseits ist nicht erforderlich. Dieses
+
+Schreiben dient ausschließlich Ihrer Unterrichtung.
+
+Bei Fragen erreichen Sie uns unter 069 212-40000.
+
+Mit freundlichen Grüßen
+
+i. A. Sabine Kraus

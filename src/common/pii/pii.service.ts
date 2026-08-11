@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PII_PATTERNS } from './pii.patterns';
+import { ocrTolerantRegex } from './ocr-tolerance';
 import {
   KnownPiiProfile,
   MaskOptions,
@@ -220,11 +221,13 @@ export class PiiService {
 
     const out: Candidate[] = [];
     for (const { value, type } of entries) {
-      // Boşluk toleransı: belgedeki satır kırılmaları/çoklu boşluklar için.
-      const pattern = new RegExp(
-        foldLocaleCase(escapeRegex(value).replace(/\\?\s+/g, '\\s+')),
-        'giu',
-      );
+      // Boşluk toleransı + OCR bozulma toleransı (D-046).
+      //
+      // Eskiden burada TAM EŞLEŞME vardı. OCR'dan geçmiş bir belgede
+      // `Torstraße 15` → `TorstraBe 15` olduğu için kullanıcının KENDİ adresi
+      // maskelenmeden LLM'e gidiyordu — sessizce, hiçbir uyarı üretmeden
+      // (D-044'ün `OCR_PROVIDER=local` geçişini bloke eden bulgusu).
+      const pattern = ocrTolerantRegex(value);
       for (const m of text.matchAll(pattern)) {
         if (m.index === undefined) continue;
         out.push({
@@ -302,10 +305,11 @@ export class PiiService {
       const source = found.find((c) => normalizeKey(c.original) === key);
       if (!source) continue;
 
-      const pattern = new RegExp(
-        foldLocaleCase(escapeRegex(source.original).replace(/\\?\s+/g, '\\s+')),
-        'giu',
-      );
+      // OCR toleransı burada da gerekli: aynı değer belgenin bir yerinde
+      // temiz, başka bir yerinde bozuk okunmuş olabilir (ör. büyük puntolu
+      // başlıkta doğru, gövde metninde `ß`→`B`). Değer zaten bir kez PII
+      // olarak KANITLANDIĞI için genişletmenin maliyeti burada daha da düşük.
+      const pattern = ocrTolerantRegex(source.original);
       for (const m of text.matchAll(pattern)) {
         if (m.index === undefined) continue;
         extra.push({

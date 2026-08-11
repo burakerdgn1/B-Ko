@@ -1,0 +1,30 @@
+=== SENTETIK TEST BELGESI (siehe DECISIONS.md D-005) ===
+Bu belge BiiKo projesi icin üretilmis KURGUSAL bir örnektir. Icindeki isim, adres,
+dosya numarasi, telefon ve e-posta UYDURMADIR. Gergek higbir kisi, kurum veya
+iglemle iligkisi yoktur. Yalnizca otomatik test ve geligtirme amaclıdır.
+Bezirksamt Berlin-Mitte
+Biirgeramt
+Karl-Marx-Allee 31
+10178 Berlin
+Frau
+Chidinma Okafor
+Karl-Marx-Allee 33
+10178 Berlin
+Vorgangsnummer: BM-2024-77451
+Berlin, den 01.07.2024
+Betreff: Thre Anmeldung des Wohnsitzes — fehlende Unterlage
+Sehr geehrte Frau Okafor,
+vielen Dank fiir die Einreichung Ihrer Anmeldung des Wohnsitzes. Bei der Priifung
+ist aufgefallen, dass eine Unterlage noch fehlt:
+- Wohnungsgeberbestitigung nach § 19 Bundesmeldegesetz (unterschrieben vom
+Vermieter bzw. der Vermieterin)
+Bitte reichen Sie diese Bestätigung möglichst bis zum 15.07.2024 nach, damit
+wir Ihnen zeitnah eine Meldebescheinigung ausstellen können. Es handelt sich
+hierbei um eine formale Ergänzung; aus dem Fehlen dieser Unterlage entstehen
+Ihnen keine unmittelbaren Nachteile, die Bearbeitung verzögert sich lediglich.
+Bei Fragen erreichen Sie das Bürgeramt Berlin-Mitte unter +49 30 99887766 oder
+per E-Mail an chidinma.okafor@mail.example (Ihre bei uns hinterlegte
+Kontaktadresse).
+Mit freundlichen Grüßen
+i. A. F. Schulz
+Bürgeramt Berlin-Mitte
