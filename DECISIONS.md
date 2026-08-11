@@ -784,3 +784,37 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   GO/NO-GO aracı yanlış GO verdi. Üçünde de hatayı yakalayan şey, aracı
   gerçek dünyaya karşı koşturup çıktısını bağımsız kanıtla (loglar, imaj
   içeriği, unmask edilmiş metin) karşılaştırmak oldu.
+
+## D-042 — İlk üretim dağıtımı: "yeşil deploy, sağır bot"
+- **Bağlam:** Railway'e ilk dağıtım yapıldı. `/health` 200 dönüyordu, konteyner
+  ayaktaydı, Railway dağıtımı başarılı gösteriyordu — ama bot hiçbir mesaj
+  alamıyordu. Üç Variables hatası vardı ve hiçbiri konteyneri çökertmediği için
+  platformun sağlık göstergeleri bunları GÖREMEZ:
+  | Değişken | Yanlış | Sonuç |
+  |---|---|---|
+  | `TELEGRAM_WEBHOOK_SECRET` | hiç yoktu | `webhook KAYDEDİLMEDİ` — kayıt denenmedi bile |
+  | `PUBLIC_BASE_URL` | `http://localhost:3000` | açık değer kazandığı için `RAILWAY_PUBLIC_DOMAIN` otomatiği (D-038) devreye girmedi |
+  | `NODE_ENV` | `development` | üretim güvenlik kapısı (`superRefine`) hiç çalışmadı |
+- **`NODE_ENV` özellikle sinsi:** Dockerfile `runtime` aşamasında
+  `ENV NODE_ENV=production` var, ama platform Variables bunu EZER. Yani imaj
+  doğru varsayılanı taşısa bile ortam değişkeni sessizce geri alabiliyor.
+  Sonuç: `LLM_MOCK=true`, dev PII anahtarı ve `DB_DRIVER=memory` teknik olarak
+  serbest kalıyordu — tam da D-005'te "üretimde imkânsız" diye kapatılan şeyler.
+- **Teşhisi mümkün kılan şey loglar oldu, testler değil.** 547 birim testinin
+  hiçbiri bunu yakalayamazdı: hepsi doğru yapılandırma varsayıyor. Yakalayan
+  şey `railway logs`'taki tek satırdı:
+  `TELEGRAM_WEBHOOK_SECRET tanımsız — webhook KAYDEDİLMEDİ`.
+  Bu, D-030'un fail-closed tasarımının ikinci faydası: yalnızca isteği reddetmiyor,
+  SEBEBİNİ de açıkça loglayıp sessiz başarısızlığı görünür kılıyor.
+- **Düzeltme yöntemi:** `railway variables --skip-deploys` ile üçü toplandı,
+  tek `railway redeploy` ile uygulandı (her değişiklikte ayrı yeniden başlatma
+  olmasın diye). Sır `--set-from-stdin` ile geçirildi — değer komut satırına,
+  dolayısıyla oturum transkriptine HİÇ yazılmadı (D-040'ın kuralı).
+- **Düzeltme sonrası canlı doğrulama:** production modunda açılış · webhook
+  Railway domainine kaydedildi (`last_error_message` boş) · `check:deploy` GO ·
+  **D-030 üretimde saldırıyla sınandı: sırsız istek → 401, yanlış sır → 401.**
+  Doğru sırla sahte update KASITLI olarak gönderilmedi — gerçek bota enjeksiyon
+  olurdu.
+- **`railway domain` argümansız çalıştırılınca LİSTELEMEZ, OLUŞTURUR.** Domain
+  durumunu sorgulamak için kullanıldı ve yeni bir domain yarattı. Zararsızdı
+  (domain zaten gerekliydi) ama komutun okuma değil YAZMA olduğu kaydedilsin.

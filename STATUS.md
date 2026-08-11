@@ -27,30 +27,60 @@ tek secret anahtar var, doğrulandı. Kullanılmayan tam yetkili bir kimlik bilg
 saf saldırı yüzeyi olduğu için silinmesi önerilir; önce Dashboard'daki
 "Last used" sütununa bakılmalı.
 
+## 🚀 CANLI — Railway'de dağıtıldı (2026-08-11)
+
+**URL:** https://b-ko-production.up.railway.app · **Bot:** @BuKo749_bot
+
+```
+LOG [Bootstrap]       BüKo production modunda :8080 portunda çalışıyor
+LOG [TelegramService] Telegram webhook kaydedildi:
+                      https://b-ko-production.up.railway.app/webhook/telegram
+```
+
+| Kontrol | Sonuç |
+|---|---|
+| `GET /health` | ✅ 200 `{"status":"ok","uptime":N}` |
+| Açılış modu | ✅ **production** (güvenlik kapısı aktif) |
+| Webhook kaydı | ✅ Railway domaini · `last_error_message` boş · 0 bekleyen |
+| Webhook fail-closed (D-030) — CANLI | ✅ sırsız → **401** · yanlış sır → **401** |
+| `railway run npm run check:deploy` | ✅ **GO** — 0 hata |
+| CI (GitHub Actions) | ✅ başarılı — D-039 Docker guard'ı dâhil |
+
+### İlk dağıtımda bulunan üç yapılandırma hatası (hepsi düzeltildi)
+
+Deploy "başarılı" görünüyordu — `/health` 200 dönüyordu — ama bot tamamen
+sağırdı. Üç Variables hatası vardı:
+
+| Değişken | Yanlış | Sonuç |
+|---|---|---|
+| `TELEGRAM_WEBHOOK_SECRET` | **hiç yoktu** | `webhook KAYDEDİLMEDİ` — kayıt hiç denenmedi |
+| `PUBLIC_BASE_URL` | `http://localhost:3000` | Açık değer kazandığı için `RAILWAY_PUBLIC_DOMAIN` otomatiği devreye girmedi |
+| `NODE_ENV` | `development` | Üretim güvenlik kapısı (`superRefine`) hiç çalışmadı |
+
+Üçü de `railway variables` ile düzeltildi (sır `--set-from-stdin` ile geçirildi,
+komut satırına hiç yazılmadı), tek `railway redeploy` ile uygulandı.
+
+⚠️ **Aracın kendisi de yanlış GO verdi (D-041).** İlk koşuda
+`railway run npm run check:deploy` "✓ webhook sırrı tanımlı" dedi — oysa
+Railway'de yoktu; script yerel `.env`'i de yüklediği için EKSİK değişkenler
+sessizce dolduruluyordu. Düzeltildi: platform ortamı algılanınca `.env` hiç
+yüklenmiyor ve çıktı hangi kaynağı denetlediğini yazıyor.
+
 ## ⏭️ SIRADAKİ ADIM — sende
 
-**1) Railway dağıtımı** — `railway.json`, `/health`, `check:deploy` hazır ve
-gerçek Docker ile doğrulandı. Adım adım liste: `MANUAL_ACTIONS_REQUIRED.md` §8.
+**0) Telegram'dan uçtan uca deneme** — bota `/start` gönderip bir mektup
+fotoğrafı yükleyin. Yerel tünelle çalışan akış artık üretimde koşuyor;
+gerçek kullanıcı yolunun canlıda da çalıştığını yalnızca bu doğrular.
+
+**1) `default` Supabase anahtarını sil** — kullanılmayan, RLS'i bypass eden
+üçüncü bir secret anahtar. Proje onu kullanmıyor (kod envanteriyle doğrulandı).
+Dashboard'da "Last used" boşsa silin.
+
+**2) `OCR_PROVIDER` kararı** — şu an `claude-vision`: mektup GÖRSELİ ham PII ile
+Anthropic'e gidiyor (D-010, ilan edilmiş istisna). Sıfır sızıntı isteniyorsa
+Railway'de `OCR_PROVIDER=local` yapın; metin/PDF girdilerinde zaten sızıntı yok.
 
 Ayrıntı ve gerekçeler: `MANUAL_ACTIONS_REQUIRED.md` §3b + §8.
-
-### Dağıtım ön-durumu — doğrulandı (2026-07-29, `railway` CLI ile)
-
-| Kontrol | Durum |
-|---|---|
-| Railway hesabı | ✅ giriş yapıldı (1 workspace) |
-| Railway projesi | ❌ **0 proje** (`railway list --json` → `[]`) — deploy YOK |
-| GitHub `burakerdgn1/B-Ko` | ⚠️ var, private, ama **BOŞ** (`isEmpty: true`) |
-| Yerel commit'ler | 35 commit, **hiçbiri push edilmemiş** (uzak dal yok) |
-| Telegram webhook | ölü cloudflared tünelinde — ayakta uygulama olmadığı için beklenen |
-| Supabase `sb_secret` | ✅ **rotate edildi** (yukarı bkz.) — engel kalktı |
-
-**Sıralama kararı (kullanıcı):** deploy, anahtar rotasyonundan sonraya
-bırakıldı — şimdi dağıtım yapmak sızmış anahtarı üretime taşımak olurdu
-(MANUAL §8 adım 3). **Rotasyon tamamlandı, bu engel artık yok.**
-Deploy için kalan tek karar: kod GitHub'a push edilip Railway oradan mı
-çeksin (CI de devreye girer), yoksa `railway init` + `railway up` ile
-doğrudan mı yüklensin. İkisi de dışa dönük eylem, onay bekliyor.
 
 ## Tek cümlede
 Kullanıcı Telegram'dan bir Behördenbrief gönderdiğinde; kimlik bilgileri maskeleniyor,

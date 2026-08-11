@@ -132,9 +132,23 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       push edilmemiş), yani Railway'in çekeceği bir kaynak da yok.
       **Kullanıcı kararı: deploy ertelendi, önce Supabase rotasyonu.**
       Gerekçe: şimdi dağıtmak sızmış `sb_secret` anahtarını üretime taşırdı.
-- [ ] D-7 (Kullanıcı) Kod GitHub'a push edilecek mi, yoksa `railway up` ile
-      doğrudan mı dağıtılacak — karar verilmedi (ikisi de dışa dönük eylem,
-      onay bekliyor). GitHub yolu CI'ı (D-039 guard'ı) da devreye sokar.
+- [x] D-7 (O) Kod GitHub'a push edildi (sır denetimi sonrası), CI başarılı.
+
+## v1.6 — ÜRETİMDE (2026-08-11) — https://b-ko-production.up.railway.app
+- [x] P-1 (O) GitHub push + CI yeşil (D-039 guard'ı gerçek Actions'ta koştu)
+- [x] P-2 (O) **D-042** — "yeşil deploy, sağır bot": üç Variables hatası
+      (`TELEGRAM_WEBHOOK_SECRET` yok · `PUBLIC_BASE_URL=localhost` ·
+      `NODE_ENV=development`). Hiçbiri konteyneri çökertmediği için platform
+      göstergeleri göremiyordu; `railway logs` yakaladı.
+- [x] P-3 (O) **D-041** — `check:deploy` platform ortamında `.env` yüklüyordu,
+      eksik değişkenleri göremiyordu → yanlış GO verdi. Düzeltildi.
+- [x] P-4 (O) Üç değişken düzeltildi (sır `--set-from-stdin` ile, transkripte
+      yazılmadan) + tek redeploy. Canlı doğrulama: production modu · webhook
+      Railway domainine kayıtlı · `check:deploy` GO · **D-030 üretimde
+      saldırıyla sınandı** (sırsız → 401, yanlış sır → 401).
+- [ ] P-5 (Kullanıcı) **Telegram'dan uçtan uca canlı deneme** — `/start` →
+      mektup fotoğrafı → analiz → taslak. Üretim yolunun gerçekten çalıştığını
+      yalnızca bu doğrular; şu ana kadarki canlı test yerel tünel üzerindeydi.
 
 ---
 
