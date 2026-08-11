@@ -53,6 +53,21 @@ describe('validateEnv', () => {
     });
   });
 
+  describe('TELEGRAM_SKIP_STARTUP (D-043)', () => {
+    it('varsayılan false — normal uygulama davranışı değişmez', () => {
+      expect(validateEnv({}).TELEGRAM_SKIP_STARTUP).toBe(false);
+    });
+
+    it('"true" ve "1" kabul edilir', () => {
+      expect(validateEnv({ TELEGRAM_SKIP_STARTUP: 'true' }).TELEGRAM_SKIP_STARTUP).toBe(true);
+      expect(validateEnv({ TELEGRAM_SKIP_STARTUP: '1' }).TELEGRAM_SKIP_STARTUP).toBe(true);
+    });
+
+    it('boş string varsayılana düşer, ÇÖKMEZ (D-020 tuzağı)', () => {
+      expect(validateEnv({ TELEGRAM_SKIP_STARTUP: '' }).TELEGRAM_SKIP_STARTUP).toBe(false);
+    });
+  });
+
   describe('platform varsayılanı: PUBLIC_BASE_URL ← RAILWAY_PUBLIC_DOMAIN', () => {
     it('PUBLIC_BASE_URL verilmediğinde Railway alan adından türetilir', () => {
       const env = validateEnv({ RAILWAY_PUBLIC_DOMAIN: 'bueko-production.up.railway.app' });

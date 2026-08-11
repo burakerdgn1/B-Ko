@@ -14,8 +14,7 @@ loadDotenv();
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
+import { bootScriptContext } from './script-context';
 import { AnalysisPipeline } from '../src/modules/analysis/analysis.pipeline';
 import { ProfileService } from '../src/modules/profile/profile.service';
 import { UserRepository } from '../src/modules/persistence/repositories/user.repository';
@@ -27,9 +26,9 @@ const FIXTURES = join(__dirname, '../test-fixtures');
 const LETTERS = join(FIXTURES, 'behordenbriefe');
 
 async function main(): Promise<void> {
-  const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: ['error'],
-  });
+  // D-043: Telegram botu BAŞLATILMAZ — yerel bir boot, üretimdeki botun
+  // webhook kaydını ezebilir veya update'lerini çalabilir.
+  const app = await bootScriptContext();
   const config = app.get(AppConfigService);
 
   console.log('\n═══════ CANLI TAM YIĞIN DOĞRULAMASI ═══════\n');

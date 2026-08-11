@@ -55,6 +55,10 @@ export class AppConfigService {
   get telegramWebhookSecret(): string | undefined {
     return this.get('TELEGRAM_WEBHOOK_SECRET');
   }
+  /** Bakım script'leri için: bot hiç başlatılmaz (D-043). */
+  get telegramSkipStartup(): boolean {
+    return this.get('TELEGRAM_SKIP_STARTUP');
+  }
 
   // ── Persistence ──
   get dbDriver(): AppEnv['DB_DRIVER'] {

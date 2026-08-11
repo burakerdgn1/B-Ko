@@ -146,9 +146,18 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       yazılmadan) + tek redeploy. Canlı doğrulama: production modu · webhook
       Railway domainine kayıtlı · `check:deploy` GO · **D-030 üretimde
       saldırıyla sınandı** (sırsız → 401, yanlış sır → 401).
-- [ ] P-5 (Kullanıcı) **Telegram'dan uçtan uca canlı deneme** — `/start` →
-      mektup fotoğrafı → analiz → taslak. Üretim yolunun gerçekten çalıştığını
-      yalnızca bu doğrular; şu ana kadarki canlı test yerel tünel üzerindeydi.
+- [x] P-5 (Kullanıcı) **Üretimden uçtan uca deneme YAPILDI** — 11 Ağu 01:03,
+      fotoğraf → `analyzed` → Ausländerbehörde Berlin · critical · son tarih
+      2024-06-30 · 4 eksik belge · güven 0.95. Gizlilik denetimi: 16 yer
+      tutucu, vault'taki 20 gerçek değerin hiçbiri içerikte yok, desen
+      taraması 0 kalıntı. (Gönderilen mektup 28 Tem'deki metinle aynı içerik.)
+- [x] P-6 (O) **D-043** — bakım script'leri üretimdeki botu etkiliyordu; bir
+      teşhis scripti üretim webhook'unu SİLDİ ve bot birkaç dakika sağır kaldı.
+      `TELEGRAM_SKIP_STARTUP` + `bootScriptContext()` ile kapatıldı, 6 test.
+- [ ] P-7 (Kullanıcı) **Ayrı bir test botu aç** (@BotFather'dan ikinci token).
+      `npm run start:dev` hâlâ korunmuyor: yerelde `TELEGRAM_MODE=webhook` ya da
+      `polling` ile açmak üretimdeki botu etkiler (D-043, DEPLOYMENT §8a).
+      Şimdilik yerel geliştirmede `TELEGRAM_MODE=disabled` kullanın.
 
 ---
 

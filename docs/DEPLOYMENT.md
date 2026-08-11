@@ -174,7 +174,8 @@ Supabase/Anthropic anahtarını döndürdüğünüzde **Railway Variables'ı da 
 | `OCR_PROVIDER` | Hayır (varsayılan `claude-vision`) | `claude-vision` veya `local` (bkz. DECISIONS D-010). |
 | `TELEGRAM_BOT_TOKEN` | Bot aktifse EVET | @BotFather token'ı. |
 | `TELEGRAM_MODE` | Hayır (varsayılan `disabled`) | `webhook` \| `polling` \| `disabled`. |
-| `TELEGRAM_WEBHOOK_SECRET` | `TELEGRAM_MODE=webhook` ise önerilir | Webhook doğrulama sırrı. |
+| `TELEGRAM_WEBHOOK_SECRET` | `TELEGRAM_MODE=webhook` ise **ZORUNLU** | Webhook doğrulama sırrı. Yoksa endpoint fail-closed davranır ve bot hiçbir mesaj almaz (D-030). |
+| `TELEGRAM_SKIP_STARTUP` | Hayır (varsayılan `false`) | Bakım script'leri için: bot hiç başlatılmaz. Üretimde ASLA `true` yapmayın (D-043). |
 | `DB_DRIVER` | Üretimde `supabase` olmalı | `memory` \| `supabase`. |
 | `SUPABASE_URL` | `DB_DRIVER=supabase` ise EVET | Supabase proje URL'i (AB bölgesi). |
 | `SUPABASE_SERVICE_ROLE_KEY` | `DB_DRIVER=supabase` ise EVET | Supabase gizli anahtarı — `sb_secret_...` (RLS'i bypass eder). Rotasyon: `npm run rotate:supabase-key`. |
@@ -306,6 +307,25 @@ Bu bölümde eskiden iki açık bulgu vardı; ikisi de düzeltildi ve testle kor
 hedefsiz build → `runtime` (218 MB, Node 22) · `NODE_ENV=production` +
 gerçek `.env` ile temiz açılış (0 hata) · `GET /health` → `200
 {"status":"ok","uptime":N}` · Docker HEALTHCHECK → `healthy`.
+
+## 8a. ⚠️ Yerel çalıştırma ÜRETİMDEKİ botu etkiler (D-043)
+
+Telegram bot token'ı **tek ve globaldir** — Telegram tarafında "yerel" ile
+"üretim" ayrımı YOKTUR. Aynı token'la yapılan her çağrı aynı botu etkiler:
+
+| Yerelde ne yaparsanız | Üretimde ne olur |
+|---|---|
+| `TELEGRAM_MODE=webhook` ile uygulamayı açmak | `setWebhook` üretimin kaydını **ezer**; çağrı başarısız olsa bile Telegram kaydı silebilir → bot **sağır** kalır |
+| `TELEGRAM_MODE=polling` ile uygulamayı açmak | Yerel süreç update **çeker**; üretime giden gerçek kullanıcı mesajları yerelde tüketilir (hata logu ÜRETMEZ) |
+
+**Bakım script'leri korunuyor:** `live:check`, `rotate:pii-key` ve yeni yazılacak
+tüm script'ler `bootScriptContext()` kullanır; bu, `TELEGRAM_SKIP_STARTUP=true`
+ayarlayarak botu hiç başlatmaz.
+
+**`npm run start:dev` KORUNMAZ.** Yerel geliştirmede ya `TELEGRAM_MODE=disabled`
+kullanın, ya da ayrı bir test botu (@BotFather'dan ikinci bir token) açın.
+Bu, gerçek bir olaydan sonra eklendi: bir teşhis script'i üretimin webhook'unu
+sildi ve bot birkaç dakika mesaj alamadı.
 
 ## 8b. Ölçekleme Sınırı (bilinçli)
 

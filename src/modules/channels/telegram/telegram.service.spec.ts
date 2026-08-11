@@ -39,6 +39,65 @@ describe('TelegramService — yaşam döngüsü (KRİTİK: token yoksa çökmeme
     expect(service.isRunning).toBe(false);
   });
 
+  /**
+   * D-043 regresyonu — gerçek bir üretim olayından doğdu.
+   *
+   * Bir teşhis script'i `AppModule`'ü yerelde boot etti; bu
+   * `TelegramService.onModuleInit`'i tetikledi ve yerel `.env`'deki ölü adresle
+   * `setWebhook` çağrıldı. Telegram çağrıyı reddetti AMA mevcut kaydı da sildi
+   * → ÜRETİMDEKİ bot birkaç dakika sağır kaldı.
+   *
+   * Bot token'ı global olduğu için "yerel" ile "üretim" arasında doğal izolasyon
+   * yoktur; tek koruma bu bayraktır. Bu yüzden kontrol, mode/token
+   * kontrollerinden ÖNCE gelmeli — aksi hâlde geçerli bir webhook
+   * yapılandırmasında sızıp çalışır.
+   */
+  describe('TELEGRAM_SKIP_STARTUP (D-043)', () => {
+    it('bayrak açıkken TAM yapılandırma olsa bile bot başlatılmaz', async () => {
+      const service = new TelegramService(
+        makeConfig({
+          telegramMode: 'webhook',
+          telegramBotToken: '123456:AA-gercek-gorunumlu-token',
+          telegramWebhookSecret: 'a'.repeat(64),
+          telegramSkipStartup: true,
+        }),
+      );
+
+      await expect(service.onModuleInit()).resolves.toBeUndefined();
+      expect(service.isRunning).toBe(false);
+      // `bot` hiç oluşturulmamalı: grammY nesnesi kurulursa ağ çağrısı
+      // yapılabilir hâle gelir.
+      expect(service.api).toBeUndefined();
+    });
+
+    it('polling modunda da bot başlatılmaz (üretimin update\'lerini çalmasın)', async () => {
+      const service = new TelegramService(
+        makeConfig({
+          telegramMode: 'polling',
+          telegramBotToken: '123456:AA-gercek-gorunumlu-token',
+          telegramSkipStartup: true,
+        }),
+      );
+
+      await expect(service.onModuleInit()).resolves.toBeUndefined();
+      expect(service.isRunning).toBe(false);
+      expect(service.api).toBeUndefined();
+    });
+
+    it('bayrak KAPALIYKEN davranış değişmez (varsayılan yol korunur)', async () => {
+      const service = new TelegramService(
+        makeConfig({
+          telegramMode: 'webhook',
+          telegramBotToken: undefined,
+          telegramSkipStartup: false,
+        }),
+      );
+
+      await expect(service.onModuleInit()).resolves.toBeUndefined();
+      expect(service.isRunning).toBe(false);
+    });
+  });
+
   it('bot hiç başlamamışken onModuleDestroy hata fırlatmaz', async () => {
     const service = new TelegramService(makeConfig());
     await service.onModuleInit();

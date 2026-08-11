@@ -38,6 +38,21 @@ export const envSchema = z
       .enum(['webhook', 'polling', 'disabled'])
       .default('disabled'),
     TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
+    /**
+     * Bakım script'leri için kaçış kapısı: bot HİÇ başlatılmaz (D-043).
+     *
+     * Neden gerekli: `live:check`, `rotate:pii-key` gibi script'ler tüm
+     * `AppModule`'ü boot eder. Bu, `TelegramService.onModuleInit`'i tetikler ve
+     * yerel `.env` ile ÜRETİMDEKİ botun durumunu değiştirir:
+     *   - `webhook` modunda `setWebhook` çağrılır → üretimin webhook kaydı
+     *     yerel (çoğu zaman ölü) adresle EZİLİR; başarısız olsa bile Telegram
+     *     mevcut kaydı silebilir → bot sağır kalır. Bu GERÇEKTEN yaşandı.
+     *   - `polling` modunda yerel süreç update'leri ÇEKER → üretimdeki bota
+     *     giden mesajlar yerelde tüketilir (daha da kötüsü).
+     * Bot token'ı tek ve global olduğu için "yerel" ile "üretim" arasında
+     * doğal bir izolasyon YOKTUR; izolasyonu bu bayrak sağlar.
+     */
+    TELEGRAM_SKIP_STARTUP: boolish.default('false'),
 
     // ── Persistence ──
     DB_DRIVER: z.enum(['memory', 'supabase']).default('memory'),

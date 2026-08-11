@@ -45,6 +45,15 @@ LOG [TelegramService] Telegram webhook kaydedildi:
 | Webhook fail-closed (D-030) — CANLI | ✅ sırsız → **401** · yanlış sır → **401** |
 | `railway run npm run check:deploy` | ✅ **GO** — 0 hata |
 | CI (GitHub Actions) | ✅ başarılı — D-039 Docker guard'ı dâhil |
+| **Üretimden uçtan uca deneme** (11 Ağu 01:03) | ✅ fotoğraf → `analyzed` · Ausländerbehörde Berlin · critical · son tarih 2024-06-30 · 4 eksik belge |
+| Üretim kaydının gizlilik denetimi | ✅ 16 yer tutucu · vault'taki 20 gerçek değerin hiçbiri içerikte yok · desen taraması 0 kalıntı |
+
+⚠️ **Olay ve düzeltme (D-043):** Bir teşhis scripti `AppModule`'ü yerelde boot
+edip üretimin webhook kaydını **sildi**; bot birkaç dakika sağır kaldı
+(`railway redeploy` ile geri alındı). Bot token'ı global olduğu için yerel/üretim
+izolasyonu YOK. `TELEGRAM_SKIP_STARTUP` + `bootScriptContext()` eklendi; tüm
+bakım script'leri artık botu hiç başlatmıyor. **`npm run start:dev` hâlâ
+korunmuyor** — bkz. "Sıradaki adım".
 
 ### İlk dağıtımda bulunan üç yapılandırma hatası (hepsi düzeltildi)
 
@@ -68,9 +77,11 @@ yüklenmiyor ve çıktı hangi kaynağı denetlediğini yazıyor.
 
 ## ⏭️ SIRADAKİ ADIM — sende
 
-**0) Telegram'dan uçtan uca deneme** — bota `/start` gönderip bir mektup
-fotoğrafı yükleyin. Yerel tünelle çalışan akış artık üretimde koşuyor;
-gerçek kullanıcı yolunun canlıda da çalıştığını yalnızca bu doğrular.
+**0) Ayrı bir test botu açın** (@BotFather'dan ikinci token). Bot token'ı global
+olduğu için `npm run start:dev`'i `TELEGRAM_MODE=webhook`/`polling` ile açmak
+**üretimdeki botu etkiler** — webhook kaydını ezer veya update'lerini çalar
+(D-043). Bakım script'leri korundu, ama `start:dev` korunmuyor; o güne kadar
+yerelde `TELEGRAM_MODE=disabled` kullanın.
 
 **1) `default` Supabase anahtarını sil** — kullanılmayan, RLS'i bypass eden
 üçüncü bir secret anahtar. Proje onu kullanmıyor (kod envanteriyle doğrulandı).

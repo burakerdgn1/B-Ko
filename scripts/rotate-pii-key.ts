@@ -25,8 +25,7 @@
 import { config as loadDotenv } from 'dotenv';
 loadDotenv();
 
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
+import { bootScriptContext } from './script-context';
 import { CryptoService } from '../src/common/crypto/crypto.service';
 import { PiiVaultRepository } from '../src/modules/persistence/repositories/pii-vault.repository';
 import type { AppConfigService } from '../src/config/config.service';
@@ -60,9 +59,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: ['error'],
-  });
+  // D-043: Telegram botu BAŞLATILMAZ (üretim webhook'unu ezme riski).
+  const app = await bootScriptContext();
   const vaultRepo = app.get(PiiVaultRepository);
 
   const oldCrypto = cryptoWith(oldKey);

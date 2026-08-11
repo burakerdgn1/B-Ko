@@ -818,3 +818,40 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - **`railway domain` argümansız çalıştırılınca LİSTELEMEZ, OLUŞTURUR.** Domain
   durumunu sorgulamak için kullanıldı ve yeni bir domain yarattı. Zararsızdı
   (domain zaten gerekliydi) ama komutun okuma değil YAZMA olduğu kaydedilsin.
+
+## D-043 — Bakım script'leri Telegram botunu BAŞLATMAZ (üretim olayından doğdu)
+- **Olay:** Bir teşhis script'i, DB'ye erişmek için `AppModule`'ün tamamını
+  YERELDE boot etti. Bu `TelegramService.onModuleInit`'i tetikledi ve yerel
+  `.env`'deki eski cloudflared adresiyle `setWebhook` çağrıldı. Telegram çağrıyı
+  `400 bad webhook: Failed to resolve host` ile REDDETTİ — ama mevcut kaydı da
+  SİLDİ. Sonuç: `getWebhookInfo` → `url: ""`, **üretimdeki bot birkaç dakika
+  sağır kaldı.** `railway redeploy` ile geri alındı.
+- **Kök neden — izolasyon YOKLUĞU:** Bot token'ı tek ve globaldir. "Yerel" ile
+  "üretim" arasında Telegram tarafında hiçbir ayrım yoktur; aynı token'la
+  yapılan her `setWebhook`/`getUpdates` çağrısı AYNI botu etkiler. Yani
+  `AppModule`'ü yerelde boot etmek, tanım gereği üretim durumuna yazma iznidir.
+- **Webhook'tan daha geniş bir sorun:** `TELEGRAM_MODE=polling` olsaydı yerel
+  süreç update ÇEKMEYE başlardı — üretimdeki bota gönderilen gerçek kullanıcı
+  mesajları yerelde tüketilir, kullanıcı hiç cevap alamazdı. Bu, webhook'un
+  ezilmesinden daha sinsi: hiçbir hata logu üretmez.
+- **Karar:** `TELEGRAM_SKIP_STARTUP` (boolish, varsayılan `false`) eklendi ve
+  `onModuleInit`'te **en başta** — mode/token kontrollerinden ÖNCE — sınanıyor.
+  Sonra sınansaydı geçerli bir webhook yapılandırmasında sızıp çalışırdı.
+  Bayrak açıkken grammY `Bot` nesnesi HİÇ oluşturulmuyor (nesne varsa ağ
+  çağrısı yapılabilir hâle gelir).
+- **`scripts/script-context.ts`:** script'ler artık `NestFactory` çağırmıyor,
+  `bootScriptContext()` kullanıyor — bayrağı varsayılan olarak açar. Kanal yan
+  etkisi gerçekten isteniyorsa `{ allowChannels: true }` ile AÇIKÇA istenmeli.
+  Amaç, doğru davranışı VARSAYILAN yapmak: gelecekte yazılacak script'ler
+  hatırlamak zorunda kalmasın.
+- **Uygulandığı yerler:** `live-check.ts`, `rotate-pii-key.ts` (ikisi de aynı
+  tuzağı taşıyordu ve fark edilmemişti).
+- **Doğrulama:** `rotate:pii-key` kuru koşumu gerçekten çalıştırıldı;
+  öncesi/sonrası `getWebhookInfo` **değişmedi** (üretim webhook'u yerinde,
+  62/62 vault kaydı çözüldü). 6 regresyon testi: bayrak açıkken TAM geçerli
+  webhook yapılandırmasında bile bot başlamıyor · polling'de de başlamıyor ·
+  bayrak kapalıyken davranış birebir aynı · boş string varsayılana düşüyor.
+- **Genel ders:** "Sadece okuyacağım" niyetiyle yazılan bir script, tüm
+  uygulamayı boot ederse okuma script'i değildir. Bağlam ne kadar geniş
+  boot edilirse, o kadar çok `onModuleInit` — yani o kadar çok dış dünya
+  yan etkisi — devreye girer. Doğru refleks: script'e MİNİMUM bağlamı vermek.

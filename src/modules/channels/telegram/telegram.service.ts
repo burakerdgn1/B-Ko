@@ -63,6 +63,20 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     const mode = this.config.telegramMode;
     const token = this.config.telegramBotToken;
 
+    // D-043: Bakım script'leri (`live:check`, `rotate:pii-key`, teşhis
+    // script'leri) tüm AppModule'ü boot eder. Bot token'ı global olduğundan
+    // yerel bir boot, ÜRETİMDEKİ botun durumunu değiştirebilir:
+    // `webhook` modunda üretimin kaydını ezer/siler, `polling` modunda
+    // üretime giden update'leri yerelde tüketir. Bu bayrak tek izolasyon
+    // mekanizmasıdır — EN BAŞTA, her şeyden önce kontrol edilir.
+    if (this.config.telegramSkipStartup) {
+      this.logger.warn(
+        'TELEGRAM_SKIP_STARTUP=true — Telegram botu başlatılmadı ' +
+          '(bakım scripti bağlamı). Webhook kaydı ve polling ATLANDI.',
+      );
+      return;
+    }
+
     if (mode === 'disabled') {
       this.logger.warn(
         'TELEGRAM_MODE=disabled — Telegram botu başlatılmadı. ' +
