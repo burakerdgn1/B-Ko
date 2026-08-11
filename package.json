@@ -23,7 +23,9 @@
     "test:supabase": "RUN_SUPABASE_TESTS=1 jest supabase.integration --testTimeout=30000",
     "rotate:pii-key": "ts-node -T scripts/rotate-pii-key.ts",
     "live:check": "ts-node -T scripts/live-check.ts",
-    "bench:ocr-mask": "ts-node -T scripts/ocr-mask-bench.ts"
+    "bench:ocr-mask": "ts-node -T scripts/ocr-mask-bench.ts",
+    "check:real-fixtures": "ts-node -T scripts/check-real-fixtures.ts",
+    "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
@@ -77,6 +79,9 @@
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^src/(.*)$": "<rootDir>/$1"
-    }
+    },
+    "setupFiles": [
+      "<rootDir>/../jest.setup.ts"
+    ]
   }
 }

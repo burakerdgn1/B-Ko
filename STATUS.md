@@ -1,6 +1,6 @@
 # STATUS.md — Şu An Neredeyiz
 
-**Güncelleme:** 2026-08-11 — v1.9: üretimde canlı · D-045 (CI Playwright zorunlu) · D-046 (OCR dayanıklı maskeleme; D-044'ün blokajı kalktı)
+**Güncelleme:** 2026-08-12 — v2.0: üretimde canlı · D-048 (gerçek mektup düzeneği + yerel DB izolasyonu + scripts tip kontrolü) · D-049 (test hermetikliği açıkça sabitlendi)
 **Genel durum:** 🟢 **ÜRETİMDE ÇALIŞIYOR** — uçtan uca doğrulandı
 
 ## ✅ GÜVENLİK BORCU KAPANDI — Supabase secret anahtarı rotate edildi (2026-07-29)
@@ -110,11 +110,24 @@ kapandığının en güçlü kanıtı budur.
 
 ## ⏭️ SIRADAKİ ADIM — sende
 
-**0) Ayrı bir test botu açın** (@BotFather'dan ikinci token). Bot token'ı global
-olduğu için `npm run start:dev`'i `TELEGRAM_MODE=webhook`/`polling` ile açmak
-**üretimdeki botu etkiler** — webhook kaydını ezer veya update'lerini çalar
-(D-043). Bakım script'leri korundu, ama `start:dev` korunmuyor; o güne kadar
-yerelde `TELEGRAM_MODE=disabled` kullanın.
+**0) ~~Ayrı bir test botu açın~~ — ✅ YAPILDI (D-047).** `@BuKoTest749_bot`
+`.env`'de; token'ın gerçekten test botuna ait olduğu `getMe` ile doğrulandı.
+Yerel geliştirme artık `polling` + `localhost` ile çalışıyor, tünel gerekmiyor.
+Uçtan uca kanıt: yerelde bot açıkken üretim kesintisiz kaldı.
+
+> Ayrıca kapatıldı (D-047b, D-048b): ayrı token Telegram kanalını izole ediyordu
+> ama **veritabanını etmiyordu**. `SCHEDULER_SKIP_STARTUP` cron'ları durduruyor
+> ve yerel `DB_DRIVER` artık `memory`. Gerçek DB gerektiren script'ler
+> (`live:check`, `rotate:pii-key`) bunu **talep ediyor** ve `memory` ile
+> çalışmayı reddediyor — aksi hâlde `rotate:pii-key` boş kasada "0 kayıt,
+> başarılı" derdi.
+
+**0b) Gerçek (anonimleştirilmiş) mektuplar — düzenek hazır, sıra sende.**
+`test-fixtures/real/` altına `.txt` + `expected.json` bırakmanız yeterli;
+testler kendiliğinden koşar. Dizin `.gitignore`'da (gerçek insan verisi).
+Kullanmadan önce `npm run check:real-fixtures` — maskelemenin ne gördüğünü
+değerleri basmadan raporlar. Ayrıntı: `test-fixtures/real/README.md`.
+**Bu, aşağıdaki `OCR_PROVIDER` kararının da ön koşuludur.**
 
 **1) `default` Supabase anahtarını sil** — kullanılmayan, RLS'i bypass eden
 üçüncü bir secret anahtar. Proje onu kullanmıyor (kod envanteriyle doğrulandı).
@@ -178,13 +191,15 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **639 test geçiyor** (42 suite, 1 atlanır) + **16 canlı DB testi** (bayrakla koşulur) = 655 toplam
-  — D-045 (CI Playwright zorunluluğu) ve D-046 (OCR dayanıklılığı) ile +83
-- `tsc --noEmit` temiz · Docker imajı gerçekten build edilip ÇALIŞTIRILDI (**269 MB**, `healthy`)
+- **660 test geçiyor** (47 suite, 1 atlanır) + **16 canlı DB testi** (bayrakla koşulur) = 676 toplam
+  — D-045…D-049 ile 553 → 660
+- `tsc --noEmit` temiz · **`npm run typecheck:scripts` temiz** — `scripts/` bugüne
+  kadar HİÇ tip kontrolünden geçmiyordu (D-048c)
+- Docker imajı gerçekten build edilip ÇALIŞTIRILDI (**269 MB**, `healthy`)
   — tesseract.js eklendikten sonra 218 MB → 269 MB (D-044)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
-- 43+ commit, ana dal `main` · `origin/main` ile eşit · CI yeşil
-- **44 kayıtlı mühendislik kararı** (D-001…D-044)
+- 47+ commit, ana dal `main` · CI yeşil
+- **49 kayıtlı mühendislik kararı** (D-001…D-049)
 - Devir notu: **`HANDOFF.md` (v3)**
 
 ## Definition of Done (CLAUDE.md §10) — doğrulama

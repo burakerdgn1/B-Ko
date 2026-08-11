@@ -47,6 +47,14 @@ jobs:
       - name: TypeScript tip kontrolü (derleme çıktısı üretmeden)
         run: npx tsc --noEmit
 
+      # `scripts/` kök tsconfig'in include'unda DEĞİL (orada olsaydı
+      # `nest build` çıktısı `dist/src/main.js`'e kayar ve Dockerfile'daki
+      # `node dist/main.js` kırılırdı — ölçüldü, D-048). Ayrıca script'ler
+      # `ts-node -T` ile koşuyor: `-T` = transpile-only, tip kontrolü YOK.
+      # Yani bu adım olmadan `scripts/` hiç tip kontrolünden geçmiyor.
+      - name: TypeScript tip kontrolü — scripts/
+        run: npx tsc --noEmit -p tsconfig.scripts.json
+
       # REQUIRE_PLAYWRIGHT=1: tarayıcı yoksa test SKIP değil FAIL olur.
       # Kurulum adımı ileride bozulur/silinirse CI yeşil kalmaz.
       - name: Birim testleri (Jest)

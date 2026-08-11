@@ -1,0 +1,25 @@
+{
+  // ════════════════════════════════════════════════════════════════════════
+  // Yalnızca TİP KONTROLÜ için — hiçbir şey ÜRETMEZ (D-048).
+  //
+  // Neden ayrı bir dosya: `nest build` kök `tsconfig.json`'ı kullanır ve
+  // oraya `scripts/**` eklemek çıktı yapısını değiştirir — `dist/main.js`
+  // yerine `dist/src/main.js` üretilir ve Dockerfile'daki `node dist/main.js`
+  // KIRILIR. Ölçüldü: konteyner açılışta çökerdi.
+  //
+  // Neden gerekli: script'ler `ts-node -T` ile koşuyor (`-T` = transpile-only,
+  // TİP KONTROLÜ YOK) ve kök tsconfig'in `include`'unda değiller. Yani bugüne
+  // kadar `scripts/` HİÇ tip kontrolünden geçmedi; hatalar ancak çalışma
+  // zamanında ortaya çıkıyordu. Gerçek vaka: `import type` ile içe aktarılan
+  // bir sınıf DI token'ı olarak kullanıldı, `tsc` görmedi.
+  //
+  // Kullanım: npm run typecheck:scripts   (CI'da da koşar)
+  // ════════════════════════════════════════════════════════════════════════
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  // `jest.setup.ts` de kök tsconfig'in include'unda değil — o da buraya.
+  "include": ["scripts/**/*", "src/**/*", "jest.setup.ts"],
+  "exclude": ["node_modules", "dist"]
+}

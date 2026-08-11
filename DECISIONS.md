@@ -1083,3 +1083,103 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
 - Bu tura özgü çözüm: guard testleri servisi doğrudan sahte config ile kurar
   (D-043 testlerinin de bilinçli olarak yaptığı şey). Genel çözüm (`isolateModules`
   veya env'i import'tan önce kuran bir setup dosyası) `TODO.md`'ye eklendi.
+
+## D-048 — Gerçek mektup düzeneği + yerel DB izolasyonu (+ iki kör nokta)
+
+### (a) `test-fixtures/real/` — bırak-ve-koş
+- Gerçek mektupları kullanıcı sağlayacak; kod tarafında bekleyen her şey hazır.
+  Dosya bırakıldığı anda `pii.real-fixtures.spec.ts` sentetiklerle **aynı
+  invaryantları** uygular (round-trip, sızıntı yok, beklenen tipler, bulanık
+  artık taraması, aşırı maskeleme sınırı).
+- **Gizlilik kararı: bu dizin `.gitignore`'dadır** (README + `*.example.json`
+  hariç). Anonimleştirildiğini *sanmak* ile *doğrulamak* aynı şey değil ve bir
+  kez commit'lenen veri git geçmişinden kolay silinmez.
+- `npm run check:real-fixtures` maskeleme motorunun **ne gördüğünü** raporlar
+  (tipler ve sayılar; değerler `--show-values` olmadan BASILMAZ — çıktı bir
+  transkripte düşebilir, D-040 dersi). İki yönlü sağlama sağlar: beklenen alan
+  görünmüyorsa anonimleştirme fazla agresif, beklenmeyen görünüyorsa eksik.
+- **Sessiz atlama yok (D-045 dersi):** dizin boşken suite görünür bir "henüz
+  eklenmedi" testi basar; `.txt` var ama `expected.json` kaydı yoksa **HATA**
+  verir (sık yapılan yarım kurulum); `REQUIRE_REAL_FIXTURES=1` ile atlama
+  tamamen yasaklanır. Dört yolun dördü de koşularak doğrulandı.
+- **Aşırı maskeleme sınırı uzunluğa duyarlı yapıldı.** Adres blokları SABİT
+  maliyettir (~10 token), mektup uzunluğundan bağımsız. Sabit %15 eşiği kısa
+  mektuplarda yanlış alarm verir: ölçüldü, 59 kelimelik gerçekçi bir mektupta
+  oran %25,4 çıktı ama maskeli metin tamamen analiz edilebilirdi (kurum, konu,
+  son tarih token'ı, eksik belge listesi — hepsi yerinde). Sınır ≥150 kelimede
+  %15, altında %32. Asıl ölçü ise orandan çok içerik: kurum/konu/kapanış
+  metinlerinin ayakta kalması ayrıca test edilir.
+
+### (b) Yerel `DB_DRIVER` varsayılanı `memory` oldu
+- D-047 cron'ları durdurdu ama **mesaj işleme yolu** hâlâ üretim veritabanına
+  yazıyordu (o yolu guard'lamak doğru olmaz — kullanıcı etkileşimiyle
+  tetikleniyor). Yerel `.env` artık `DB_DRIVER=memory`.
+- **Ama önce bir tuzak kapatıldı:** `memory` varsayılanı, gerçek DB gerektiren
+  script'leri SESSİZCE ANLAMSIZ hâle getirirdi:
+  - `rotate:pii-key` bellekte BOŞ kasa görür, "0 kayıt rotate edildi" der ve
+    **başarılı görünür** — oysa gerçek kasaya hiç dokunulmamıştır,
+  - `live:check` bellekte koşarsa "canlı yığın doğrulandı" iddiası boştur;
+    üstelik kodda yalnızca `(supabase olmalı)` YAZIYORDU, engellemiyordu.
+  - Ortak `assertSupabaseDriver()` eklendi: bu script'ler artık DB_DRIVER'ı
+    varsaymaz, **talep eder** ve `memory` ile çalışmayı reddeder. Uyarı basıp
+    devam etmek yetmez — D-041'de tam da öyle bir araç yanlış "GO" vermişti.
+  - `test:supabase` / `smoke:supabase` kendi env'ini kendisi kurar (etkilenmez).
+
+### (c) 🔴 `scripts/` HİÇ tip kontrolünden geçmiyormuş
+- Kök `tsconfig.json`'ın `include`'u `["src/**/*","test/**/*"]` — `scripts/`
+  yok. Script'ler `ts-node -T` ile koşuyor ve `-T` = **transpile-only**, yani
+  tip kontrolü yok. Sonuç: `scripts/` bugüne kadar hiç tip denetlenmedi.
+- Gerçek vaka (bu turda): `import type` ile alınan `AppConfigService` DI
+  token'ı olarak kullanıldı; `tsc --noEmit` hiçbir şey demedi.
+- **Kök tsconfig'e `scripts/**` EKLEMEK YANLIŞ ÇÖZÜM — üretimi kırar.**
+  Denendi ve ölçüldü: `nest build` aynı dosyayı kullanıyor; scripts dâhil
+  edilince çıktı `dist/main.js` yerine `dist/src/main.js` oluyor ve
+  Dockerfile'daki `node dist/main.js` **kırılıyor** (konteyner açılışta
+  çökerdi), ayrıca `dist/scripts/` imajı şişiriyor.
+- **Çözüm:** ayrı `tsconfig.scripts.json` (yalnızca `noEmit`) +
+  `npm run typecheck:scripts` + CI adımı. Kanıt: kasıtlı `import type` hatası
+  enjekte edildi → yeni kontrol `TS1361` yakaladı, eski `tsc` sustu.
+
+## D-049 — Test hermetikliği ÖRTÜK bir varsayıma dayanıyormuş
+
+- **Bulgu:** `config.module.ts` şunu diyor:
+  `ignoreEnvFile: process.env.NODE_ENV === 'test'`. Yani testlerin yerel
+  `.env`'den izole olması (D-032) tamamen `NODE_ENV`'in **import anında**
+  'test' olmasına bağlı — ve bunu repoda hiçbir şey garanti etmiyordu,
+  yalnızca **Jest'in örtük varsayılanı** sağlıyordu.
+- **Ölçüldü:** `NODE_ENV=development npx jest` ile config `.env`'i okumaya
+  başlıyor; `telegramMode` şema varsayılanı `disabled` yerine `.env`'deki
+  `polling` geliyor. İki somut sonuç:
+  - `LLM_MOCK=false` + gerçek anahtar → testler **ÜCRETLİ** gerçek API'ye
+    çıkar (bu bir kez yaşandı, 24 test kırılmıştı — D-032),
+  - `TELEGRAM_MODE=polling` → test suite'i **gerçek botu** başlatmaya çalışır,
+    yani D-043 sınıfı bir yan etki.
+- **KARAR:** `jest.setup.ts` (`setupFiles`) hermetik tabanı AÇIKÇA sabitler.
+  `setupFiles` seçildi çünkü spec'in modülleri yüklenmeden ÖNCE koşar;
+  `ConfigModule.forRoot()` import anında okuduğu için daha geç bir kanca geç
+  kalırdı. Doğrulandı: `NODE_ENV=development` ile artık sızıntı yok.
+- **Bilinçli kısıtlama:** setup dosyası yalnızca ŞEMA VARSAYILANLARINI
+  sabitler. `TELEGRAM_SKIP_STARTUP`/`SCHEDULER_SKIP_STARTUP` "ekstra güvenlik"
+  diye `true` yapılmadı: ikisinin de varsayılanı `false` ve zorlamak test
+  SEMANTİĞİNİ değiştirirdi — `reminders.service.spec.ts` guard yüzünden
+  sessizce erken döner, testler geçer ama hiçbir şey doğrulamazdı.
+
+### D-047c'nin DÜZELTİLMİŞ hâli — ilk ifade fazla genel
+- İlk kayıt "beforeEach'te env kuran spec'ler varsayılanları test ediyor"
+  diyordu. **Denetlendi (12 spec):** 8'i env'i import'tan SONRA kuruyor
+  (etkisiz), 4'ü ÖNCE (çalışıyor, ör. `supabase.integration.spec.ts` — D-023
+  bunu zaten biliyordu; TypeScript'in CJS emit'i `require`'ları kaynak
+  sırasında bıraktığı için doğru çalışır).
+- **Pratik etki bugün SIFIR:** 8 riskli spec'in kurduğu değerlerin hepsi zaten
+  şema varsayılanı (`memory`, `true`, `disabled`) + `NODE_ENV=test` (Jest zaten
+  koyuyor). Yani hiçbir test bugün yanlış şey ölçmüyor. Risk gelecekte:
+  varsayılandan FARKLI bir değere dayanan ilk test sessizce yanlış ölçerdi.
+- **Tuzak artık teste bağlandı:** `test-hermeticity.spec.ts` "test gövdesinde
+  env değiştirmek etkisizdir" davranışını sabitler. Bir gün `ConfigModule`
+  tembel okumaya geçerse bu test kırılır ve tuzağın kalktığını haber verir.
+- **Doğru yol için yardımcı:** `bootAppWithConfig()`. İlk denenen çözüm
+  (`jest.resetModules()` + dinamik import) **ÇALIŞMADI ve terk edildi**:
+  reset sonrası tepede statik import edilmiş `AppConfigService`, yeniden
+  yüklenen grafikteki sınıftan farklı bir nesne olduğu için
+  `app.get(...)` "provider does not exist" ile düşüyor. Yardımcı bunun yerine
+  boot edilmiş config örneğinin getter'larını `app.init()`'ten ÖNCE gölgeler.

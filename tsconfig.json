@@ -23,6 +23,11 @@
     "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true
   },
+  // ⚠️ `scripts/**` BURAYA EKLENMEZ (D-048). `nest build` bu dosyayı kullanır;
+  // scripts dâhil edildiğinde çıktı `dist/main.js` yerine `dist/src/main.js`
+  // olur ve Dockerfile'daki `node dist/main.js` KIRILIR (ölçüldü — konteyner
+  // açılışta çökerdi). Script'lerin tip kontrolü `tsconfig.scripts.json` ile
+  // ayrıca yapılır: `npm run typecheck:scripts`.
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]
 }

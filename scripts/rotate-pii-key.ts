@@ -25,10 +25,12 @@
 import { config as loadDotenv } from 'dotenv';
 loadDotenv();
 
-import { bootScriptContext } from './script-context';
+import { bootScriptContext, assertSupabaseDriver } from './script-context';
 import { CryptoService } from '../src/common/crypto/crypto.service';
 import { PiiVaultRepository } from '../src/modules/persistence/repositories/pii-vault.repository';
-import type { AppConfigService } from '../src/config/config.service';
+// `import type` DEĞİL: aşağıda `app.get(AppConfigService)` ile DI token'ı
+// olarak kullanılıyor, yani çalışma zamanında değere ihtiyaç var.
+import { AppConfigService } from '../src/config/config.service';
 
 /** Verilen anahtarla (ya da dev fallback ile) bir CryptoService kurar. */
 function cryptoWith(hexKey?: string): CryptoService {
@@ -61,6 +63,17 @@ async function main(): Promise<void> {
 
   // D-043: Telegram botu BAŞLATILMAZ (üretim webhook'unu ezme riski).
   const app = await bootScriptContext();
+
+  // D-048: bellek sürücüsünde kasa BOŞ görünür; script "0 kayıt rotate
+  // edildi" deyip BAŞARILI çıkardı — oysa gerçek kasaya hiç dokunulmamıştır.
+  // Yerel varsayılan `memory` olduğu için bu sessiz başarısızlık artık
+  // gerçekten olasıydı.
+  const cfg = app.get(AppConfigService);
+  if (cfg.dbDriver !== 'supabase') {
+    await app.close();
+    assertSupabaseDriver(cfg.dbDriver, 'rotate:pii-key');
+  }
+
   const vaultRepo = app.get(PiiVaultRepository);
 
   const oldCrypto = cryptoWith(oldKey);

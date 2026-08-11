@@ -161,20 +161,18 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       Uçtan uca kanıt: yerelde bot açıldı, ÜRETİM kesintisiz kaldı (uptime
       sürekli, webhook yerinde, 0 bekleyen update). Bot kimliği artık açılışta
       loglanıyor.
-- [ ] 🔴 **Yerel `start:dev` ile üretim VERİTABANI hâlâ paylaşılıyor** — kısmen
-      kapatıldı (D-047b): `SCHEDULER_SKIP_STARTUP` cron'ları durduruyor ve
-      `.env`'de `true` yapıldı. Ama `DB_DRIVER=supabase` durduğu sürece yerel
-      geliştirme üretim verisine YAZAR (mesaj işleme yolu guard'lı değil —
-      guard'lamak da doğru olmaz, o yol kullanıcı etkileşimiyle tetikleniyor).
-      **Kalıcı çözüm:** ayrı bir Supabase geliştirme projesi (veya
-      `DB_DRIVER=memory` ile çalışmak). Kullanıcı kararı.
-- [ ] **Test altyapısı: spec'lerde `process.env` override'ı etkisiz** (D-047c).
-      `ConfigModule.forRoot()` doğrulamayı import anında çalıştırdığı için
-      `beforeEach`'te env kurup `AppModule` boot eden testler aslında şema
-      VARSAYILANLARINI test ediyor. Bugüne kadar zarar vermedi çünkü kurulan
-      değerler varsayılanlarla aynı — ama varsayılandan farklı bir değere
-      dayanan yeni bir test sessizce yanlış şeyi ölçer. Çözüm: env'i import'tan
-      önce kuran bir Jest setup dosyası veya `jest.isolateModules`.
+- [x] ~~🔴 **Yerel `start:dev` ile üretim VERİTABANI paylaşılıyor**~~ — **KAPANDI (D-048b).**
+      Yerel `.env` artık `DB_DRIVER=memory`. Gerçek DB gerektiren script'ler
+      (`live:check`, `rotate:pii-key`) bunu TALEP eder ve `memory` ile çalışmayı
+      reddeder — aksi hâlde `rotate:pii-key` boş kasada "0 kayıt, başarılı"
+      derdi. Ayrı bir Supabase dev projesi hâlâ daha temiz bir seçenek olurdu
+      (kullanıcı hesabı gerektirir), ama artık zorunlu değil.
+- [x] ~~**Test altyapısı: spec'lerde `process.env` override'ı etkisiz**~~ —
+      **KAPANDI (D-049).** 12 spec denetlendi: 8'i etkisiz, 4'ü doğru; pratik
+      etki bugün SIFIR (hepsi zaten şema varsayılanını kuruyor). Tuzak teste
+      bağlandı, doğru yol için `bootAppWithConfig()` eklendi. Ayrıca daha
+      ciddi bir bulgu çıktı: hermetiklik Jest'in ÖRTÜK `NODE_ENV=test`
+      varsayılanına dayanıyordu; `jest.setup.ts` ile açıkça sabitlendi.
 
 ---
 

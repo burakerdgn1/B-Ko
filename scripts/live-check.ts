@@ -14,7 +14,7 @@ loadDotenv();
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { bootScriptContext } from './script-context';
+import { bootScriptContext, assertSupabaseDriver } from './script-context';
 import { AnalysisPipeline } from '../src/modules/analysis/analysis.pipeline';
 import { ProfileService } from '../src/modules/profile/profile.service';
 import { UserRepository } from '../src/modules/persistence/repositories/user.repository';
@@ -40,6 +40,14 @@ async function main(): Promise<void> {
     console.error('  ✗ LLM_MOCK=true — gerçek çağrı yapılmayacak. İptal.');
     await app.close();
     process.exit(1);
+  }
+
+  // D-048: Eskiden burada yalnızca "(supabase olmalı)" YAZIYORDU ama script
+  // bellek sürücüsüyle de sonuna kadar koşup "canlı doğrulama başarılı"
+  // diyordu. Yerel varsayılan `memory` olduğu için bu artık gerçek bir tuzak.
+  if (config.dbDriver !== 'supabase') {
+    await app.close();
+    assertSupabaseDriver(config.dbDriver, 'live:check');
   }
 
   const users = app.get(UserRepository);

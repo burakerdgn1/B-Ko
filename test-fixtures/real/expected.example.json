@@ -1,0 +1,12 @@
+{
+  "_ÖRNEK": "Bu dosyayı `expected.json` olarak kopyalayıp doldurun. Şema, behordenbriefe/expected.json ile aynıdır. Alt çizgiyle başlayan anahtarlar yok sayılır.",
+  "abh-muenchen-fristverlaengerung": {
+    "file": "abh-muenchen-fristverlaengerung.txt",
+    "authority": "Ausländerbehörde München",
+    "requestType": "Unterlagennachforderung",
+    "expectedDeadline": "2026-09-15",
+    "expectedRiskLevel": "high",
+    "expectedPiiTypes": ["NAME", "ADDRESS", "DATE", "AKTENZEICHEN"],
+    "notes": "Bilinmeyen alanlar için null verin; testler o alanı atlar."
+  }
+}

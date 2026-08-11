@@ -20,3 +20,10 @@ tmp/
 # GitHub push'u boyut yüzünden HTTP 400 ile reddediyor (yaşandı).
 *.traineddata
 *.traineddata.gz
+
+# Gerçek (anonimleştirilmiş) Behördenbrief'ler — repoya GİRMEZ (D-048).
+# Anonimleştirildiğini sanmak ile doğrulamak aynı şey değil; bir kez commit'lenen
+# veri git geçmişinden kolay silinmez. Yalnızca README ve örnek şablonlar izlenir.
+test-fixtures/real/*
+!test-fixtures/real/README.md
+!test-fixtures/real/*.example.json

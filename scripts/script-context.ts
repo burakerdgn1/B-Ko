@@ -44,6 +44,34 @@ export interface ScriptContextOptions {
   logger?: ('error' | 'warn' | 'log' | 'debug' | 'verbose')[];
 }
 
+/**
+ * Gerçek veritabanı GEREKTİREN script'ler için kapı (D-048).
+ *
+ * Neden gerekli: yerel geliştirmenin güvenli varsayılanı `DB_DRIVER=memory`
+ * oldu (üretim verisine yazmamak için). Ama bazı script'ler yalnızca gerçek
+ * veritabanına karşı ANLAMLIDIR:
+ *   - `rotate:pii-key` bellek sürücüsünde BOŞ bir kasa görür, "0 kayıt
+ *     rotate edildi" der ve BAŞARILI görünür — oysa gerçek kasa hiç
+ *     dokunulmamıştır. Sessiz ve tehlikeli.
+ *   - `live:check` bellekte koşarsa "canlı yığın doğrulandı" iddiası boştur.
+ *
+ * Bu yüzden bu script'ler DB_DRIVER'ı varsaymaz, TALEP eder. Uyarı basmak
+ * yetmez: bu projede uyarı basıp devam eden bir araç (D-041) yanlış "GO"
+ * verdi.
+ */
+export function assertSupabaseDriver(dbDriver: string, scriptName: string): void {
+  if (dbDriver === 'supabase') return;
+
+  console.error(
+    `\n✗ ${scriptName} gerçek veritabanı gerektirir ama DB_DRIVER=${dbDriver}.\n` +
+      '\n  Bellek sürücüsüyle bu script sessizce ANLAMSIZ bir sonuç üretirdi\n' +
+      '  (boş kasa → "0 kayıt", ya da "canlı" olmayan bir canlı doğrulama).\n' +
+      '\n  Çözüm — tek seferlik, .env değiştirmeden:\n' +
+      `    DB_DRIVER=supabase npm run <komut>\n`,
+  );
+  process.exit(1);
+}
+
 export async function bootScriptContext(
   options: ScriptContextOptions = {},
 ): Promise<INestApplicationContext> {

@@ -1,6 +1,6 @@
 # BüKo — Devir Notu (HANDOFF) · **v3**
 
-**Tarih:** 2026-08-11 · **639 test geçiyor** (42 suite, 1 atlanır) · **46 karar** (D-001…D-046)
+**Tarih:** 2026-08-12 · **660 test geçiyor** (47 suite, 1 atlanır) · **49 karar** (D-001…D-049)
 
 > **v3.1 güncellemesi:** D-045 (CI'da Playwright atlaması yasaklandı) ve
 > D-046 (OCR bozulmalarına dayanıklı maskeleme) eklendi. **D-044'ün
@@ -120,17 +120,33 @@ uygulama Railway'de kendi kalıcı domaini ile çalışıyor
 (`b-ko-production.up.railway.app`). Tünel yalnızca yerel geliştirme için gerekir
 — ve o durumda bile aşağıdaki uyarı geçerli.
 
-### ⚠️ Yerelde uygulama başlatmak ÜRETİMDEKİ botu bozar (D-043)
+### ✅ Yerel geliştirme artık İZOLE (D-047 / D-048)
 
-v2'deki "kullanıcı `npm run start:dev` ile ayrıca başlatmamalı" notu **port
-çakışması** gerekçesiyle yazılmıştı. Gerçek sebep çok daha ciddi: bot token'ı
-globaldir, yerelde `TELEGRAM_MODE=webhook`/`polling` ile açmak üretimin webhook
-kaydını **ezer** veya update'lerini **çalar**. Ayrıntı §6.
+v2'deki "`start:dev` ile başlatmamalı" uyarısı **artık geçersiz** — ama izolasyon
+iki ayrı yüzeyde ayrı ayrı kurulduğu için ikisini de bilmek gerekiyor:
+
+| Yüzey | Nasıl izole edildi |
+|---|---|
+| Telegram kanalı | Ayrı test botu `@BuKoTest749_bot` (`.env`) · yerel mod `polling` |
+| Zamanlayıcı (cron) | `SCHEDULER_SKIP_STARTUP=true` — ayrı token bunu KAPSAMIYORDU |
+| Veritabanı | Yerel `DB_DRIVER=memory` — mesaj işleme yolu guard'lanamaz |
+
+Servis açılışta hangi botu sürdüğünü loglar (üretim dışında `warn`):
+`Telegram botu: @BuKoTest749_bot — mod=polling, ortam=development`.
+
+⚠️ **Yeni bir makinede `.env` kurarken üretim token'ını yapıştırmayın.** Kod
+bunu engelleyemez; tek uyarı o log satırıdır. Şüphe varsa `getMe` ile doğrulayın.
+
+⚠️ Gerçek DB gerektiren script'ler artık `memory` ile çalışmayı **reddediyor**
+(`live:check`, `rotate:pii-key`) — aksi hâlde `rotate:pii-key` boş kasada
+"0 kayıt, başarılı" derdi. Tek seferlik: `DB_DRIVER=supabase npm run <komut>`.
 
 ## 3. Doğrulama komutları
 
 ```bash
-npm test                       # 553 test, hermetik (.env'den izole)
+npm test                       # 660 test, hermetik (jest.setup.ts ile SABİTLENDİ — D-049)
+npm run typecheck:scripts      # scripts/ tip kontrolü (kök tsc bunu KAPSAMAZ — D-048c)
+npm run check:real-fixtures    # gerçek mektup anonimleştirme kontrolü (D-048a)
 npm run check:deploy           # GO/NO-GO — token harcamaz
 railway run npm run check:deploy   # PLATFORMDAKİ gerçek değişken setiyle
 npm run test:supabase          # gerçek Postgres'e karşı 16 entegrasyon testi
@@ -400,7 +416,7 @@ girer. Refleks: script'e **minimum** bağlamı ver.
 ### Kullanıcı eylemi gerektiren
 1. **`default` Supabase secret anahtarını sil** — kullanılmıyor (kod envanteri
    ile doğrulandı), ama RLS'i bypass ediyor. Dashboard'da "Last used" boşsa sil.
-2. **İkinci bir test bot token'ı** (@BotFather) — `start:dev` koruması için (P-7).
+2. ~~**İkinci bir test bot token'ı**~~ — ✅ YAPILDI (D-047): `@BuKoTest749_bot`.
 3. **`OCR_PROVIDER` kararı** — `claude-vision` (D-010 ödünü) mü, `local` mi?
    **Teknik blokaj kalmadı** (D-046); kalan tek şart gerçek fotoğrafla ölçümün
    tekrarlanması (bkz. "Kod tarafı" 5).
@@ -411,10 +427,19 @@ girer. Refleks: script'e **minimum** bağlamı ver.
    yoksa test SKIP değil FAIL. Yalnızca kurulum adımı eklemek yetmezdi — adım
    ileride silinse aynı sessiz boşluk geri gelirdi.
 5. **Gerçek (anonimleştirilmiş) Behördenbrief'lerle doğrulama** — bugüne kadarki
-   tüm doğrulama sentetik fixture'larla. **Asistan tek başına kapatamaz:** gerçek
-   tarama gürültüsü/kırışıklık/damga sentetikte yok. Örnekler `test-fixtures/real/`
-   altına konursa mevcut düzenek (fixture spec + `bench:ocr-mask`) doğrudan koşar.
-   Bu madde aynı zamanda §10/3'teki `OCR_PROVIDER` kararının ön koşuludur.
+   tüm doğrulama sentetik fixture'larla. **Kod tarafı KAPANDI (D-048a):**
+   `test-fixtures/real/` altına `.txt` + `expected.json` bırakmak yeterli,
+   testler kendiliğinden koşar; dizin `.gitignore`'da (gerçek insan verisi);
+   `npm run check:real-fixtures` maskelemenin ne gördüğünü değerleri basmadan
+   raporlar. **Kalan tek şey mektupların kendisi — bunu yalnızca kullanıcı
+   sağlayabilir.** Bu madde §10/3'teki `OCR_PROVIDER` kararının ön koşuludur.
+5b. ~~**Yerel geliştirme üretim veritabanına yazıyor**~~ — ✅ **KAPANDI (D-048b).**
+   Yerel `DB_DRIVER=memory`; gerçek DB gerektiren script'ler bunu talep ediyor.
+5c. ~~**`scripts/` tip kontrolünden geçmiyor**~~ — ✅ **KAPANDI (D-048c).**
+   Kök tsconfig'e eklemek üretimi kırıyordu (`dist/main.js` → `dist/src/main.js`);
+   ayrı `tsconfig.scripts.json` + CI adımı.
+5d. ~~**Test hermetikliği örtük varsayıma dayanıyor**~~ — ✅ **KAPANDI (D-049).**
+   `NODE_ENV=development npx jest` ile `.env` sızıyordu; `jest.setup.ts` sabitledi.
 6. **Yerel NER** → D-028 boşluğu (v2).
 7. **RLS politikaları** — yalnızca web dashboard eklenirse gerekli.
 8. **WhatsApp adapter** — v2 (`ChannelAdapter` arayüzü hazır).
