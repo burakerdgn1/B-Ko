@@ -54,6 +54,23 @@ export const envSchema = z
      */
     TELEGRAM_SKIP_STARTUP: boolish.default('false'),
 
+    /**
+     * Zamanlanmış işleri (cron) devre dışı bırakır — D-047.
+     *
+     * Ayrı bir test botu Telegram KANALINI izole eder ama VERİTABANINI etmez.
+     * `DB_DRIVER=supabase` ile yerelde uygulama açmak, üretim veritabanına
+     * karşı ikinci bir zamanlayıcı çalıştırır:
+     *   - `reminders-due` aynı hatırlatmayı ikinci kez gönderir ve/veya
+     *     üretim göndermeden ÖNCE "gönderildi" işaretler → kullanıcı
+     *     hatırlatmasını hiç almaz,
+     *   - `gdpr-purge` silme işlemiyle çakışır.
+     * HANDOFF'ta `numReplicas: 1`'in gerekçesi tam olarak budur; yerel bir
+     * `start:dev` de fiilen ikinci replikadır.
+     *
+     * Varsayılan `false` — üretim davranışı değişmez.
+     */
+    SCHEDULER_SKIP_STARTUP: boolish.default('false'),
+
     // ── Persistence ──
     DB_DRIVER: z.enum(['memory', 'supabase']).default('memory'),
     SUPABASE_URL: z.string().optional(),

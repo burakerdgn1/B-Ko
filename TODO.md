@@ -154,10 +154,27 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
 - [x] P-6 (O) **D-043** — bakım script'leri üretimdeki botu etkiliyordu; bir
       teşhis scripti üretim webhook'unu SİLDİ ve bot birkaç dakika sağır kaldı.
       `TELEGRAM_SKIP_STARTUP` + `bootScriptContext()` ile kapatıldı, 6 test.
-- [ ] P-7 (Kullanıcı) **Ayrı bir test botu aç** (@BotFather'dan ikinci token).
-      `npm run start:dev` hâlâ korunmuyor: yerelde `TELEGRAM_MODE=webhook` ya da
-      `polling` ile açmak üretimdeki botu etkiler (D-043, DEPLOYMENT §8a).
-      Şimdilik yerel geliştirmede `TELEGRAM_MODE=disabled` kullanın.
+- [x] ~~P-7 (Kullanıcı) **Ayrı bir test botu aç**~~ — **YAPILDI (D-047).**
+      `@BuKoTest749_bot` açıldı ve `.env`'e eklendi; token'ın gerçekten test
+      botuna ait olduğu salt-okunur `getMe` ile doğrulandı. Yerel `.env`
+      `polling` + `localhost`'a çevrildi (ölü cloudflared adresi temizlendi).
+      Uçtan uca kanıt: yerelde bot açıldı, ÜRETİM kesintisiz kaldı (uptime
+      sürekli, webhook yerinde, 0 bekleyen update). Bot kimliği artık açılışta
+      loglanıyor.
+- [ ] 🔴 **Yerel `start:dev` ile üretim VERİTABANI hâlâ paylaşılıyor** — kısmen
+      kapatıldı (D-047b): `SCHEDULER_SKIP_STARTUP` cron'ları durduruyor ve
+      `.env`'de `true` yapıldı. Ama `DB_DRIVER=supabase` durduğu sürece yerel
+      geliştirme üretim verisine YAZAR (mesaj işleme yolu guard'lı değil —
+      guard'lamak da doğru olmaz, o yol kullanıcı etkileşimiyle tetikleniyor).
+      **Kalıcı çözüm:** ayrı bir Supabase geliştirme projesi (veya
+      `DB_DRIVER=memory` ile çalışmak). Kullanıcı kararı.
+- [ ] **Test altyapısı: spec'lerde `process.env` override'ı etkisiz** (D-047c).
+      `ConfigModule.forRoot()` doğrulamayı import anında çalıştırdığı için
+      `beforeEach`'te env kurup `AppModule` boot eden testler aslında şema
+      VARSAYILANLARINI test ediyor. Bugüne kadar zarar vermedi çünkü kurulan
+      değerler varsayılanlarla aynı — ama varsayılandan farklı bir değere
+      dayanan yeni bir test sessizce yanlış şeyi ölçer. Çözüm: env'i import'tan
+      önce kuran bir Jest setup dosyası veya `jest.isolateModules`.
 
 ---
 

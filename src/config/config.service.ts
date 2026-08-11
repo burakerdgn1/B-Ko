@@ -60,6 +60,11 @@ export class AppConfigService {
     return this.get('TELEGRAM_SKIP_STARTUP');
   }
 
+  /** Yerel geliştirme/script bağlamı: cron'lar hiç koşmaz (D-047). */
+  get schedulerSkipStartup(): boolean {
+    return this.get('SCHEDULER_SKIP_STARTUP');
+  }
+
   // ── Persistence ──
   get dbDriver(): AppEnv['DB_DRIVER'] {
     return this.get('DB_DRIVER');

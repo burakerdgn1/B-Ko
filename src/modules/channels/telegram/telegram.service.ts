@@ -96,6 +96,26 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     this.wireUpdateHandlers(this.bot);
 
     try {
+      // ── HANGİ BOTU SÜRÜYORUZ? (D-047) ──
+      // D-043'ün kökü, token'ın global olması DEĞİL — o token'ın hangi bota
+      // ait olduğunun HİÇBİR YERDE görünmemesiydi. Ayrı bir test botu artık
+      // mevcut, ama `.env`'e yanlışlıkla üretim token'ı konursa yerel bir
+      // boot yine üretimi ele geçirir ve bu sessizce olur.
+      //
+      // `init()` her iki modda da zaten çağrılıyor (polling'de `start()`
+      // içinden, idempotent); burada öne alınmasının tek maliyeti sıralama.
+      await this.bot.init();
+      const username = this.bot.botInfo?.username;
+      if (this.config.isProduction) {
+        this.logger.log(`Telegram botu: @${username} (production)`);
+      } else {
+        // Üretim DIŞINDA daha gürültülü: hata tam da burada yapılıyor.
+        this.logger.warn(
+          `Telegram botu: @${username} — mod=${mode}, ortam=${this.config.nodeEnv}. ` +
+            'Bunun ÜRETİM botu olmadığından emin olun (D-043/D-047).',
+        );
+      }
+
       if (mode === 'polling') {
         // NOT: bot.start() long-polling boyunca resolve OLMAZ; bu yüzden
         // await edilmez, arka planda çalışır. onStart callback'i ile

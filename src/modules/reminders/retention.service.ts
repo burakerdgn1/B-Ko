@@ -76,6 +76,16 @@ export class RetentionService implements OnModuleInit {
 
   @Cron(DEFAULT_DELETION_CRON, { name: 'gdpr-purge' })
   async handlePurgeCron(): Promise<void> {
+    // D-047: EN BAŞTA — `purgeNow()` SİLME yapar, sonradan sınamak geç olurdu.
+    // Guard yalnızca CRON yolunu kapatır; `purgeNow()` elle çağrıldığında
+    // (endpoint/test) çalışmaya devam eder — bilinçli: orada niyet açıktır.
+    if (this.config.schedulerSkipStartup) {
+      this.logger.warn(
+        'SCHEDULER_SKIP_STARTUP=true — otomatik GDPR silmesi ÇALIŞMADI ' +
+          '(yerel/script bağlamı, D-047).',
+      );
+      return;
+    }
     await this.purgeNow();
   }
 

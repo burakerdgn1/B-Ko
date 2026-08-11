@@ -34,6 +34,12 @@ export interface ScriptContextOptions {
    * polling dâhil). Üretim durumunu değiştirebileceği için varsayılan `false`.
    */
   allowChannels?: boolean;
+  /**
+   * `true` verilirse zamanlanmış işler (cron) NORMAL şekilde koşar.
+   * Üretim veritabanına ikinci bir zamanlayıcı bindirebileceği için
+   * varsayılan `false` (D-047).
+   */
+  allowScheduler?: boolean;
   /** Nest logger seviyeleri; varsayılan yalnızca hatalar. */
   logger?: ('error' | 'warn' | 'log' | 'debug' | 'verbose')[];
 }
@@ -41,7 +47,18 @@ export interface ScriptContextOptions {
 export async function bootScriptContext(
   options: ScriptContextOptions = {},
 ): Promise<INestApplicationContext> {
-  const { allowChannels = false, logger = ['error'] } = options;
+  const {
+    allowChannels = false,
+    allowScheduler = false,
+    logger = ['error'],
+  } = options;
+
+  if (!allowScheduler) {
+    // D-047: bir bakım script'i uzun sürerse (rotasyon, ölçüm) cron penceresi
+    // içine düşebilir ve üretim verisine karşı hatırlatma gönderip/silme
+    // yapabilirdi. Kanal izolasyonuyla aynı gerekçe, farklı yüzey.
+    process.env.SCHEDULER_SKIP_STARTUP = 'true';
+  }
 
   if (!allowChannels) {
     // ÖNEMLİ: `AppModule` import'undan önce set edilmesi gerekmez — env,

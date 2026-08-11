@@ -322,10 +322,47 @@ Telegram bot token'ı **tek ve globaldir** — Telegram tarafında "yerel" ile
 tüm script'ler `bootScriptContext()` kullanır; bu, `TELEGRAM_SKIP_STARTUP=true`
 ayarlayarak botu hiç başlatmaz.
 
-**`npm run start:dev` KORUNMAZ.** Yerel geliştirmede ya `TELEGRAM_MODE=disabled`
-kullanın, ya da ayrı bir test botu (@BotFather'dan ikinci bir token) açın.
-Bu, gerçek bir olaydan sonra eklendi: bir teşhis script'i üretimin webhook'unu
-sildi ve bot birkaç dakika mesaj alamadı.
+✅ **ÇÖZÜLDÜ (D-047): ayrı test botu devrede.**
+
+| | Bot | Yerel mod |
+|---|---|---|
+| Üretim | `@BuKo749_bot` (Railway Variables) | — |
+| Yerel geliştirme | `@BuKoTest749_bot` (`.env`) | `polling` |
+
+Ayrı token = gerçek izolasyon: yerelde polling açmak üretimin update'lerini
+çalmaz, webhook kaydını ezmez. Test botuyla **tünel/public URL gerekmez** —
+`polling` doğrudan çalışır, `PUBLIC_BASE_URL=http://localhost:3000` yeterli.
+
+Servis açılışta hangi botu sürdüğünü loglar; üretim dışında `warn` seviyesinde:
+
+```
+WARN [TelegramService] Telegram botu: @BuKoTest749_bot — mod=polling,
+     ortam=development. Bunun ÜRETİM botu olmadığından emin olun (D-043/D-047).
+```
+
+> ⚠️ **Yeni bir makinede kurulum yaparken `.env`'e ÜRETİM token'ını
+> yapıştırmayın.** Kod bunu engelleyemez — yalnızca yukarıdaki log satırı
+> uyarır. Şüphe varsa doğrulayın (salt-okunur, hiçbir durumu değiştirmez):
+> ```bash
+> node -e "require('dotenv').config();
+>   fetch('https://api.telegram.org/bot'+process.env.TELEGRAM_BOT_TOKEN+'/getMe')
+>   .then(r=>r.json()).then(j=>console.log('@'+j.result.username))"
+> ```
+
+### 🔴 Ayrı bot token'ı VERİTABANINI izole ETMEZ (D-047b)
+
+Token izolasyonu yalnızca **Telegram kanalını** ayırır. `@Cron` işleri süreç
+içinde koşar; `DB_DRIVER=supabase` ile yerelde uygulama açmak üretim verisine
+karşı **ikinci bir zamanlayıcı** çalıştırır (bkz. §8b — yerel `start:dev`
+fiilen ikinci replikadır):
+
+- `reminders-due` → hatırlatma çift gönderilir **veya** üretim göndermeden önce
+  `sent` işaretlenir ve kullanıcı hatırlatmasını **hiç almaz** (sessiz kayıp),
+- `gdpr-purge` → silme işlemiyle çakışır.
+
+**Yerel geliştirmede `SCHEDULER_SKIP_STARTUP=true` yapın** (veya
+`DB_DRIVER=memory` kullanın). Bakım script'lerinde `bootScriptContext()` bunu
+zaten varsayılan olarak ayarlar. Üretimde bayrak `false` kalmalıdır.
 
 ## 8b. Ölçekleme Sınırı (bilinçli)
 

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Reminder } from '../../common/types/domain';
+import { AppConfigService } from '../../config/config.service';
 import { PiiService } from '../../common/pii/pii.service';
 import { PiiVaultService } from '../../common/pii/pii-vault.service';
 import { ChannelAdapter } from '../channels/channel.adapter';
@@ -40,10 +41,22 @@ export class RemindersService {
     private readonly piiVault: PiiVaultService,
     private readonly pii: PiiService,
     private readonly channel: ChannelAdapter,
+    private readonly config: AppConfigService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: 'reminders-due' })
   async handleDueReminders(): Promise<void> {
+    // D-047: EN BAŞTA — herhangi bir DB okuması/yazmasından ÖNCE.
+    // Sonra sınansaydı `findDue()` zaten üretim veritabanına gitmiş olurdu.
+    if (this.config.schedulerSkipStartup) {
+      this.logger.warn(
+        'SCHEDULER_SKIP_STARTUP=true — vadesi gelen hatırlatmalar İŞLENMEDİ. ' +
+          'Yerel/script bağlamında üretim verisine ikinci bir zamanlayıcı ' +
+          'çalıştırmamak için (D-047).',
+      );
+      return;
+    }
+
     const now = new Date();
     const due = await this.reminders.findDue(now);
 

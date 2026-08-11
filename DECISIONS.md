@@ -1012,3 +1012,74 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   fotoğrafında (eğrilik, gölge, gürültü) tesseract daha kötü olur. Geçiş
   kararı kullanıcınındır ve gerçek fotoğrafla doğrulanmalıdır (D-010 takası
   hâlâ geçerli).
+
+## D-047 — Yerel geliştirme izolasyonu TAMAMLANDI (ve kalan yarısı bulundu)
+- **Bağlam:** D-043, `npm run start:dev`'in korunmadığını ve çözümün "kod değil
+  hesap işi" olduğunu yazmıştı. Kullanıcı @BotFather'dan ikinci bir bot açtı
+  (üretim `@BuKo749_bot` · test `@BuKoTest749_bot`) ve `.env`'e ekledi.
+
+- **ÖNCE DOĞRULADIM, SONRA KULLANDIM.** `.env`'deki token'ın gerçekten test
+  botuna ait olduğu salt-okunur `getMe` ile ölçüldü. Bu paranoya değil: HANDOFF
+  §12'de kullanıcının bildirdiği durumun gerçekle uyuşmadığı üç vaka kayıtlı.
+  Yanlışlıkla üretim token'ı durursa `start:dev` D-043'ü birebir tekrarlardı.
+  Ölçüm sonucu: `@BuKoTest749_bot`, webhook'u boş, 0 bekleyen update. ✅
+
+- **Yerel `.env`'de iki tehlikeli kalıntı vardı:** `TELEGRAM_MODE=webhook` ve
+  `PUBLIC_BASE_URL=https://…trycloudflare.com` — yani **D-043'ü tetikleyen ölü
+  adresin ta kendisi.** Test botuyla artık zararsız ama bozuk. `polling` +
+  `localhost` yapıldı: ayrı token'ın asıl kazancı polling'in güvenli hale
+  gelmesidir (tünel hiç gerekmez).
+
+- **UÇTAN UCA DOĞRULANDI:** uygulama yerelde test botuyla polling'de açıldı
+  (`Telegram bot polling modunda başladı`), ardından ÜRETİM ölçüldü — uptime
+  kesintisiz (restart yok), webhook yerinde, `pending_update_count: 0`, hata
+  yok. **D-043'ün daha önce hiç geçemediği test budur.**
+
+### (a) Bot kimliği artık açılışta GÖRÜNÜR
+- D-043'ün kök nedeni token'ın global olması değil, **hangi bota ait olduğunun
+  hiçbir yerde görünmemesiydi.** Servis artık `bot.init()` sonrası bot adını
+  loglar; üretim DIŞINDA `warn` seviyesinde, çünkü hata orada yapılıyor.
+- Kimlik logu D-043 guard'ının **ARKASINDA** — `TELEGRAM_SKIP_STARTUP` açıkken
+  `init()` (bir ağ çağrısı) hiç çalışmamalı. Test bunu ayrıca sabitler.
+
+### (b) 🔴 ASIL BULGU — ayrı token VERİTABANINI izole etmiyor
+- Ayrı bot token'ı Telegram **kanalını** izole eder. Ama `@Cron` işleri süreç
+  içinde koşar ve yerel `.env`'de `DB_DRIVER=supabase` — yani **üretim
+  veritabanı.** `start:dev` artık gerçekten kullanılabilir olduğu için bu
+  tehlike de ilk kez gerçek hale geldi:
+  - `reminders-due`: aynı hatırlatmayı ikinci kez gönderir **veya** üretim
+    göndermeden önce `sent` işaretler → **kullanıcı hatırlatmasını hiç almaz**
+    (sessiz veri kaybı, hiçbir hata üretmez),
+  - `gdpr-purge`: silme işlemiyle çakışır.
+- Bu tam olarak HANDOFF'ta `numReplicas: 1`'in gerekçesi olarak yazılan durum.
+  **Yerel bir `start:dev` fiilen ikinci replikadır** — bu bağlantı bugüne kadar
+  kurulmamıştı.
+- **KARAR:** `SCHEDULER_SKIP_STARTUP` (boolish, varsayılan `false` — üretim
+  davranışı değişmez). D-043 ile aynı disiplin: her iki cron handler'ında
+  **EN BAŞTA**, herhangi bir DB erişiminden ÖNCE sınanır. Sonra sınansaydı
+  `findDue()`/`purgeNow()` üretim veritabanına çoktan gitmiş olurdu; guard
+  "çalışıyor" görünüp işe yaramazdı.
+- `bootScriptContext()` bayrağı **varsayılan olarak açar** (`allowScheduler`
+  ile açıkça istenebilir): uzun süren bir rotasyon/ölçüm script'i cron
+  penceresine düşebilirdi.
+- **Guard yalnızca CRON yolunu kapatır;** elle çağrılan `purgeNow()` çalışmaya
+  devam eder — orada niyet açıktır ve GDPR silme aracı kullanılabilir kalmalı.
+
+### (c) 🔍 Yan bulgu — spec'lerde `process.env` override'ı ETKİSİZ
+- `SCHEDULER_SKIP_STARTUP` testini önce `AppModule` boot ederek yazdım; guard
+  tutmadı. Sebep: **`ConfigModule.forRoot()` doğrulamayı import anında
+  çalıştırır.** Spec gövdesinde `process.env` değiştirmek, `AppModule` dosyanın
+  en üstünde import edildiği için ETKİSİZDİR.
+- Ölçüldü: `SCHEDULER_SKIP_STARTUP='true'` atandıktan sonra boot edilen
+  uygulamada `ConfigService.get(...)` hâlâ `false` dönüyor. Kıyas olarak
+  `TELEGRAM_SKIP_STARTUP` de aynı şekilde okunmuyor.
+- **Sonuç (dikkat):** `beforeEach` içinde env kuran ve `AppModule` boot eden
+  mevcut spec'ler, aslında o değerleri DEĞİL **şema varsayılanlarını** test
+  ediyor. Bugüne kadar fark edilmemesinin sebebi, kurulan değerlerin
+  (`DB_DRIVER=memory`, `LLM_MOCK=true`, `TELEGRAM_MODE=disabled`) zaten
+  varsayılanlarla aynı olması. Yani testler yanlış değil ama **iddia
+  ettiklerini kanıtlamıyorlar.** Varsayılandan FARKLI bir env değerine dayanan
+  bir test yazılırsa sessizce yanlış şeyi ölçer.
+- Bu tura özgü çözüm: guard testleri servisi doğrudan sahte config ile kurar
+  (D-043 testlerinin de bilinçli olarak yaptığı şey). Genel çözüm (`isolateModules`
+  veya env'i import'tan önce kuran bir setup dosyası) `TODO.md`'ye eklendi.
