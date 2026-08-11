@@ -170,6 +170,16 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       **Kullanıcı kararı: şimdilik girilmeyecek.**
 
 ### Sıradaki aday işler (öncelik sırasız)
+- [ ] 🔴 **`OCR_PROVIDER=local` FİİLEN ÇALIŞMIYOR** — `LocalOcrProvider`
+      `tesseract.js`'i lazy import ediyor ama paket `package.json`'da HİÇ yok.
+      `local` seçilirse ilk fotoğrafta çalışma zamanında patlar. D-010 bu yolu
+      "sıfır sızıntı" kaçışı diye ilan ediyor; yani ilan edilen gizlilik
+      seçeneği mevcut değil. Gerekli: `npm i tesseract.js` (optionalDependency)
+      + üretim imajında gerçek fotoğrafla doğrulama (birim testleri mock
+      kullandığı için bunu yakalamaz — D-034'ün aynısı).
+- [ ] `default` Supabase secret anahtarının silindiği **doğrulanamıyor** —
+      anahtar listelemek `sbp_` Management API token'ı ister; anahtarın değeri
+      ise kasıtlı olarak istenmedi (D-040). Teyit Dashboard'dan yapılmalı.
 - [ ] **CI'da Playwright testleri sessizce atlanıyor.** `appointment-checker.spec.ts`
       gerçek Chromium istiyor (`isPlaywrightBrowserAvailable() ? describe : describe.skip`);
       CI `npx playwright install chromium` çalıştırmadığı için 3 test atlanıyor

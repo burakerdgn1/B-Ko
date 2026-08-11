@@ -87,9 +87,40 @@ yerelde `TELEGRAM_MODE=disabled` kullanın.
 üçüncü bir secret anahtar. Proje onu kullanmıyor (kod envanteriyle doğrulandı).
 Dashboard'da "Last used" boşsa silin.
 
-**2) `OCR_PROVIDER` kararı** — şu an `claude-vision`: mektup GÖRSELİ ham PII ile
-Anthropic'e gidiyor (D-010, ilan edilmiş istisna). Sıfır sızıntı isteniyorsa
-Railway'de `OCR_PROVIDER=local` yapın; metin/PDF girdilerinde zaten sızıntı yok.
+> 🔍 **Durum: DOĞRULANAMIYOR.** Supabase API anahtarlarını listelemek bir
+> Management API token'ı (`sbp_...`) gerektiriyor; projede yok. Anahtarın
+> değerini de kasıtlı olarak hiç istemedim (D-040 — canlı bir secret'ı
+> transkripte sokmak, tam da rotasyonla kapatılan riski yeniden açardı).
+> Yani bu maddenin yapıldığını **bağımsız kanıtlayamam**; "yapıldı" olarak
+> işaretlenmesi için ya Dashboard'dan teyit ya da bir `sbp_` token'ı gerekir.
+
+**2) `OCR_PROVIDER` kararı** — mektup GÖRSELİ ham PII ile Anthropic'e gidiyor
+(D-010, ilan edilmiş istisna). Sıfır sızıntı isteniyorsa `OCR_PROVIDER=local`;
+metin/PDF girdilerinde zaten sızıntı yok.
+
+> 🔍 **Durum: UYGULANMAMIŞ (2026-08-11'de doğrulandı).** Hem Railway
+> Variables'ta hem yerel `.env`'de değer hâlâ **`claude-vision`**:
+> ```
+> Railway : OCR_PROVIDER = claude-vision
+> .env    : OCR_PROVIDER=claude-vision
+> ```
+> 🔴 **DAHA ÖNEMLİSİ: `local` seçeneği şu anda ÇALIŞMAZ.**
+> `LocalOcrProvider` `tesseract.js`'i lazy import ediyor, ama bu paket
+> `package.json`'da **hiç yok** (ne `dependencies` ne `optionalDependencies`).
+> Yani `OCR_PROVIDER=local` yapılırsa uygulama açılışta değil, **ilk fotoğraf
+> geldiğinde** patlar:
+> `LocalOcrProvider için "tesseract.js" paketi kurulu değil.`
+>
+> Bu, D-010'da "sıfır sızıntı için `OCR_PROVIDER=local` kullanın" diye ilan
+> edilen kaçış yolunun **fiilen mevcut olmadığı** anlamına gelir — README,
+> STATUS ve DECISIONS bugüne kadar bunu kullanılabilir bir seçenek gibi
+> anlattı. Metin/PDF girdilerinde sızıntı zaten yok; boşluk yalnızca
+> fotoğraf yolunu etkiliyor, ama gizlilik iddiası bu yüzden olduğundan
+> güçlü sunulmuş oldu.
+>
+> **Gerekli iş:** `npm i tesseract.js` (opsiyonel bağımlılık) + üretim
+> imajında gerçek bir fotoğrafla doğrulama. Aksi hâlde D-034'ün aynısı olur:
+> fotoğraf yolu kırık, birim testleri fark etmez (hepsi mock kullanıyor).
 
 Ayrıntı ve gerekçeler: `MANUAL_ACTIONS_REQUIRED.md` §3b + §8.
 
@@ -101,10 +132,12 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **547 test geçiyor** (40 suite) + **16 canlı DB testi** (bayrakla koşulur) = 563 toplam
+- **553 test geçiyor** (40 suite, 1 atlanır) + **16 canlı DB testi** (bayrakla koşulur) = 569 toplam
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edilip ÇALIŞTIRILDI (218 MB, `healthy`)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
-- 34 commit, ana dal `main` · 39 kayıtlı mühendislik kararı (D-001…D-039)
+- **42 commit**, ana dal `main` · `origin/main` ile eşit · CI yeşil
+- **43 kayıtlı mühendislik kararı** (D-001…D-043)
+- Devir notu: **`HANDOFF.md` (v3)**
 
 ## Definition of Done (CLAUDE.md §10) — doğrulama
 
@@ -159,8 +192,10 @@ Kalıcı test bu sınırı sabitliyor, böylece sessizce kaymaz.
 
 ## Bilinçli kapsam kararları (dürüst liste)
 - **D-010 — OCR gizlilik istisnası.** `claude-vision` modunda mektup GÖRSELİ ham PII
-  içerir ve sağlayıcıya ulaşır. `OCR_PROVIDER=local` sıfır sızıntı sunar.
-  Metin/PDF girdilerinde ham veri zaten hiç dışarı çıkmaz.
+  içerir ve sağlayıcıya ulaşır. Metin/PDF girdilerinde ham veri zaten hiç dışarı çıkmaz.
+  ⚠️ **Düzeltme (2026-08-11):** Bu maddede yıllardır "`OCR_PROVIDER=local` sıfır
+  sızıntı sunar" yazıyordu — **bu seçenek fiilen çalışmıyor**, `tesseract.js`
+  bağımlılığı hiç kurulmamış. Bkz. yukarıdaki "Sıradaki adım" §2.
 - **Web dashboard** — CLAUDE.md §4 gereği kapsam dışı.
 
 ## Sıradaki adımlar (v1.1 önerisi)
