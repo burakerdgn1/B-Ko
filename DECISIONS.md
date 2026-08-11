@@ -755,3 +755,32 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   bilgisi saf saldırı yüzeyidir; silinmesi önerildi ("Last used" kontrolünden
   sonra). Değeri KASITLI olarak istenmedi — test etmek için onu transkripte
   sokmak, tam da bu kararın yasakladığı şey olurdu.
+
+## D-041 — `check:deploy` platform ortamında `.env` YÜKLEMEZ (yanlış "GO" düzeltmesi)
+- **Bağlam:** İlk gerçek Railway dağıtımında `railway run npm run check:deploy`
+  "✓ webhook sırrı tanımlı ve geçerli biçimde — 64 karakter" dedi. Bu YANLIŞTI:
+  `TELEGRAM_WEBHOOK_SECRET` Railway Variables'ta hiç yoktu. Uygulama açılışta
+  `TELEGRAM_WEBHOOK_SECRET tanımsız — webhook KAYDEDİLMEDİ` hatası verip botu
+  tamamen sağır bıraktı.
+- **Kök neden:** `railway run` platform değişkenlerini sürece enjekte eder, ama
+  script ayrıca `dotenv` ile yerel `.env`'i yüklüyordu. `dotenv` mevcut
+  `process.env` girdilerini EZMEZ; dolayısıyla platformda TANIMLI olanlar doğru
+  okunuyordu (bu yüzden `PUBLIC_BASE_URL` hatası doğru yakalandı) ama platformda
+  EKSİK olan her değişken sessizce yerel `.env`'den dolduruluyordu. Yani araç
+  yanlış değerleri görebiliyor, EKSİK değerleri göremiyordu.
+- **Neden özellikle kötü:** D-038'de bu komut "asıl önemli olan bu" diye
+  belgelenmişti — platformdaki gerçek değişken setini denetlediği iddiasıyla.
+  Gerçekte en tehlikeli sınıfı (eksik değişken) kör noktasındaydı ve tam da
+  yakalaması gereken vakada yanlış güven verdi.
+- **Karar:** `RAILWAY_ENVIRONMENT` / `RAILWAY_PROJECT_ID` görünüyorsa (ya da
+  `--no-dotenv` verilmişse) `.env` HİÇ yüklenmez. Araç hangi kaynağı denetlediğini
+  de başlıkta yazar ("Kaynak: PLATFORM ortamı — yerel `.env` KASITLI olarak
+  yüklenmedi"), böylece çıktı tek başına okunduğunda belirsizlik kalmaz.
+- **Doğrulama:** aynı Railway ortamına karşı düzeltme öncesi 1 hata (yalnızca
+  `PUBLIC_BASE_URL`), sonrası 2 hata — eksik `TELEGRAM_WEBHOOK_SECRET` yakalandı.
+- **Genel ders (bu projede üçüncü kez):** doğrulama aracının kendisi de
+  doğrulanmalı. D-033'te eval betiği model hatası sanılan bir ÖLÇÜM hatası
+  üretmişti; D-039'da CI guard'ı yanlış varsayımla yazılmıştı; burada da
+  GO/NO-GO aracı yanlış GO verdi. Üçünde de hatayı yakalayan şey, aracı
+  gerçek dünyaya karşı koşturup çıktısını bağımsız kanıtla (loglar, imaj
+  içeriği, unmask edilmiş metin) karşılaştırmak oldu.

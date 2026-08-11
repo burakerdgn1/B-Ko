@@ -18,7 +18,29 @@
  *   railway run npm run check:deploy     # Railway'deki gerçek değişkenlerle
  */
 import { config as loadDotenv } from 'dotenv';
-loadDotenv();
+
+/**
+ * `.env` YÜKLENMEZ eğer bir platform ortamı denetleniyorsa.
+ *
+ * Neden (gerçek bir yanlış "GO" sonucundan öğrenildi): `railway run npm run
+ * check:deploy` Railway'in değişkenlerini sürece enjekte eder, ama `dotenv`
+ * Railway'de TANIMSIZ olan her değişkeni sessizce yerel `.env`'den doldurur.
+ * Sonuç: platformda EKSİK olan bir değişken "✓ tanımlı" görünür.
+ *
+ * Bu tam olarak yaşandı — `TELEGRAM_WEBHOOK_SECRET` Railway'de yoktu,
+ * araç "✓ webhook sırrı tanımlı" dedi, uygulama ise açılışta
+ * "TELEGRAM_WEBHOOK_SECRET tanımsız — webhook KAYDEDİLMEDİ" hatası verip
+ * botu sağır bıraktı. Aracın var oluş sebebi tam olarak bunu yakalamaktı.
+ *
+ * Kural: Railway değişkenleri görünüyorsa yerel `.env` KARIŞMAMALI.
+ * `--no-dotenv` ile elle de zorlanabilir.
+ */
+const onPlatform =
+  !!process.env.RAILWAY_ENVIRONMENT ||
+  !!process.env.RAILWAY_PROJECT_ID ||
+  process.argv.includes('--no-dotenv');
+
+if (!onPlatform) loadDotenv();
 
 import { validateEnv } from '../src/config/env.schema';
 
@@ -216,6 +238,11 @@ async function checkAnthropic(): Promise<void> {
 async function main(): Promise<void> {
   console.log('\n═══════ DAĞITIM ÖNCESİ GO / NO-GO ═══════');
   console.log('  (token harcamaz — yalnızca ücretsiz uç noktalar yoklanır)');
+  console.log(
+    onPlatform
+      ? '  Kaynak: PLATFORM ortamı — yerel `.env` KASITLI olarak yüklenmedi'
+      : '  Kaynak: yerel `.env`',
+  );
 
   checkSchema();
   checkDeploymentTraps();

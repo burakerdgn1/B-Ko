@@ -113,6 +113,13 @@ npm run check:deploy
 railway run npm run check:deploy
 ```
 
+> **Önemli (D-041):** `railway run` ile koşulduğunda araç yerel `.env`'i
+> **KASITLI olarak yüklemez** — aksi hâlde platformda EKSİK olan bir değişken
+> sessizce `.env`'den doldurulur ve "✓ tanımlı" görünür. Bu gerçekten yaşandı:
+> `TELEGRAM_WEBHOOK_SECRET` Railway'de yokken araç "✓" dedi, uygulama ise
+> webhook'u hiç kaydedemedi. Çıktının başındaki "Kaynak:" satırı hangi ortamın
+> denetlendiğini söyler. Yerelde de zorlamak için: `--no-dotenv`.
+
 `check:deploy` token harcamaz (yalnızca ücretsiz uç noktalar) ve şunları doğrular:
 gerçek `validateEnv()` üretim modunda geçiyor mu · `PUBLIC_BASE_URL` dış dünyadan
 erişilebilir ve https mi · `TELEGRAM_MODE=webhook` iken sır tanımlı ve Telegram'ın
