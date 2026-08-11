@@ -905,3 +905,110 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   2000×2000 JPEG). Gerçek bir telefon fotoğrafında (eğrilik, gölge, gürültü)
   tesseract'ın daha da kötü olması beklenir — yani bu rakamlar **iyimser üst
   sınır**.
+
+## D-045 — CI'da Playwright testlerinin SESSİZ atlanması yasaklandı
+- **Bağlam:** `appointment-checker.spec.ts` gerçek chromium ister ve
+  `isPlaywrightBrowserAvailable()` false ise `describe.skip`'e düşer. CI
+  `playwright install` çalıştırmadığı için randevu izleme PoC'sinin **TEK
+  gerçek testi CI'da hiç koşmuyordu** (CI 544/19 · yerel 553/16) — ama CI
+  yeşildi. Bu, bu projede dört kez ısıran desenin aynısı: **araç "✓" diyor,
+  ama iddia ettiği şeyi doğrulamıyor** (D-033, D-039, D-041 + teşhis script'i).
+- **KARAR: yalnızca kurulum adımı eklemek YETMEZ.** `npx playwright install
+  --with-deps chromium` eklendi, ama o adım ileride silinse/bozulsa aynı sessiz
+  boşluk geri gelir ve CI yine yeşil kalırdı. Bu yüzden **atlama CI'da
+  yasaklandı:** Jest adımına `REQUIRE_PLAYWRIGHT=1` verilir ve bayrak açıkken
+  tarayıcı yoksa test **SKIP değil FAIL** eder.
+- **Neden bayrak, neden koşulsuz zorunluluk değil:** yerel geliştiricinin
+  chromium kurmadan tüm suite'i koşabilmesi korunmalı. Zorunluluk yalnızca
+  CI'da anlamlı.
+- **D-020 tuzağı:** bayrak boolish semantiğini izler; boş string varsayılana
+  (kapalı) düşer.
+- **Doğrulama — üç yolun ÜÇÜ de koşuldu:** tarayıcı var → 3/3 geçti ·
+  tarayıcı yok + `REQUIRE_PLAYWRIGHT=1` → guard ateşledi, FAIL ·
+  tarayıcı yok + bayrak yok/boş → eski SKIP davranışı birebir korundu.
+  (Guard'ın kendisini doğrulamadan "koruma ekledim" demek, bu kararın
+  eleştirdiği hatanın tekrarı olurdu.)
+
+## D-046 — OCR bozulmalarına dayanıklı maskeleme (D-044'ün ön koşulu kapandı)
+- **Bağlam:** D-044 `OCR_PROVIDER=local` geçişini bir **gizlilik regresyonu**
+  bulduğu için bloke etmişti: tesseract `ß`'yi `B` okuyor (`Torstraße 15` →
+  `TorstraBe 15`), bilinen-değer maskelemesi TAM EŞLEŞME yaptığı için
+  kaçırıyor ve **kullanıcının kendi adresi maskelenmeden LLM'e gidiyordu.**
+  Ve bu sessizdi — hiçbir uyarı üretmiyordu.
+
+- **ÖNCE ÖLÇÜMÜ TEKRARLANABİLİR YAPTIM.** D-044'ün ölçümü tek seferlikti:
+  render bir Quick Look JPEG'iydi, script commit edilmedi, sayılar yalnızca
+  düzyazı olarak kaldı — yani "düzelttim" iddiası doğrulanamazdı.
+  `scripts/ocr-mask-bench.ts` (`npm run bench:ocr-mask`) mektubu Playwright ile
+  render eder, **gerçek** tesseract'tan geçirir ve çıktıyı
+  `test-fixtures/ocr/` altına yazar.
+
+- **İki metrik, ikisi de eşleştirme kurallarımdan BAĞIMSIZ.** Kendi bozulma
+  simülatörümü kendi fuzzy eşleştiricimle doğrulamak kendini onaylayan bir
+  döngü olurdu (§8 dersi). Bu yüzden: (1) girdi gerçek tesseract çıktısı,
+  (2) metrikler token sayısı paritesi + **Levenshtein artık taraması** —
+  standart bir ölçü, kurallarıma göre ayarlanmadı, dolayısıyla
+  KAÇIRDIKLARIMI yakalayabilir.
+
+- **Sonuç (14 sentetik mektup):** `8 kayıp token · 3 tanınabilir artık`
+  → **`0 · 0`**.
+
+- **Bulunan sızıntılar tek bir sebepten değildi** — dört ayrı yol:
+  | # | Yol | Vaka |
+  |---|---|---|
+  | 1 | bilinen-değer (tam eşleşme) | `ß→B`, `ö→é`, `ü→ii`, `ä→a` (+ `ss↔ß` yazım varyantı) |
+  | 2 | desen / sokak eki | `Amtsstraße 5` → `AmtsstraBe 5` |
+  | 3 | desen / tireli sokak adı | `Karl-Marx-Allee` **hiç** eşleşmiyordu |
+  | 4 | desen / kapı numarası | `Platz 1` → `Platz ı` (U+0131) |
+  | 5 | IBAN | `DE94` → `DEg4`, token tamamen kayboldu |
+
+- **(3) OCR'dan BAĞIMSIZ, önceden var olan bir boşluktu.** `Karl-Marx-Allee`,
+  `Rosa-Luxemburg-Straße`, `Ernst-Reuter-Platz` Almanya'da çok yaygın ve temiz
+  metinde de maskelenmiyordu. İki sebep vardı: gövde sınıfı ilk harften sonra
+  büyük harf kabul etmiyordu, ve son ek alternasyonu yalnızca küçük harfliydi
+  (tireli adlarda ek de büyük harfle başlar: `-Allee`). **Bunu OCR ölçümü
+  ortaya çıkardı** — yeni bir bakış açısı, eski bir hatayı görünür kıldı.
+
+- **(4) İkinci bir tuzak taşıyordu:** JS'te `\b` ASCII tabanlıdır. `ı`
+  (U+0131) kelime karakteri sayılmaz, dolayısıyla desenin sonundaki `\b`
+  satır sonunda TUTMUYORDU — düzeltme sessizce etkisiz kalırdı. Sonlandırıcı
+  `(?![A-Za-z0-9])` ile değiştirildi.
+
+- **(5) KARAR: IBAN'da kapsamı genişletirken kesinlikten ödün verilmedi.**
+  Harf↔rakam karışıklıklarını desene gömüp gevşetmek yerine, aday dize
+  ONARILIR ve **mod-97 checksum'ına doğrulatılır**. Bir harf birden çok rakama
+  karşılık gelebildiği için (`g` → `9` mi `6` mı?) tek bir onarım seçilmez,
+  adayların hepsi denenir ve kararı checksum verir. Yani tahmin değil
+  doğrulama; kapsam artar, kesinlik düşmez. Arama `IBAN_MAX_REPAIR_SITES` ile
+  sınırlı (kombinatoryal patlama koruması).
+
+- **Neden genişletme yönü güvenli:** hata maliyeti asimetriktir —
+  *kaçırma* = kimlik bilgisi sağlayıcıya gider (gerçek zarar);
+  *fazla maskeleme* = metin okunaksızlaşır (kalite kaybı). Kararsız kalınan
+  yerde maskelemek doğru varsayılandır. Ama bedelsiz değil: token/kelime
+  oranı < %15 ve alan terimlerinin NAME sayılmaması testleri bu genişletmenin
+  **üst sınırıdır** ve OCR metinlerinde de zorunlu kılındı.
+
+- **Oracle'ın kendisi de doğrulandı.** "0 artık" ancak tarayıcı artığı
+  BULABİLİYORSA anlamlıdır; bozuk bir tarayıcı da her zaman "0" der. Bu yüzden
+  `pii.ocr-resilience.spec.ts` ayrıca D-044'ün somut vakasını tarayıcıya
+  buldurur. Ayrıca hızlandırma ön elemesi (34 sn → 4.4 sn) kaba kuvvet
+  referans implementasyonuyla karşılaştırılır — optimizasyon sessizce sızıntı
+  gizlemesin diye.
+
+- **Birim testi tabloda gerçek bir hata yakaladı:** i-ailesi girdilerine `1`
+  eklenmişti ama `1`'in karşılıklarına `ı` eklenmemişti. Tablo simetrik
+  olmadığı için bilinen-değer eşleşmesi o yönü kaçırıyordu. (Uçtan uca test
+  bunu maskelemişti, çünkü aynı vakayı desen tarafı ayrıca yakalıyordu —
+  iki bağımsız test seviyesinin neden gerektiğinin örneği.)
+
+- **KAPSAM DIŞI (bilinçli):** karakter EKLEME/SİLME (`Torstra Be`) kapsanmaz;
+  hizalama tabanlı bir yaklaşım gerekir, bugünkü ölçümde ihtiyaç görülmedi.
+  Artık taraması bu boşluğu bağımsız olarak izlemeye devam eder.
+
+- **ÜRETİM HÂLÂ `claude-vision`.** Bu karar `local`'a geçişin ÖNÜNÜ açar,
+  geçişi YAPMAZ. Sebep: buradaki render **temiz** (Playwright/A4), yani
+  ölçülen bozulma gerçek dünyanın **iyimser alt sınırı**. Gerçek bir telefon
+  fotoğrafında (eğrilik, gölge, gürültü) tesseract daha kötü olur. Geçiş
+  kararı kullanıcınındır ve gerçek fotoğrafla doğrulanmalıdır (D-010 takası
+  hâlâ geçerli).

@@ -170,13 +170,18 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       **Kullanıcı kararı: şimdilik girilmeyecek.**
 
 ### Sıradaki aday işler (öncelik sırasız)
-- [ ] 🔴 **`OCR_PROVIDER=local` FİİLEN ÇALIŞMIYOR** — `LocalOcrProvider`
-      `tesseract.js`'i lazy import ediyor ama paket `package.json`'da HİÇ yok.
-      `local` seçilirse ilk fotoğrafta çalışma zamanında patlar. D-010 bu yolu
-      "sıfır sızıntı" kaçışı diye ilan ediyor; yani ilan edilen gizlilik
-      seçeneği mevcut değil. Gerekli: `npm i tesseract.js` (optionalDependency)
-      + üretim imajında gerçek fotoğrafla doğrulama (birim testleri mock
-      kullandığı için bunu yakalamaz — D-034'ün aynısı).
+- [x] ~~🔴 **`OCR_PROVIDER=local` FİİLEN ÇALIŞMIYOR**~~ — paket eklendi ve yol
+      çalıştırıldı (D-044); ardından bulunan gizlilik regresyonu da kapatıldı
+      (D-046): maskeleme artık OCR bozulmalarına dayanıklı,
+      `npm run bench:ocr-mask` 14 mektupta **0 kayıp · 0 artık**.
+- [ ] ⚖️ **`OCR_PROVIDER` KARARI — kullanıcıya ait, teknik blokaj kalmadı.**
+      `claude-vision` (D-010 takası: mektup GÖRSELİ ham PII ile Anthropic'e
+      ulaşır) mi, `local` (görsel hiç çıkmaz, ama OCR kalitesi düşer) mi?
+      **Geçmeden önce gerçek bir telefon fotoğrafıyla doğrulanmalı:** D-046
+      ölçümü TEMİZ bir Playwright render'ı üzerinde yapıldı, yani gerçek
+      dünyanın iyimser alt sınırı. Eğrilik/gölge/gürültü içeren bir fotoğrafta
+      tesseract daha kötü olur ve ölçüm tekrarlanmalıdır.
+      Bağımlı: aşağıdaki "gerçek anonimleştirilmiş mektup" maddesi.
 - [ ] `default` Supabase secret anahtarının silindiği **doğrulanamıyor** —
       anahtar listelemek `sbp_` Management API token'ı ister; anahtarın değeri
       ise kasıtlı olarak istenmedi (D-040). Teyit Dashboard'dan yapılmalı.
@@ -193,7 +198,11 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
       çalıştı. Canlı test **D-034**'ü buldu (fotoğraf yolu kırıktı) ve onay kapısı
       gerçek veriye karşı saldırıyla doğrulandı.
 - [ ] Gerçek (anonimleştirilmiş) Behördenbrief örnekleriyle doğrulama —
-      şu ana kadarki tüm doğrulama SENTETİK fixture'larla yapıldı
+      şu ana kadarki tüm doğrulama SENTETİK fixture'larla yapıldı.
+      **Tek başıma kapatamam:** gerçek tarama gürültüsü, kırışık kâğıt, damga
+      ve gerçek Beamtendeutsch varyasyonu sentetik fixture'da temsil edilmiyor.
+      Örnekler `test-fixtures/real/` altına konursa mevcut düzenek (fixture
+      spec + `bench:ocr-mask`) doğrudan üzerine koşulabilir.
 - [x] ~~`PII_MASTER_KEY` üretim değeri + rotasyon prosedürü~~ — **2026-07-29'da YAPILDI.**
       Üretim anahtarı üretildi (`openssl rand -hex 32`) ve `.env`'e işlendi.
       Mevcut 48 şifreli kayıt KAYBEDİLMEDEN rotate edildi (`npm run rotate:pii-key`,

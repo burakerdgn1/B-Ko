@@ -1,6 +1,11 @@
 # BüKo — Devir Notu (HANDOFF) · **v3**
 
-**Tarih:** 2026-08-11 · **HEAD:** `5e94952` · **42 commit** · **553 test geçiyor** (40 suite, 1 atlanır) · **43 karar** (D-001…D-043)
+**Tarih:** 2026-08-11 · **639 test geçiyor** (42 suite, 1 atlanır) · **46 karar** (D-001…D-046)
+
+> **v3.1 güncellemesi:** D-045 (CI'da Playwright atlaması yasaklandı) ve
+> D-046 (OCR bozulmalarına dayanıklı maskeleme) eklendi. **D-044'ün
+> `OCR_PROVIDER=local` blokajı teknik olarak kalktı** — §9 ve §10 buna göre
+> güncellendi.
 
 > **v3'ün tabanı.** v2 repoda dosya olarak yoktu (sohbet üzerinden paylaşıldı).
 > v3 önce birincil kayıtlardan (`PROGRESS.md`, `DECISIONS.md`, `STATUS.md`,
@@ -133,7 +138,13 @@ npm run live:check             # gerçek Claude + gerçek Supabase (⚠️ ücre
 npm run eval:prompts           # 14 fixture ile prompt doğruluğu (⚠️ ücretli)
 npm run rotate:supabase-key    # Supabase secret rotasyonu (fail-safe)
 npm run rotate:pii-key         # PII vault anahtar rotasyonu (veri kaybetmeden)
+npm run bench:ocr-mask         # OCR ↔ maskeleme dayanıklılık ölçümü (D-046)
 ```
+
+> `bench:ocr-mask` önbellekli çalışır: `test-fixtures/ocr/` altındaki GERÇEK
+> tesseract çıktılarını kullanır, token harcamaz, saniyeler sürer. `--write`
+> ile çıktıları yeniden üretir (Playwright render + OCR, ~15 sn/mektup).
+> Ölçüm bozuksa **çıkış kodu 1** döner — sessiz "GO" vermez (D-041 dersi).
 
 ---
 
@@ -335,6 +346,16 @@ Dördünde de hatayı yakalayan şey aynıydı: **aracın çıktısını bağım
 kanıtla karşılaştırmak** (loglar, şema, imaj içeriği, ham kayıt). Bir aracın
 "✓" demesi, doğrulamanın kendisi değildir.
 
+**Ek ders (D-046) — dersin OLUMLU tarafı.** OCR dayanıklılığı çalışmasında bu
+refleks baştan uygulandı: girdi elle uydurulmuş "bozuk metin" değil **gerçek
+tesseract çıktısı**, ikinci metrik ise maskeleme kurallarından bağımsız
+(Levenshtein). Karşılığını da verdi — bağımsız oracle, token sayımının
+GÖRMEDİĞİ iki gerçek sızıntı buldu (`MénckebergstraBe 7`, `Diisseldorf`) ve
+üstüne OCR'dan tamamen bağımsız, önceden var olan bir desen boşluğunu
+(`Karl-Marx-Allee` hiç maskelenmiyordu) ortaya çıkardı. Ayrıca oracle'ın
+KENDİSİ de teste bağlandı: artığı bulabildiği ayrıca kanıtlanıyor, yoksa
+"0 sızıntı" hiçbir şey ifade etmezdi.
+
 **Ek ders (D-043):** "Sadece okuyacağım" diye yazılan bir script tüm uygulamayı
 boot ediyorsa okuma script'i değildir. Bağlam ne kadar geniş boot edilirse o
 kadar çok `onModuleInit` — yani o kadar çok dış dünya yan etkisi — devreye
@@ -362,11 +383,12 @@ girer. Refleks: script'e **minimum** bağlamı ver.
 - **D-010 — OCR istisnası.** `OCR_PROVIDER=claude-vision` iken mektup
   **GÖRSELİ** ham PII ile Anthropic'e ulaşır. Sonraki tüm adımlar maskeli
   metinle çalışır. **Üretimde şu an `claude-vision`.**
-  🔴 **Ve ilan edilen kaçış yolu yok:** `OCR_PROVIDER=local` fiilen çalışmıyor —
-  `LocalOcrProvider` `tesseract.js`'i lazy import ediyor ama paket
-  `package.json`'da HİÇ yok; `local` seçilirse ilk fotoğrafta patlar. Yani
-  "sıfır sızıntı seçeneği mevcut" iddiası bugüne kadar **yanlış** sunulmuş.
-  Gerekli: `npm i tesseract.js` + üretimde gerçek fotoğrafla doğrulama.
+  ✅ **Kaçış yolu artık GERÇEKTEN mevcut:** `tesseract.js` eklendi (D-044) ve
+  onu kullanılamaz kılan gizlilik regresyonu kapatıldı (D-046) — maskeleme OCR
+  bozulmalarına dayanıklı, `npm run bench:ocr-mask` 14 mektupta 0 kayıp/0 artık.
+  ⚖️ Geçiş kararı hâlâ **kullanıcınındır** ve önce gerçek bir telefon
+  fotoğrafıyla doğrulanmalıdır: D-046 ölçümü temiz bir A4 render'ı üzerinde,
+  yani gerçek dünyanın iyimser alt sınırı.
 - **D-028 — tetikleyicisiz isimler.** Hiçbir unvan/etiket olmadan cümle içinde
   geçen adlar maskelenmez ("Der Antrag wurde von Petra Hoffmann geprüft").
   Yerel NER gerektirir (v2). Kalıcı test bu sınırı sabitler.
@@ -380,14 +402,19 @@ girer. Refleks: script'e **minimum** bağlamı ver.
    ile doğrulandı), ama RLS'i bypass ediyor. Dashboard'da "Last used" boşsa sil.
 2. **İkinci bir test bot token'ı** (@BotFather) — `start:dev` koruması için (P-7).
 3. **`OCR_PROVIDER` kararı** — `claude-vision` (D-010 ödünü) mü, `local` mi?
+   **Teknik blokaj kalmadı** (D-046); kalan tek şart gerçek fotoğrafla ölçümün
+   tekrarlanması (bkz. "Kod tarafı" 5).
 
 ### Kod tarafı
-4. **CI'da Playwright testleri sessizce atlanıyor** — `appointment-checker.spec.ts`
-   gerçek Chromium ister, CI kurmuyor (CI 544/19, yerel 553/16). Randevu izleme
-   PoC'sinin TEK gerçek testi CI'da hiç koşmuyor. Düzeltme tek satır:
-   `npx playwright install chromium`.
+4. ~~**CI'da Playwright testleri sessizce atlanıyor**~~ — ✅ **KAPANDI (D-045).**
+   chromium CI'da kuruluyor VE `REQUIRE_PLAYWRIGHT=1` ile atlama yasak: tarayıcı
+   yoksa test SKIP değil FAIL. Yalnızca kurulum adımı eklemek yetmezdi — adım
+   ileride silinse aynı sessiz boşluk geri gelirdi.
 5. **Gerçek (anonimleştirilmiş) Behördenbrief'lerle doğrulama** — bugüne kadarki
-   tüm doğrulama sentetik fixture'larla.
+   tüm doğrulama sentetik fixture'larla. **Asistan tek başına kapatamaz:** gerçek
+   tarama gürültüsü/kırışıklık/damga sentetikte yok. Örnekler `test-fixtures/real/`
+   altına konursa mevcut düzenek (fixture spec + `bench:ocr-mask`) doğrudan koşar.
+   Bu madde aynı zamanda §10/3'teki `OCR_PROVIDER` kararının ön koşuludur.
 6. **Yerel NER** → D-028 boşluğu (v2).
 7. **RLS politikaları** — yalnızca web dashboard eklenirse gerekli.
 8. **WhatsApp adapter** — v2 (`ChannelAdapter` arayüzü hazır).
@@ -416,7 +443,7 @@ supabase/migrations/  0001_init.sql (onay kapısı trigger'ı) · 0002
 
 **Okuma sırası (yeni gelen için):** `CLAUDE.md` → bu dosya → `STATUS.md` →
 `ARCHITECTURE.md` → `DECISIONS.md` (kritik: D-010, D-014, D-030, D-038, D-040,
-D-041, D-042, D-043, D-044).
+D-041, D-042, D-043, D-044, D-046).
 
 ---
 

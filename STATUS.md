@@ -1,6 +1,6 @@
 # STATUS.md — Şu An Neredeyiz
 
-**Güncelleme:** 2026-08-11 — v1.8: üretimde canlı · D-043 (script izolasyonu) · D-044 (tesseract/OCR ölçümü)
+**Güncelleme:** 2026-08-11 — v1.9: üretimde canlı · D-045 (CI Playwright zorunlu) · D-046 (OCR dayanıklı maskeleme; D-044'ün blokajı kalktı)
 **Genel durum:** 🟢 **ÜRETİMDE ÇALIŞIYOR** — uçtan uca doğrulandı
 
 ## ✅ GÜVENLİK BORCU KAPANDI — Supabase secret anahtarı rotate edildi (2026-07-29)
@@ -110,18 +110,30 @@ metin/PDF girdilerinde zaten sızıntı yok.
 > `t.recognize is not a function` ile patlıyordu (D-034'ün aynı deseni), ve
 > eski test paketin YOKLUĞUNA dayandığı için geçersizdi.
 >
-> 🔴 **AMA `local`'a GEÇİLMEDİ — ölçüm gizliliğin KÖTÜLEŞTİĞİNİ gösterdi.**
-> tesseract `ß`'yi `B` okuyor: `Torstraße 15` → `TorstraBe 15`.
-> Bilinen-değer maskelemesi tam eşleşme yaptığı için kaçırıyor ve
-> **kullanıcının kendi adresi maskelenmeden Claude'a gidiyor**
-> (ADDRESS token 9 → 7; diğer tipler etkilenmedi).
+> 🔴 **D-044'te `local`'a GEÇİLMEMİŞTİ** — ölçüm gizliliğin KÖTÜLEŞTİĞİNİ
+> gösterdi: tesseract `ß`'yi `B` okuyor (`Torstraße 15` → `TorstraBe 15`),
+> bilinen-değer maskelemesi tam eşleşme yaptığı için kaçırıyor ve
+> **kullanıcının kendi adresi maskelenmeden Claude'a gidiyordu.**
 >
-> Takas: `claude-vision` GÖRSELİ sağlayıcıya gönderir (ilan edilmiş istisna);
-> `local` göndermez ama METİN maskelemesini sessizce deler — ikincisi daha
-> sinsi, hiç uyarı üretmez. **Üretim bilinçli olarak `claude-vision` kaldı.**
-> Geçiş için önce maskeleme OCR bozulmalarına dayanıklı olmalı
-> (ß/umlaut normalizasyonu + fuzzy bilinen-değer eşleşmesi), sonra ölçüm
-> tekrarlanmalı. İmaj maliyeti: 218 MB → **269 MB**.
+> ✅ **BU BLOKAJ KALDIRILDI (D-046).** Maskeleme artık OCR bozulmalarına
+> dayanıklı. Önce ölçüm tekrarlanabilir hale getirildi
+> (`npm run bench:ocr-mask` — Playwright render → **gerçek** tesseract →
+> iki bağımsız metrik), sonra beş ayrı sızıntı yolu kapatıldı:
+> ```
+> 14 sentetik mektup:  8 kayıp token · 3 tanınabilir artık  →  0 · 0
+> ```
+> Kapatılanlar: bilinen-değer karakter genişletmesi (`ß→B`, `ö→é`, `ü→ii`,
+> `ä→a`, `ss↔ß`) · sokak eki · **tireli sokak adları** (`Karl-Marx-Allee` —
+> OCR'dan bağımsız, önceden var olan boşluktu) · kapı numarası (`1→ı`) ·
+> **IBAN** (`DE94→DEg4`, onarım mod-97 checksum'ına tabi).
+>
+> ⚖️ **KARAR YİNE DE SENDE — ve önce gerçek fotoğraf gerekiyor.** D-046
+> ölçümü TEMİZ bir A4 render'ı üzerinde yapıldı, yani gerçek dünyanın
+> **iyimser alt sınırı**; eğrilik/gölge/gürültü içeren bir telefon
+> fotoğrafında tesseract daha kötü olur. Takas hâlâ geçerli:
+> `claude-vision` GÖRSELİ sağlayıcıya gönderir (ilan edilmiş istisna),
+> `local` göndermez ama OCR kalitesi düşer. **Üretim şu an `claude-vision`.**
+> İmaj maliyeti: 218 MB → **269 MB**.
 
 Ayrıntı ve gerekçeler: `MANUAL_ACTIONS_REQUIRED.md` §3b + §8.
 
@@ -133,7 +145,8 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **556 test geçiyor** (40 suite, 1 atlanır) + **16 canlı DB testi** (bayrakla koşulur) = 572 toplam
+- **639 test geçiyor** (42 suite, 1 atlanır) + **16 canlı DB testi** (bayrakla koşulur) = 655 toplam
+  — D-045 (CI Playwright zorunluluğu) ve D-046 (OCR dayanıklılığı) ile +83
 - `tsc --noEmit` temiz · Docker imajı gerçekten build edilip ÇALIŞTIRILDI (**269 MB**, `healthy`)
   — tesseract.js eklendikten sonra 218 MB → 269 MB (D-044)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
