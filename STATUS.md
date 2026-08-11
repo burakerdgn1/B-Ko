@@ -75,6 +75,39 @@ Railway'de yoktu; script yerel `.env`'i de yüklediği için EKSİK değişkenle
 sessizce dolduruluyordu. Düzeltildi: platform ortamı algılanınca `.env` hiç
 yüklenmiyor ve çıktı hangi kaynağı denetlediğini yazıyor.
 
+## ✅ D-045 + D-046 ÜRETİME ALINDI (2026-08-11 23:47)
+
+PR #1 (`feature/ocr-resilience`) CI'da yeşil doğrulandıktan **sonra** `main`'e
+fast-forward merge edildi (SHA'lar korundu), Railway otomatik deploy etti:
+`bc8d203e | SUCCESS`.
+
+**Deploy doğrulaması — D-042'nin dersi uygulandı** ("deploy yeşil, bot sağır"
+üç sessiz arızasının hiçbiri konteyneri çökertmemişti; platform göstergesi
+yetmez):
+
+| Kontrol | Sonuç |
+|---|---|
+| `GET /health` | ✅ 200 · `uptime: 31` (yeni konteyner gerçekten devraldı) |
+| Açılış modu | ✅ `BüKo production modunda :8080` — güvenlik kapısı aktif |
+| Webhook kaydı (uygulama logu) | ✅ `Telegram webhook kaydedildi: …up.railway.app/webhook/telegram` |
+| Webhook durumu (Telegram tarafı) | ✅ url doğru · `pending_update_count: 0` · `last_error_message` boş |
+| Fail-closed (D-030) | ✅ sırsız → **401** · yanlış sır → **401** |
+| CI — PR #1 (merge ÖNCESİ kapı) | ✅ her iki job yeşil |
+| CI — `main` (merge SONRASI teyit) | ✅ her iki job yeşil · Playwright suite orada da koştu |
+
+**D-045 CI'da bağımsız olarak kanıtlandı:**
+```
+PASS src/modules/watcher/appointment-checker.spec.ts
+Test Suites: 1 skipped, 41 passed, 41 of 42 total
+Tests:       16 skipped, 639 passed, 655 total
+```
+Randevu izleme testi CI'da **koştu ve geçti** (önceki durum: 544/19, bu suite
+hiç koşmuyordu). CI sayıları artık yerelle **birebir aynı** — boşluğun
+kapandığının en güçlü kanıtı budur.
+
+> Doğru sırla sahte update **kasıtlı olarak gönderilmedi** — gerçek bota
+> enjeksiyon olurdu (D-042 turundaki kural korundu).
+
 ## ⏭️ SIRADAKİ ADIM — sende
 
 **0) Ayrı bir test botu açın** (@BotFather'dan ikinci token). Bot token'ı global
