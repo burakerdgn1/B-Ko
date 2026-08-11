@@ -191,8 +191,8 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **660 test geçiyor** (47 suite, 1 atlanır) + **16 canlı DB testi** (bayrakla koşulur) = 676 toplam
-  — D-045…D-049 ile 553 → 660
+- **659 test geçiyor** (46 suite, 1 atlanır) + **16 canlı DB testi** (bayrakla koşulur) = 675 toplam
+  — D-045…D-049 ile 553 → 659
 - `tsc --noEmit` temiz · **`npm run typecheck:scripts` temiz** — `scripts/` bugüne
   kadar HİÇ tip kontrolünden geçmiyordu (D-048c)
 - Docker imajı gerçekten build edilip ÇALIŞTIRILDI (**269 MB**, `healthy`)

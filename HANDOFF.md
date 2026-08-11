@@ -1,6 +1,6 @@
 # BüKo — Devir Notu (HANDOFF) · **v3**
 
-**Tarih:** 2026-08-12 · **660 test geçiyor** (47 suite, 1 atlanır) · **49 karar** (D-001…D-049)
+**Tarih:** 2026-08-12 · **659 test geçiyor** (46 suite, 1 atlanır) · **49 karar** (D-001…D-049)
 
 > **v3.1 güncellemesi:** D-045 (CI'da Playwright atlaması yasaklandı) ve
 > D-046 (OCR bozulmalarına dayanıklı maskeleme) eklendi. **D-044'ün
@@ -144,7 +144,7 @@ bunu engelleyemez; tek uyarı o log satırıdır. Şüphe varsa `getMe` ile doğ
 ## 3. Doğrulama komutları
 
 ```bash
-npm test                       # 660 test, hermetik (jest.setup.ts ile SABİTLENDİ — D-049)
+npm test                       # 659 test, hermetik (jest.setup.ts ile SABİTLENDİ — D-049)
 npm run typecheck:scripts      # scripts/ tip kontrolü (kök tsc bunu KAPSAMAZ — D-048c)
 npm run check:real-fixtures    # gerçek mektup anonimleştirme kontrolü (D-048a)
 npm run check:deploy           # GO/NO-GO — token harcamaz
