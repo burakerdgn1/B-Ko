@@ -180,14 +180,13 @@ F0 Scaffold ─► F1a DB şema ─► F1b Persistence ─┬─► F2 Analysis 
 - [ ] `default` Supabase secret anahtarının silindiği **doğrulanamıyor** —
       anahtar listelemek `sbp_` Management API token'ı ister; anahtarın değeri
       ise kasıtlı olarak istenmedi (D-040). Teyit Dashboard'dan yapılmalı.
-- [ ] **CI'da Playwright testleri sessizce atlanıyor.** `appointment-checker.spec.ts`
-      gerçek Chromium istiyor (`isPlaywrightBrowserAvailable() ? describe : describe.skip`);
-      CI `npx playwright install chromium` çalıştırmadığı için 3 test atlanıyor
-      (CI: 544 geçti/19 atlandı · yerel: 547/16). Yani randevu izleme PoC'sinin
-      TEK gerçek testi CI'da hiç koşmuyor. Bu projede aynı desen iki kez ısırdı
-      (D-032, D-034). Düzeltme tek satır: CI'a `npx playwright install chromium`
-      eklemek (~1-2 dk maliyet). Bilinçli boşluk olarak bırakılabilir de —
-      watcher opsiyonel bir modül ve üretim imajında tarayıcı yok.
+- [x] ~~**CI'da Playwright testleri sessizce atlanıyor.**~~ — **KAPANDI (D-045).**
+      CI'a `npx playwright install --with-deps chromium` eklendi VE atlama
+      yasaklandı: `REQUIRE_PLAYWRIGHT=1` iken tarayıcı yoksa test SKIP değil
+      FAIL ediyor. Yalnızca kurulum adımı eklemek yetmezdi — adım ileride
+      silinseydi aynı sessiz boşluk geri gelir, CI yine yeşil kalırdı.
+      Üç yol da yerelde doğrulandı (tarayıcı var → 3 test geçiyor · tarayıcı
+      yok + bayrak → FAIL · bayrak yok/boş → eski SKIP davranışı, D-020).
 - [x] ~~Telegram canlı uçtan uca deneme~~ — **2026-07-29'da YAPILDI** (@BuKo749_bot
       + cloudflared tüneli). /start → rıza → onboarding → metin VE fotoğraf analizi
       → taslak üretimi → onay/ret akışı, hepsi gerçek Claude + gerçek Supabase ile

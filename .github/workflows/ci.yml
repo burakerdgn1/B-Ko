@@ -35,11 +35,24 @@ jobs:
       - name: Bağımlılıkları kur (kilitli sürümlerle)
         run: npm ci
 
+      # Randevu izleme PoC'sinin (watcher) TEK gerçek testi chromium ister.
+      # Kurulmazsa `appointment-checker.spec.ts` SESSİZCE atlanırdı: CI 544/19,
+      # yerel 553/16 — yani PoC'nin doğruluğu CI'da hiç sınanmıyordu. Bu, bu
+      # projede dört kez ısırılan "araç ✓ diyor ama doğrulamıyor" sınıfının
+      # aynısıdır (D-033/D-039/D-041); atlamayı kurmakla değil, YASAKLAMAKLA
+      # kapatıyoruz — bkz. bir alttaki REQUIRE_PLAYWRIGHT.
+      - name: Playwright tarayıcısını kur (chromium)
+        run: npx playwright install --with-deps chromium
+
       - name: TypeScript tip kontrolü (derleme çıktısı üretmeden)
         run: npx tsc --noEmit
 
+      # REQUIRE_PLAYWRIGHT=1: tarayıcı yoksa test SKIP değil FAIL olur.
+      # Kurulum adımı ileride bozulur/silinirse CI yeşil kalmaz.
       - name: Birim testleri (Jest)
         run: npx jest --ci
+        env:
+          REQUIRE_PLAYWRIGHT: "1"
 
       - name: Üretim build (nest build)
         run: npm run build

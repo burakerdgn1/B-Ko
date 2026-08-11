@@ -13,7 +13,34 @@ import {
  * Jest'in koleksiyon aşamasında senkron olarak `isPlaywrightBrowserAvailable()`
  * ile verilir (bkz. appointment-checker.ts).
  */
-const maybeDescribe = isPlaywrightBrowserAvailable() ? describe : describe.skip;
+const browserAvailable = isPlaywrightBrowserAvailable();
+
+/**
+ * `REQUIRE_PLAYWRIGHT=1` → atlama YASAK, eksik tarayıcı testi FAIL eder.
+ *
+ * Neden: atlama sessizdi ve CI'da tarayıcı hiç kurulmuyordu, dolayısıyla
+ * watcher PoC'sinin tek gerçek testi aylardır koşmuyordu — CI yine de yeşildi.
+ * "Kurulum adımını ekledim" tek başına yetmez; adım ileride silinirse aynı
+ * sessiz boşluk geri gelir. Bayrak, boşluğun geri gelmesini GÖRÜNÜR kılar.
+ *
+ * `boolish` semantiği (D-020 tuzağı): boş string varsayılana (kapalı) düşer.
+ */
+const requireBrowser = ['1', 'true'].includes(
+  (process.env.REQUIRE_PLAYWRIGHT ?? '').trim().toLowerCase(),
+);
+
+if (!browserAvailable && requireBrowser) {
+  describe('AppointmentChecker — tarayıcı ZORUNLU', () => {
+    it('chromium kurulu olmalı (REQUIRE_PLAYWRIGHT=1 iken atlamak yasak)', () => {
+      throw new Error(
+        'REQUIRE_PLAYWRIGHT=1 ayarlı ama Playwright chromium kurulu değil. ' +
+          'Testler sessizce atlanacaktı. Çözüm: `npx playwright install chromium`.',
+      );
+    });
+  });
+}
+
+const maybeDescribe = browserAvailable ? describe : describe.skip;
 
 function mockPageUrl(fileName: string): string {
   return pathToFileURL(
