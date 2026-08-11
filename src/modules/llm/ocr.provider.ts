@@ -143,10 +143,13 @@ export class LocalOcrProvider implements OcrProvider {
   }
 
   private async loadTesseract(): Promise<typeof import('tesseract.js')> {
+    let mod: unknown;
     try {
       // Lazy import — kurulu değilse modül başlangıcında değil, yalnızca
       // burada (gerçekten ihtiyaç duyulduğunda) hata fırlar.
-      return await import('tesseract.js');
+      // NOT: yalnızca IMPORT bu try içinde; aşağıdaki şekil kontrolünün
+      // hatası "paket kurulu değil" mesajına dönüşmemeli.
+      mod = await import('tesseract.js');
     } catch {
       throw new Error(
         'LocalOcrProvider için "tesseract.js" paketi kurulu değil. Kurmak için: ' +
@@ -155,6 +158,27 @@ export class LocalOcrProvider implements OcrProvider {
           "Claude Vision tabanlı OCR'a geçebilirsiniz (bkz. MANUAL_ACTIONS_REQUIRED.md).",
       );
     }
+
+    // ── ESM/CJS interop (D-044) ──
+    // Derlenmiş CJS'te (ÜRETİM imajı) namespace
+    // `{ OEM, PSM, createScheduler, createWorker, default }` olarak gelir ve
+    // `recognize` YALNIZCA `default` altında bulunur. ts-node/ts-jest altında
+    // ise namespace doğrudan çağrılabilir olabiliyor. Bu fark yüzünden kod
+    // yerelde çalışıp üretimde `t.recognize is not a function` ile patlıyordu —
+    // gerçek üretim imajının içinde doğrulandı (D-034'ün birebir aynı deseni).
+    const ns = mod as Record<string, unknown>;
+    const resolved = (
+      typeof ns.recognize === 'function' ? ns : (ns.default ?? ns)
+    ) as typeof import('tesseract.js');
+
+    if (typeof (resolved as unknown as Record<string, unknown>).recognize !== 'function') {
+      throw new Error(
+        'tesseract.js yüklendi ancak `recognize` bulunamadı ' +
+          `(mevcut alanlar: ${Object.keys(ns).join(', ')}). ` +
+          'Paket sürümü uyumsuz olabilir.',
+      );
+    }
+    return resolved;
   }
 }
 

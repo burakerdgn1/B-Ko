@@ -2,15 +2,29 @@
 
 **Tarih:** 2026-08-11 · **HEAD:** `5e94952` · **42 commit** · **553 test geçiyor** (40 suite, 1 atlanır) · **43 karar** (D-001…D-043)
 
-> **v3'ün tabanı hakkında dürüst not.** v2 dosya olarak bulunamadı — repoda,
-> git geçmişinde, `~/Desktop` altında ve oturum hafızasında "handoff" adlı bir
-> dosya yok; bu oturum da temiz bağlamla başladı. Bu yüzden v3, v2'nin üzerine
-> yazılarak değil, projenin **birincil kayıtlarından** (`PROGRESS.md`,
-> `DECISIONS.md`, `STATUS.md`, `TODO.md`, git geçmişi) ve bu turun doğrudan
-> gözlemlerinden yeniden kuruldu. v2'de yalnızca orada bulunan bir bölüm varsa
-> BURADA YOKTUR — v2 elinizdeyse paylaşın, birleştireyim.
+> **v3'ün tabanı.** v2 repoda dosya olarak yoktu (sohbet üzerinden paylaşıldı).
+> v3 önce birincil kayıtlardan (`PROGRESS.md`, `DECISIONS.md`, `STATUS.md`,
+> `TODO.md`, git geçmişi) kuruldu; ardından v2'de bulunup burada eksik olan
+> bölümler (**§0 Bu doküman kimin için**, **§2b Ortam/Kurulum ve Claude Code
+> çalışma notları**, **§12 Oturum yürütme notları**) eklendi.
+>
+> v2'nin "açık işler" listesi kasıtlı olarak DEVREDİLMEDİ: o listedeki
+> D-037 (Supabase rotasyonu) ve D-038/D-039 (Railway) maddeleri **tamamlandı**;
+> güncel durum §4, §2 ve §10'da.
 
 ---
+
+## 0. Bu doküman kimin için
+
+Yeni bir **Cowork/Claude oturumuna devretmek** için hazırlandı. Amaç: Burak'ın
+Claude Code ile yürüttüğü otonom BüKo implementasyonuna kesintisiz destek
+verebilmek. v1 → v2 → v3 zinciri; proje bu süreçte MVP'den **canlı, üretimde
+çalışan** bir ürüne geçti.
+
+**Rol ayrımı (önemli):** Ağır implementasyon **Claude Code**'un yerel
+oturumunda yürüyor (repo, `.env`, gerçek anahtarlar orada). Bu doküman, o işi
+takip eden/koordine eden oturum içindir. İkisi aynı makinede ama **aynı bağlam
+değil**.
 
 ## 1. Tek cümlede
 
@@ -70,6 +84,43 @@ LOG [TelegramService] Telegram webhook kaydedildi:
   türetilir. Açıkça verilen değer her zaman kazanır (özel alan adı için).
 
 ---
+
+## 2b. Ortam / Kurulum (v2'den devralındı, güncellendi)
+
+- **Repo:** `/Users/burakerdogan/Desktop/claude test/B-Ko` (yerel).
+- **`CLAUDE.md` repo kökünde** — proje tanımı, mimari, otonomi direktifleri
+  orada. Yeni oturumda önce bunu okutmak yeterli. (`AGENTS.md` aynı içeriğin
+  Codex sürümü.)
+- **`.claude/settings.json`:** `defaultMode: bypassPermissions` + tehlikeli
+  komut deny listesi. Kalıcı, tekrar kurulmasına gerek yok.
+- **Claude Code:** Claude Max planı, Opus 5, 1M context. 5 saatlik/haftalık
+  limite birkaç kez takıldı — "devam et" ile çözülüyor; terminal kapanmasından
+  `claude --continue` ile kurtarıldı (kanıtlanmış, çalışıyor).
+- **Gerçek altyapı:** gerçek Supabase projesi (AB bölgesi), gerçek Anthropic
+  anahtarı, gerçek Telegram botu (@BuKo749_bot).
+- **`git` bozuk:** `/usr/bin/git` çalışmayan bir Xcode kurulumuna bağlı
+  (`xcodebuild` hatası). Tam yol kullanılıyor:
+  `/Library/Developer/CommandLineTools/usr/bin/git`. Kalıcı düzeltme:
+  `sudo xcode-select --switch /Library/Developer/CommandLineTools` (D-001).
+  Aynı sebeple `/usr/bin/python3` de bozuk — YAML doğrulaması için `js-yaml`
+  kullanıldı.
+- **Railway CLI** kuruldu (`npm i -g @railway/cli`), oturum açık, proje bu
+  dizine bağlı (`railway link`). `railway login`/`link` **interaktif** — asistan
+  çalıştıramaz, kullanıcı `!` önekiyle kendi çalıştırmalı.
+
+### ⚠️ cloudflared tüneli artık GEREKMİYOR
+
+v2'de "tünel ayrı terminalde açık tutulmalı" yazıyordu. **Bu artık geçersiz:**
+uygulama Railway'de kendi kalıcı domaini ile çalışıyor
+(`b-ko-production.up.railway.app`). Tünel yalnızca yerel geliştirme için gerekir
+— ve o durumda bile aşağıdaki uyarı geçerli.
+
+### ⚠️ Yerelde uygulama başlatmak ÜRETİMDEKİ botu bozar (D-043)
+
+v2'deki "kullanıcı `npm run start:dev` ile ayrıca başlatmamalı" notu **port
+çakışması** gerekçesiyle yazılmıştı. Gerçek sebep çok daha ciddi: bot token'ı
+globaldir, yerelde `TELEGRAM_MODE=webhook`/`polling` ile açmak üretimin webhook
+kaydını **ezer** veya update'lerini **çalar**. Ayrıntı §6.
 
 ## 3. Doğrulama komutları
 
@@ -365,4 +416,42 @@ supabase/migrations/  0001_init.sql (onay kapısı trigger'ı) · 0002
 
 **Okuma sırası (yeni gelen için):** `CLAUDE.md` → bu dosya → `STATUS.md` →
 `ARCHITECTURE.md` → `DECISIONS.md` (kritik: D-010, D-014, D-030, D-038, D-040,
-D-041, D-042, D-043).
+D-041, D-042, D-043, D-044).
+
+---
+
+## 12. Oturum yürütme notları (v2'den devralındı)
+
+**Anahtarlar bu sohbete ASLA yapıştırılmamalı.** Yalnızca Claude Code'un yerel
+oturumuna verilmeli. D-040 bunun neden kritik olduğunu gösterdi: rotasyonun
+sebebi eski anahtarın transkriptte görünmesiydi; yenisini de aynı yere yazmak
+borcu anında yeniden yaratır. **Uygulanan kural:**
+
+| | Nerede çalıştırılır | Neden |
+|---|---|---|
+| Sır İÇEREN adım (`--apply`) | Kullanıcının **kendi terminali** | Değer transkripte girmesin |
+| Doğrulama adımları | Asistan oturumu serbest | Hiçbiri sırrın DEĞERİNİ istemiyor, `.env`'den okuyorlar |
+| Eski/iptal edilmiş anahtar | Paylaşılabilir — **ama revoke SONRASI** | Zaten sızmış kabul ediliyor |
+
+**Kullanım limitleri:** 5 saatlik/haftalık limite takılırsa "devam et" yeterli;
+terminal kapanırsa `claude --continue`.
+
+**İnteraktif komutlar asistan tarafından çalıştırılamaz** (`railway login`,
+`railway link`, `git rebase -i`). Kullanıcı `!` önekiyle kendi çalıştırmalı.
+
+**Uzun süren işler** (Docker build, CI izleme) arka planda çalıştırılmalı;
+Docker Desktop kapalıysa `open -a Docker` ile açılıp beklenmeli.
+
+### Bu projede tekrarlayan çalışma deseni
+
+Kullanıcı "yapıldı" dediğinde bile **bağımsız kanıt aranmalı.** Bu oturumda üç
+kez kullanıcının bildirdiği durum gerçekle uyuşmadı:
+
+| İddia | Gerçek |
+|---|---|
+| "Railway hesabını bağladım" | Hesap vardı ama **0 proje**; GitHub repo'su da boştu (35 commit push edilmemiş) |
+| "`bukov2`'yi sildim" | İlk kontrolde hâlâ canlıydı (yayılma gecikmesi); ikinci kontrolde 401 |
+| "`OCR_PROVIDER=local` uygulandı" | Railway'de de `.env`'de de hâlâ `claude-vision` |
+
+Hiçbiri kötü niyet değil — dağıtık sistemlerde "yaptım" ile "etkisi görünür
+oldu" arasında gerçek bir gecikme var. Refleks: **önce ölç, sonra yaz.**

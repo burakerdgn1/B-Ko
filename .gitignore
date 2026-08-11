@@ -14,3 +14,9 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 tmp/
+
+# tesseract.js çalışma zamanında dil verisini ÇALIŞMA DİZİNİNE indirir
+# (~15-30 MB/dil). Bunlar önbellek; repoya girmemeli — bir kez girdiğinde
+# GitHub push'u boyut yüzünden HTTP 400 ile reddediyor (yaşandı).
+*.traineddata
+*.traineddata.gz

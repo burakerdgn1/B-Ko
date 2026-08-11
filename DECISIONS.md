@@ -855,3 +855,53 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   uygulamayı boot ederse okuma script'i değildir. Bağlam ne kadar geniş
   boot edilirse, o kadar çok `onModuleInit` — yani o kadar çok dış dünya
   yan etkisi — devreye girer. Doğru refleks: script'e MİNİMUM bağlamı vermek.
+
+## D-044 — `tesseract.js` eklendi; `OCR_PROVIDER=local` HÂLÂ ÖNERİLMİYOR (ölçüldü)
+- **Bağlam:** D-010 yıllardır "sıfır sızıntı için `OCR_PROVIDER=local`" diyordu,
+  ama `tesseract.js` `package.json`'da HİÇ YOKTU — yani ilan edilen kaçış yolu
+  mevcut değildi. Paket eklendi ve yol gerçekten çalıştırıldı. **İki ayrı hata
+  ve bir gizlilik regresyonu bulundu.**
+
+- **(1) ESM/CJS interop — üretimde patlıyordu.** `await import('tesseract.js')`
+  derlenmiş CJS'te (üretim imajı) namespace'i
+  `{ OEM, PSM, createScheduler, createWorker, default }` olarak verir ve
+  `recognize` YALNIZCA `default` altındadır. ts-node/ts-jest altında ise
+  namespace doğrudan çağrılabiliyordu. Sonuç: kod yerelde çalışıyor, ÜRETİM
+  imajında `t.recognize is not a function` ile patlıyordu. Gerçek üretim
+  imajının İÇİNDE çalıştırılarak bulundu — **D-034'ün birebir aynı deseni.**
+  Düzeltildi (her iki şekil kabul ediliyor) ve üretim imajında doğrulandı:
+  5.3 s, 1780 karakter. 3 regresyon testi eklendi; CJS mock'unun
+  `__esModule: true` taşıması ŞART, yoksa TypeScript'in `__importStar`
+  yardımcısı `default`'u modülün kendisiyle ezer ve test yanlış şekli sınar.
+
+- **(2) Eski test geçersiz varsayıma dayanıyordu.** "tesseract.js kurulu
+  değilse anlamlı hata fırlatır" testi paketin YOKLUĞUNA dayanıyordu
+  ("gerçek, mock'lanmamış senaryo"). Paket kurulunca test gerçek tesseract'ı
+  1 baytlık sahte görselle çalıştırıp başka sebeple hata veriyordu — iddiasını
+  artık doğrulamıyordu. Eksiklik açıkça mock'lanacak şekilde yeniden yazıldı.
+
+- **(3) 🔴 ASIL BULGU — `local` gizliliği İYİLEŞTİRMİYOR, KÖTÜLEŞTİRİYOR.**
+  Sentetik fixture 01 bir görsele render edilip iki yol karşılaştırıldı:
+  | | orijinal metin | tesseract OCR |
+  |---|---|---|
+  | ADDRESS token | 9 | **7** |
+  | diğer tüm tipler (NAME/STEUERID/AUSLNR/DOB/PHONE/EMAIL/DATE/AKTENZEICHEN) | — | değişmedi |
+  Sebep: tesseract `ß`'yi `B` olarak okuyor — `Torstraße 15` → `TorstraBe 15`.
+  Bilinen-değer maskelemesi TAM EŞLEŞME yaptığı için kaçırıyor ve **kullanıcının
+  kendi adresi maskelenmeden Claude'a gidiyor.** Umlaut'lar da bozuluyor
+  (`Ausländerbehörde` → `Auslanderbehérde`).
+  **Yani takas şu:** `claude-vision` görseli sağlayıcıya gönderir (ilan edilmiş,
+  anlaşılmış istisna); `local` görseli göndermez ama METİN maskelemesini
+  sessizce delik bırakır. İkincisi daha sinsi — hiçbir uyarı üretmez.
+
+- **KARAR: Üretim `claude-vision` olarak BIRAKILDI.** `local`'a geçmek şu hâliyle
+  gizliliği kötüleştirirdi. Geçiş için önce maskelemenin OCR bozulmalarına
+  dayanıklı hâle gelmesi gerekir (ß/umlaut normalizasyonu + bilinen-değer
+  eşleşmesinde fuzzy karşılaştırma), sonra bu ölçüm tekrarlanmalı.
+- **Maliyet:** paket üretim imajını **218 MB → 269 MB** büyüttü (43 MB
+  `tesseract.js-core` wasm). Yol henüz kullanılmıyor ama seçenek artık
+  GERÇEKTEN mevcut ve çalışır durumda; kaldırılması da tek satır.
+- **Not:** ölçüm temiz bir RENDER üzerinde yapıldı (Quick Look ile üretilen
+  2000×2000 JPEG). Gerçek bir telefon fotoğrafında (eğrilik, gölge, gürültü)
+  tesseract'ın daha da kötü olması beklenir — yani bu rakamlar **iyimser üst
+  sınır**.

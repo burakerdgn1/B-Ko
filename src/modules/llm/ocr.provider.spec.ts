@@ -25,12 +25,29 @@ function fakeConfig(
 }
 
 describe('LocalOcrProvider', () => {
-  it('tesseract.js kurulu değilse anlamlı ve eyleme geçirilebilir bir hata fırlatır', async () => {
-    const provider = new LocalOcrProvider();
+  /**
+   * NOT: Bu test eskiden `tesseract.js`'in KURULU OLMAMASINA dayanıyordu
+   * ("gerçek, mock'lanmamış senaryo"). Paket artık opsiyonel bağımlılık olarak
+   * kurulu, dolayısıyla o varsayım geçersiz — eksiklik artık AÇIKÇA simüle
+   * ediliyor. Aksi hâlde test, gerçek tesseract'ı 1 baytlık sahte görselle
+   * çalıştırıp başka bir sebeple hata veriyor ve iddiasını doğrulamıyordu.
+   */
+  it('tesseract.js kurulu DEĞİLSE anlamlı ve eyleme geçirilebilir bir hata fırlatır', async () => {
+    jest.resetModules();
+    jest.doMock('tesseract.js', () => {
+      throw new Error("Cannot find module 'tesseract.js'");
+    });
 
+    const { LocalOcrProvider: Fresh } = await import('./ocr.provider');
     await expect(
-      provider.transcribe({ base64: Buffer.from('x').toString('base64'), mediaType: 'image/png' }),
-    ).rejects.toThrow(/tesseract\.js/i);
+      new Fresh().transcribe({
+        base64: Buffer.from('x').toString('base64'),
+        mediaType: 'image/png',
+      }),
+    ).rejects.toThrow(/paketi kurulu değil/i);
+
+    jest.dontMock('tesseract.js');
+    jest.resetModules();
   });
 });
 
@@ -93,5 +110,65 @@ describe('resolveOcrProviderKind', () => {
   it('OCR_PROVIDER=local ise "local" döner', () => {
     process.env.OCR_PROVIDER = 'local';
     expect(resolveOcrProviderKind()).toBe('local');
+  });
+});
+
+/**
+ * D-044 regresyonu — ESM/CJS interop.
+ *
+ * `LocalOcrProvider`, `tesseract.js`'i lazy `import()` ile yükler. Derlenmiş
+ * CJS'te (ÜRETİM imajı) namespace `{ OEM, PSM, createWorker, default }` olarak
+ * gelir ve `recognize` YALNIZCA `default` altında bulunur; ts-node/ts-jest
+ * altında ise namespace doğrudan çağrılabilir olabiliyor.
+ *
+ * Bu fark yüzünden kod yerelde çalışıp ÜRETİMDE `t.recognize is not a function`
+ * ile patlıyordu — gerçek üretim imajının içinde çalıştırılarak bulundu.
+ * D-034'ün birebir aynı deseni: mock'lu testler geçer, gerçek build kırılır.
+ *
+ * Bu testler her iki modül şeklini de zorlar.
+ */
+describe('LocalOcrProvider — tesseract.js modül şekli (D-044)', () => {
+  const image = { base64: Buffer.from('sahte').toString('base64'), mediaType: 'image/jpeg' };
+
+  afterEach(() => {
+    jest.resetModules();
+    jest.dontMock('tesseract.js');
+  });
+
+  it('CJS şekli: recognize YALNIZCA `default` altındayken çalışır', async () => {
+    const recognize = jest.fn().mockResolvedValue({ data: { text: 'CJS yolu' } });
+    jest.doMock('tesseract.js', () => ({
+      // Üretimdeki gerçek şekil: recognize namespace'te YOK, `default` altında.
+      // `__esModule: true` ŞART — aksi hâlde TypeScript'in `__importStar`
+      // yardımcısı `default`'u modülün KENDİSİYLE ezer ve mock, simüle etmek
+      // istediğimiz şekli temsil etmez.
+      __esModule: true,
+      OEM: {},
+      PSM: {},
+      createWorker: jest.fn(),
+      default: { recognize },
+    }));
+
+    const { LocalOcrProvider: Fresh } = await import('./ocr.provider');
+    await expect(new Fresh().transcribe(image as never)).resolves.toBe('CJS yolu');
+    expect(recognize).toHaveBeenCalledTimes(1);
+  });
+
+  it('ESM şekli: recognize doğrudan namespace üzerindeyken de çalışır', async () => {
+    const recognize = jest.fn().mockResolvedValue({ data: { text: 'ESM yolu' } });
+    jest.doMock('tesseract.js', () => ({ recognize }));
+
+    const { LocalOcrProvider: Fresh } = await import('./ocr.provider');
+    await expect(new Fresh().transcribe(image as never)).resolves.toBe('ESM yolu');
+    expect(recognize).toHaveBeenCalledTimes(1);
+  });
+
+  it('hiçbir şekilde recognize yoksa AÇIKLAYICI hata verir ("kurulu değil" DEĞİL)', async () => {
+    jest.doMock('tesseract.js', () => ({ OEM: {}, PSM: {} }));
+
+    const { LocalOcrProvider: Fresh } = await import('./ocr.provider');
+    await expect(new Fresh().transcribe(image as never)).rejects.toThrow(
+      /`recognize` bulunamadı/,
+    );
   });
 });

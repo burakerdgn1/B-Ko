@@ -1,7 +1,7 @@
 # STATUS.md — Şu An Neredeyiz
 
-**Güncelleme:** 2026-07-29 — v1.4: güvenlik borcu aracı + Railway dağıtım hazırlığı
-**Genel durum:** 🟢 Çalışır durumda, testli, dağıtıma hazır
+**Güncelleme:** 2026-08-11 — v1.8: üretimde canlı · D-043 (script izolasyonu) · D-044 (tesseract/OCR ölçümü)
+**Genel durum:** 🟢 **ÜRETİMDE ÇALIŞIYOR** — uçtan uca doğrulandı
 
 ## ✅ GÜVENLİK BORCU KAPANDI — Supabase secret anahtarı rotate edildi (2026-07-29)
 
@@ -104,23 +104,24 @@ metin/PDF girdilerinde zaten sızıntı yok.
 > Railway : OCR_PROVIDER = claude-vision
 > .env    : OCR_PROVIDER=claude-vision
 > ```
-> 🔴 **DAHA ÖNEMLİSİ: `local` seçeneği şu anda ÇALIŞMAZ.**
-> `LocalOcrProvider` `tesseract.js`'i lazy import ediyor, ama bu paket
-> `package.json`'da **hiç yok** (ne `dependencies` ne `optionalDependencies`).
-> Yani `OCR_PROVIDER=local` yapılırsa uygulama açılışta değil, **ilk fotoğraf
-> geldiğinde** patlar:
-> `LocalOcrProvider için "tesseract.js" paketi kurulu değil.`
+> ✅ **tesseract.js EKLENDİ** (D-044) — seçenek artık gerçekten mevcut ve
+> üretim imajında çalışıyor (5.3 s / 1780 karakter). Yol çalıştırılınca **iki
+> hata** çıktı ve düzeltildi: ESM/CJS interop yüzünden üretimde
+> `t.recognize is not a function` ile patlıyordu (D-034'ün aynı deseni), ve
+> eski test paketin YOKLUĞUNA dayandığı için geçersizdi.
 >
-> Bu, D-010'da "sıfır sızıntı için `OCR_PROVIDER=local` kullanın" diye ilan
-> edilen kaçış yolunun **fiilen mevcut olmadığı** anlamına gelir — README,
-> STATUS ve DECISIONS bugüne kadar bunu kullanılabilir bir seçenek gibi
-> anlattı. Metin/PDF girdilerinde sızıntı zaten yok; boşluk yalnızca
-> fotoğraf yolunu etkiliyor, ama gizlilik iddiası bu yüzden olduğundan
-> güçlü sunulmuş oldu.
+> 🔴 **AMA `local`'a GEÇİLMEDİ — ölçüm gizliliğin KÖTÜLEŞTİĞİNİ gösterdi.**
+> tesseract `ß`'yi `B` okuyor: `Torstraße 15` → `TorstraBe 15`.
+> Bilinen-değer maskelemesi tam eşleşme yaptığı için kaçırıyor ve
+> **kullanıcının kendi adresi maskelenmeden Claude'a gidiyor**
+> (ADDRESS token 9 → 7; diğer tipler etkilenmedi).
 >
-> **Gerekli iş:** `npm i tesseract.js` (opsiyonel bağımlılık) + üretim
-> imajında gerçek bir fotoğrafla doğrulama. Aksi hâlde D-034'ün aynısı olur:
-> fotoğraf yolu kırık, birim testleri fark etmez (hepsi mock kullanıyor).
+> Takas: `claude-vision` GÖRSELİ sağlayıcıya gönderir (ilan edilmiş istisna);
+> `local` göndermez ama METİN maskelemesini sessizce deler — ikincisi daha
+> sinsi, hiç uyarı üretmez. **Üretim bilinçli olarak `claude-vision` kaldı.**
+> Geçiş için önce maskeleme OCR bozulmalarına dayanıklı olmalı
+> (ß/umlaut normalizasyonu + fuzzy bilinen-değer eşleşmesi), sonra ölçüm
+> tekrarlanmalı. İmaj maliyeti: 218 MB → **269 MB**.
 
 Ayrıntı ve gerekçeler: `MANUAL_ACTIONS_REQUIRED.md` §3b + §8.
 
@@ -132,11 +133,12 @@ Numaralar/adresler/tarihler maskeleniyor; **isimler v1'de maskelenmiyor** (bkz. 
 kapsam boşluğu).
 
 ## Sayılar
-- **553 test geçiyor** (40 suite, 1 atlanır) + **16 canlı DB testi** (bayrakla koşulur) = 569 toplam
-- `tsc --noEmit` temiz · Docker imajı gerçekten build edilip ÇALIŞTIRILDI (218 MB, `healthy`)
+- **556 test geçiyor** (40 suite, 1 atlanır) + **16 canlı DB testi** (bayrakla koşulur) = 572 toplam
+- `tsc --noEmit` temiz · Docker imajı gerçekten build edilip ÇALIŞTIRILDI (**269 MB**, `healthy`)
+  — tesseract.js eklendikten sonra 218 MB → 269 MB (D-044)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
-- **42 commit**, ana dal `main` · `origin/main` ile eşit · CI yeşil
-- **43 kayıtlı mühendislik kararı** (D-001…D-043)
+- 43+ commit, ana dal `main` · `origin/main` ile eşit · CI yeşil
+- **44 kayıtlı mühendislik kararı** (D-001…D-044)
 - Devir notu: **`HANDOFF.md` (v3)**
 
 ## Definition of Done (CLAUDE.md §10) — doğrulama
