@@ -1,6 +1,6 @@
 # STATUS.md — Şu An Neredeyiz
 
-**Güncelleme:** 2026-08-12 — v2.0: üretimde canlı · D-048 (gerçek mektup düzeneği + yerel DB izolasyonu + scripts tip kontrolü) · D-049 (test hermetikliği açıkça sabitlendi)
+**Güncelleme:** 2026-08-12 — v2.0 · `main` = `f79753e` · CI yeşil · **üretimde canlı ve doğrulandı**
 **Genel durum:** 🟢 **ÜRETİMDE ÇALIŞIYOR** — uçtan uca doğrulandı
 
 ## ✅ GÜVENLİK BORCU KAPANDI — Supabase secret anahtarı rotate edildi (2026-07-29)
@@ -51,9 +51,9 @@ LOG [TelegramService] Telegram webhook kaydedildi:
 ⚠️ **Olay ve düzeltme (D-043):** Bir teşhis scripti `AppModule`'ü yerelde boot
 edip üretimin webhook kaydını **sildi**; bot birkaç dakika sağır kaldı
 (`railway redeploy` ile geri alındı). Bot token'ı global olduğu için yerel/üretim
-izolasyonu YOK. `TELEGRAM_SKIP_STARTUP` + `bootScriptContext()` eklendi; tüm
-bakım script'leri artık botu hiç başlatmıyor. **`npm run start:dev` hâlâ
-korunmuyor** — bkz. "Sıradaki adım".
+izolasyonu YOK'tu. `TELEGRAM_SKIP_STARTUP` + `bootScriptContext()` eklendi.
+✅ **`npm run start:dev` artık da korunuyor (D-047/D-048)** — ayrı test botu +
+cron guard'ı + yerel `DB_DRIVER=memory`. Ayrıntı aşağıda.
 
 ### İlk dağıtımda bulunan üç yapılandırma hatası (hepsi düzeltildi)
 
@@ -108,28 +108,63 @@ kapandığının en güçlü kanıtı budur.
 > Doğru sırla sahte update **kasıtlı olarak gönderilmedi** — gerçek bota
 > enjeksiyon olurdu (D-042 turundaki kural korundu).
 
+## ✅ D-047 … D-050 ÜRETİME ALINDI (2026-08-12 00:12)
+
+Üçü de aynı akışla gitti: **feature dalı → PR → CI yeşil doğrulandı → ancak
+ondan sonra** `main`'e fast-forward merge (SHA'lar korunur) → Railway otomatik
+deploy → deploy bağımsız doğrulandı.
+
+| PR | Konu | Merge |
+|---|---|---|
+| #1 | D-045 CI Playwright · D-046 OCR dayanıklı maskeleme | 2026-08-11 21:46 |
+| #2 | D-047 yerel geliştirme izolasyonu (test botu + cron guard'ı) | 2026-08-11 22:56 |
+| #3 | D-048 gerçek mektup düzeneği · yerel DB · scripts tip kontrolü · D-049 test hermetikliği · D-050 süreç kuralı | 2026-08-12 00:12 |
+
+**Son deploy doğrulaması** (`f79753e`, D-042 dersi — platform göstergesi yetmez):
+
+| Kontrol | Sonuç |
+|---|---|
+| `GET /health` | ✅ 200 · `uptime: 55` — yeni konteyner gerçekten devraldı |
+| **Bot kimliği** (yeni, D-047) | ✅ `Telegram botu: @BuKo749_bot (production)` |
+| Açılış modu | ✅ `BüKo production modunda :8080` |
+| Webhook (uygulama logu) | ✅ doğru adres |
+| Webhook (Telegram tarafı) | ✅ url doğru · `0 bekleyen` · hata yok |
+| Fail-closed (D-030) | ✅ sırsız → **401** · yanlış sır → **401** |
+| CI — `main` (`31549353728`) | ✅ her iki job · **659/45, yerelle birebir** |
+
+### Bu turda bulunan ve kapatılan sessiz arızalar
+
+| # | Neydi | Nasıl bulundu |
+|---|---|---|
+| D-045 | Randevu izleme PoC'sinin TEK gerçek testi CI'da hiç koşmuyordu, CI yine de yeşildi | CI/yerel test sayısı farkı |
+| D-046 | OCR'dan geçen belgede kullanıcının kendi adresi **maskelenmeden** LLM'e gidiyordu (5 ayrı yol) | Gerçek tesseract çıktısı + maskelemeden BAĞIMSIZ Levenshtein taraması |
+| D-047b | Ayrı test botu Telegram'ı izole etti ama **cron'lar üretim DB'sine karşı** koşuyordu | `@Cron`'ların süreç içinde olduğunun fark edilmesi |
+| D-048b | `rotate:pii-key` bellek sürücüsünde boş kasada **"0 kayıt, başarılı"** derdi | Yerel varsayılanı `memory` yapmadan önceki etki analizi |
+| D-048c | **`scripts/` hiç tip kontrolünden geçmiyormuş** (`ts-node -T` + tsconfig kapsamı dışı) | Kendi `import type` hatamın yakalanmaması |
+| D-048d | Makinede **13 gündür** çalışan yetim bir uygulama örneği + benim bıraktığım 1,5 saatlik bir tane daha | Kullanıcının bildirdiği takılı süreçten yola çıkan tarama |
+| D-049 | Test hermetikliği Jest'in **örtük** `NODE_ENV=test` varsayılanına dayanıyordu — yanlış `NODE_ENV` ile testler ücretli API'ye çıkar ve gerçek botu başlatırdı | Guard testinin beklenmedik şekilde tutmaması |
+
+> Ortak desen: yedisinin de **hiçbir hata üretmiyor** olması. Hepsini yakalayan
+> şey, aracın "✓" demesine değil **bağımsız bir kanıta** bakmaktı (§8 dersi).
+
 ## ⏭️ SIRADAKİ ADIM — sende
 
-**0) ~~Ayrı bir test botu açın~~ — ✅ YAPILDI (D-047).** `@BuKoTest749_bot`
-`.env`'de; token'ın gerçekten test botuna ait olduğu `getMe` ile doğrulandı.
-Yerel geliştirme artık `polling` + `localhost` ile çalışıyor, tünel gerekmiyor.
-Uçtan uca kanıt: yerelde bot açıkken üretim kesintisiz kaldı.
+> Kod tarafında bekleyen iş YOK. Aşağıdaki üç maddenin üçü de yalnızca senin
+> yapabileceğin dış-dünya eylemleri. (Test botu maddesi ✅ kapandı — D-047.)
 
-> Ayrıca kapatıldı (D-047b, D-048b): ayrı token Telegram kanalını izole ediyordu
-> ama **veritabanını etmiyordu**. `SCHEDULER_SKIP_STARTUP` cron'ları durduruyor
-> ve yerel `DB_DRIVER` artık `memory`. Gerçek DB gerektiren script'ler
-> (`live:check`, `rotate:pii-key`) bunu **talep ediyor** ve `memory` ile
-> çalışmayı reddediyor — aksi hâlde `rotate:pii-key` boş kasada "0 kayıt,
-> başarılı" derdi.
+**1) 🥇 Gerçek (anonimleştirilmiş) mektuplar — en yüksek değerli iş.**
+Düzenek hazır: `test-fixtures/real/` altına `.txt` + `expected.json` bırakman
+yeterli, testler kendiliğinden koşar. Dizin `.gitignore`'da (gerçek insan
+verisi). Bırakmadan önce `npm run check:real-fixtures` — maskelemenin ne
+gördüğünü **değerleri basmadan** raporlar. Ayrıntı: `test-fixtures/real/README.md`.
 
-**0b) Gerçek (anonimleştirilmiş) mektuplar — düzenek hazır, sıra sende.**
-`test-fixtures/real/` altına `.txt` + `expected.json` bırakmanız yeterli;
-testler kendiliğinden koşar. Dizin `.gitignore`'da (gerçek insan verisi).
-Kullanmadan önce `npm run check:real-fixtures` — maskelemenin ne gördüğünü
-değerleri basmadan raporlar. Ayrıntı: `test-fixtures/real/README.md`.
-**Bu, aşağıdaki `OCR_PROVIDER` kararının da ön koşuludur.**
+> **Neden en değerlisi:** bugüne kadarki TÜM doğrulama sentetik (D-005).
+> D-046'da, OCR'la hiç ilgisi olmayan ve sentetik fixture'larda **yıllardır**
+> duran bir desen boşluğu (`Karl-Marx-Allee` hiç maskelenmiyordu) ancak yeni
+> bir bakış açısıyla görülebildi. Gerçek mektuplarda benzerlerinin çıkmasını
+> bekliyorum. **Bu madde aynı zamanda 3. maddenin (`OCR_PROVIDER`) ön koşulu.**
 
-**1) `default` Supabase anahtarını sil** — kullanılmayan, RLS'i bypass eden
+**2) `default` Supabase anahtarını sil** — kullanılmayan, RLS'i bypass eden
 üçüncü bir secret anahtar. Proje onu kullanmıyor (kod envanteriyle doğrulandı).
 Dashboard'da "Last used" boşsa silin.
 
@@ -140,7 +175,7 @@ Dashboard'da "Last used" boşsa silin.
 > Yani bu maddenin yapıldığını **bağımsız kanıtlayamam**; "yapıldı" olarak
 > işaretlenmesi için ya Dashboard'dan teyit ya da bir `sbp_` token'ı gerekir.
 
-**2) `OCR_PROVIDER` kararı** — mektup GÖRSELİ ham PII ile Anthropic'e gidiyor
+**3) `OCR_PROVIDER` kararı** — mektup GÖRSELİ ham PII ile Anthropic'e gidiyor
 (D-010, ilan edilmiş istisna). Sıfır sızıntı isteniyorsa `OCR_PROVIDER=local`;
 metin/PDF girdilerinde zaten sızıntı yok.
 
@@ -199,7 +234,7 @@ kapsam boşluğu).
   — tesseract.js eklendikten sonra 218 MB → 269 MB (D-044)
 - `cp .env.example .env && node dist/main.js` → temiz açılış (gerçek anahtar gerekmez)
 - 47+ commit, ana dal `main` · CI yeşil
-- **49 kayıtlı mühendislik kararı** (D-001…D-049)
+- **50 kayıtlı mühendislik kararı** (D-001…D-050)
 - Devir notu: **`HANDOFF.md` (v3)**
 
 ## Definition of Done (CLAUDE.md §10) — doğrulama
