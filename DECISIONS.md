@@ -1183,3 +1183,33 @@ Her karar: bağlam → karar → gerekçe. Plandan sapmalar açıkça işaretli.
   yüklenen grafikteki sınıftan farklı bir nesne olduğu için
   `app.get(...)` "provider does not exist" ile düşüyor. Yardımcı bunun yerine
   boot edilmiş config örneğinin getter'larını `app.init()`'ten ÖNCE gölgeler.
+
+### D-048d — Yetim süreçler: tehlikenin gerçek dünyadaki kanıtı
+
+D-047b, "yerel bir `start:dev` fiilen ikinci replikadır" derken **varsayımsal**
+bir riskten bahsediyordu. Aynı gün makinede üç yetim süreç bulundu ve risk
+varsayımsal olmadığı görüldü:
+
+| Süreç | Yaş | Durum |
+|---|---|---|
+| `jest src/common/testing` | 44 dk | Testler bitmiş, **açık handle** yüzünden Jest çıkamamış (terk edilen `resetModules` yaklaşımının kalıntısı) |
+| `ts-node src/main.ts` | 1 sa 32 dk | **Telegram'a açık bağlantı** — test botunu polling'e devam ediyordu |
+| `node dist/main.js` | **13 gün** | `/health` öncesi (D-038 öncesi) eski build, `:3000`'i işgal ediyordu |
+
+- **13 günlük süreç en öğretici olanı.** Telegram'a bağlantısı yoktu (update
+  çalmıyordu) ama cron'ları üretim veritabanına karşı koşuyor olabilirdi ve
+  bunu **ne kanıtlayabildim ne çürütebildim**: `reminders` tablosu boş olduğu
+  için hatırlatma cron'u iz bırakmaz, `gdpr-purge` ise silecek bir şey yoksa
+  audit kaydı yazmaz. Yani bu sınıf tehlike **sessiz** — tam da D-047b'nin
+  iddiası. Kullanıcı onayıyla sonlandırıldı.
+- **Kendi temizleme mantığım hatalıydı.** D-047 doğrulaması için açtığım
+  uygulamayı öldürdüğümü sanıyordum: `spawn` çağrısında `detached: true`
+  vermediğim için süreç grubu yoktu, `process.kill(-pid)` boşa gitti ve
+  `npx` sarmalayıcısını öldürmek TORUN süreci (asıl uygulama) hayatta bıraktı.
+  **Kural:** kısa ömürlü bir uygulama boot'u başlatan her script `detached: true`
+  ile başlatmalı ve süreç GRUBUNU öldürmeli; ayrıca öldürdüğünü `ps` ile
+  DOĞRULAMALI. "Öldürdüm" ile "öldü" arasındaki fark, bu projede tekrar tekrar
+  çıkan "yaptım" ile "etkisi görünür oldu" farkının aynısı.
+- **Refleks:** uzun bir oturumun sonunda `ps -eo pid,etime,command | grep dist/main`
+  ile yetim süreç taraması yapılmalı. Üretim etkilenmemişti (uptime kesintisiz,
+  webhook yerinde, 0 bekleyen update) ama bu şansa bırakılacak bir şey değil.

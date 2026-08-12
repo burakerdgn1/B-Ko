@@ -141,6 +141,23 @@ bunu engelleyemez; tek uyarı o log satırıdır. Şüphe varsa `getMe` ile doğ
 (`live:check`, `rotate:pii-key`) — aksi hâlde `rotate:pii-key` boş kasada
 "0 kayıt, başarılı" derdi. Tek seferlik: `DB_DRIVER=supabase npm run <komut>`.
 
+### 🔍 Oturum sonu refleksi: yetim süreç taraması (D-048d)
+
+```bash
+ps -eo pid,etime,command | grep -E "dist/main|ts-node.*B-Ko" | grep -v grep
+```
+
+Gerçek vaka: makinede **13 gündür** çalışan bir `node dist/main.js` (D-038
+öncesi eski build, `:3000`'i işgal ediyordu) ve 1,5 saatlik bir yetim
+`ts-node src/main.ts` (test botunu polling'e devam ediyordu) bulundu. İkincisi
+"öldürdüm" sanılan bir süreçti: `spawn`'a `detached: true` verilmediği için
+süreç grubu yoktu ve yalnızca `npx` sarmalayıcısı ölmüş, torun süreç kalmıştı.
+
+Bu, D-047b'nin "yerel örnek = ikinci replika" uyarısının **varsayımsal
+olmadığının** kanıtı. Ve bu sınıf tehlike sessizdir: boş tablolarda cron'lar
+hiçbir iz bırakmaz, dolayısıyla "zarar vermedi" ancak süreç bulunup
+sonlandırıldıktan sonra söylenebilir.
+
 ## 3. Doğrulama komutları
 
 ```bash
