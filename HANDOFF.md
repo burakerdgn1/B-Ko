@@ -1,11 +1,26 @@
-# BüKo — Devir Notu (HANDOFF) · **v3**
+# BüKo — Devir Notu (HANDOFF) · **v4**
 
-**Tarih:** 2026-08-12 · **659 test geçiyor** (46 suite, 1 atlanır) · **49 karar** (D-001…D-049)
+**Tarih:** 2026-08-12 · **`main` = `01f3817`** · **659 test geçiyor** (46 suite, 1 atlanır) · **50 karar** (D-001…D-050) · **üretimde canlı ve doğrulandı**
 
-> **v3.1 güncellemesi:** D-045 (CI'da Playwright atlaması yasaklandı) ve
-> D-046 (OCR bozulmalarına dayanıklı maskeleme) eklendi. **D-044'ün
-> `OCR_PROVIDER=local` blokajı teknik olarak kalktı** — §9 ve §10 buna göre
-> güncellendi.
+> ### v4 — bir turda kapatılan altı karar
+>
+> Hepsi aynı akışla üretime alındı: **feature dalı → PR → CI yeşil DOĞRULANDI →
+> ancak ondan sonra** `main`'e fast-forward merge → Railway otomatik deploy →
+> deploy bağımsız doğrulandı.
+>
+> | Karar | Konu | Durum |
+> |---|---|---|
+> | D-045 | CI'da Playwright testlerinin sessiz atlanması yasaklandı | ✅ üretimde |
+> | D-046 | OCR bozulmalarına dayanıklı maskeleme — **D-044 blokajı kalktı** | ✅ üretimde |
+> | D-047 | Yerel geliştirme izolasyonu: ayrı test botu + cron guard'ı | ✅ üretimde |
+> | D-048 | Gerçek mektup düzeneği · yerel DB izolasyonu · `scripts/` tip kontrolü · yetim süreçler | ✅ üretimde |
+> | D-049 | Test hermetikliği açıkça sabitlendi | ✅ üretimde |
+> | D-050 | CI sonucu beklenmeden merge'den söz edilmez (süreç kuralı) | ✅ CLAUDE.md §8.1 |
+>
+> **Ortak desen — bu turun asıl dersi:** yedi ayrı sessiz arıza bulundu ve
+> **hiçbiri hata üretmiyordu.** Hepsini yakalayan şey aracın "✓" demesine değil,
+> **bağımsız bir kanıta** bakmaktı (§8). Ayrıntı: `STATUS.md` → "Bu turda
+> bulunan ve kapatılan sessiz arızalar".
 
 > **v3'ün tabanı.** v2 repoda dosya olarak yoktu (sohbet üzerinden paylaşıldı).
 > v3 önce birincil kayıtlardan (`PROGRESS.md`, `DECISIONS.md`, `STATUS.md`,
@@ -48,11 +63,16 @@ bilgilendirme/hazırlık asistanı. Bot her oturumda yapay zekâ olduğunu bildi
 | | |
 |---|---|
 | **Uygulama** | https://b-ko-production.up.railway.app |
-| **Bot** | @BuKo749_bot |
+| **Bot (üretim)** | `@BuKo749_bot` |
+| **Bot (yerel test)** | `@BuKoTest749_bot` — ayrı token, `.env`'de (D-047) |
 | **Railway** | proje `resplendent-generosity` · servis `B-Ko` · env `production` · **1 replika** |
 | **GitHub** | `burakerdgn1/B-Ko` (private) · dal `main` · her push'ta CI |
-| **Supabase** | `gvvsuelxvwdjlobaqmgq` · 8/8 tablo · `DB_DRIVER=supabase` |
+| **Supabase** | `gvvsuelxvwdjlobaqmgq` · 8/8 tablo · üretimde `DB_DRIVER=supabase` |
 | **Model** | `claude-sonnet-5` |
+
+> ⚠️ **Yerelde `DB_DRIVER=memory`** (D-048b) — bu tablo ÜRETİM koordinatlarıdır.
+> Yerel `.env` üretim veritabanına yazmaz; gerçek DB gerektiren script'ler onu
+> açıkça talep eder (`DB_DRIVER=supabase npm run live:check`).
 
 ### Uçtan uca doğrulandı (2026-08-11)
 
@@ -430,36 +450,45 @@ girer. Refleks: script'e **minimum** bağlamı ver.
 
 ## 10. Açık işler
 
-### Kullanıcı eylemi gerektiren
-1. **`default` Supabase secret anahtarını sil** — kullanılmıyor (kod envanteri
-   ile doğrulandı), ama RLS'i bypass ediyor. Dashboard'da "Last used" boşsa sil.
-2. ~~**İkinci bir test bot token'ı**~~ — ✅ YAPILDI (D-047): `@BuKoTest749_bot`.
-3. **`OCR_PROVIDER` kararı** — `claude-vision` (D-010 ödünü) mü, `local` mi?
-   **Teknik blokaj kalmadı** (D-046); kalan tek şart gerçek fotoğrafla ölçümün
-   tekrarlanması (bkz. "Kod tarafı" 5).
+> **Kod tarafında bekleyen iş YOK.** Aşağıdaki 1-3 yalnızca kullanıcının
+> yapabileceği dış-dünya eylemleri; 4-6 bilinçli v2 kapsamı.
 
-### Kod tarafı
-4. ~~**CI'da Playwright testleri sessizce atlanıyor**~~ — ✅ **KAPANDI (D-045).**
-   chromium CI'da kuruluyor VE `REQUIRE_PLAYWRIGHT=1` ile atlama yasak: tarayıcı
-   yoksa test SKIP değil FAIL. Yalnızca kurulum adımı eklemek yetmezdi — adım
-   ileride silinse aynı sessiz boşluk geri gelirdi.
-5. **Gerçek (anonimleştirilmiş) Behördenbrief'lerle doğrulama** — bugüne kadarki
-   tüm doğrulama sentetik fixture'larla. **Kod tarafı KAPANDI (D-048a):**
+### Kullanıcı eylemi gerektiren (sıralı — 1, 3'ün ön koşulu)
+
+1. 🥇 **Gerçek (anonimleştirilmiş) Behördenbrief'ler.** Bugüne kadarki TÜM
+   doğrulama sentetik (D-005). **Düzenek hazır (D-048a):**
    `test-fixtures/real/` altına `.txt` + `expected.json` bırakmak yeterli,
-   testler kendiliğinden koşar; dizin `.gitignore`'da (gerçek insan verisi);
-   `npm run check:real-fixtures` maskelemenin ne gördüğünü değerleri basmadan
-   raporlar. **Kalan tek şey mektupların kendisi — bunu yalnızca kullanıcı
-   sağlayabilir.** Bu madde §10/3'teki `OCR_PROVIDER` kararının ön koşuludur.
-5b. ~~**Yerel geliştirme üretim veritabanına yazıyor**~~ — ✅ **KAPANDI (D-048b).**
-   Yerel `DB_DRIVER=memory`; gerçek DB gerektiren script'ler bunu talep ediyor.
-5c. ~~**`scripts/` tip kontrolünden geçmiyor**~~ — ✅ **KAPANDI (D-048c).**
-   Kök tsconfig'e eklemek üretimi kırıyordu (`dist/main.js` → `dist/src/main.js`);
-   ayrı `tsconfig.scripts.json` + CI adımı.
-5d. ~~**Test hermetikliği örtük varsayıma dayanıyor**~~ — ✅ **KAPANDI (D-049).**
-   `NODE_ENV=development npx jest` ile `.env` sızıyordu; `jest.setup.ts` sabitledi.
-6. **Yerel NER** → D-028 boşluğu (v2).
-7. **RLS politikaları** — yalnızca web dashboard eklenirse gerekli.
-8. **WhatsApp adapter** — v2 (`ChannelAdapter` arayüzü hazır).
+   testler kendiliğinden koşar. Dizin `.gitignore`'da (gerçek insan verisi).
+   Bırakmadan önce `npm run check:real-fixtures` — maskelemenin ne gördüğünü
+   **değerleri basmadan** raporlar. Ayrıntı: `test-fixtures/real/README.md`.
+   > **Neden en değerli:** D-046'da, OCR'la hiç ilgisi olmayan ve sentetik
+   > fixture'larda **yıllardır** duran bir desen boşluğu (`Karl-Marx-Allee`
+   > hiç maskelenmiyordu) ancak yeni bir bakış açısıyla görülebildi.
+
+2. **`default` Supabase secret anahtarını sil** — kullanılmıyor (kod envanteri
+   ile doğrulandı), ama RLS'i bypass ediyor. Dashboard'da "Last used" boşsa sil.
+   > Asistan bunu **bağımsız doğrulayamaz**: anahtar listelemek `sbp_`
+   > Management API token'ı ister, anahtarın değeri ise kasıtlı olarak hiç
+   > istenmedi (D-040).
+
+3. **`OCR_PROVIDER` kararı** — `claude-vision` (D-010 ödünü: mektup GÖRSELİ ham
+   PII ile sağlayıcıya gider) mi, `local` mi? **Teknik blokaj kalmadı** (D-046,
+   14 mektupta 0 kayıp/0 artık). Kalan tek şart: ölçümün **gerçek bir telefon
+   fotoğrafıyla** tekrarlanması — mevcut ölçüm temiz bir A4 render'ı üzerinde,
+   yani gerçek dünyanın **iyimser alt sınırı**. Yani 1. maddeye bağlı.
+
+### v2 kapsamı (bilinçli ertelendi)
+
+4. **Yerel NER** → D-028 boşluğu (tetikleyicisiz üçüncü taraf isimleri).
+5. **RLS politikaları** — yalnızca web dashboard eklenirse gerekli.
+6. **WhatsApp adapter** — `ChannelAdapter` arayüzü hazır.
+
+### Bu turda kapananlar (ayrıntı: `DECISIONS.md`)
+
+CI'da Playwright sessiz atlaması (D-045) · OCR dayanıklı maskeleme (D-046) ·
+yerel geliştirme izolasyonu — bot + cron + DB (D-047, D-048b) · gerçek mektup
+düzeneği (D-048a) · `scripts/` tip kontrolü (D-048c) · yetim süreçler (D-048d) ·
+test hermetikliği (D-049) · CI/merge süreç kuralı (D-050).
 
 ---
 
@@ -471,21 +500,40 @@ src/
   common/
     crypto/         AES-256-GCM zarf (pii_vault)
     pii/            maskeleme motoru + desenler  ← ürünün moat'ı
+      ocr-tolerance.ts   OCR karışıklık tablosu (ß→B, ö→é, ü→ii…)   [D-046]
+      ocr-residue.ts     Levenshtein artık taraması — BAĞIMSIZ oracle [D-046]
+    testing/        boot-with-config.ts ← env override'ı GERÇEKTEN etkili [D-049]
   modules/
     channels/telegram/  adapter · service (onModuleInit!) · controller (webhook)
     analysis/       pipeline.ts · deadline.util.ts
     drafts/         taslak üretimi + onay state machine
     persistence/    memory + supabase repository'ler
-    reminders/      cron: hatırlatma + GDPR silme
+    reminders/      cron: hatırlatma + GDPR silme  ← guard EN BAŞTA [D-047]
     watcher/        Playwright randevu izleme PoC (opsiyonel)
     health/         /health liveness probe
 scripts/            script-context.ts ← YENİ script'ler bunu kullanmalı
+                    ocr-mask-bench.ts · check-real-fixtures.ts
+test-fixtures/
+  behordenbriefe/   14 sentetik mektup (D-005)
+  ocr/              GERÇEK tesseract çıktıları — ölçüm tekrarlanabilir [D-046]
+  real/             gerçek anonimleştirilmiş mektuplar — GITIGNORE'DA [D-048]
 supabase/migrations/  0001_init.sql (onay kapısı trigger'ı) · 0002
+jest.setup.ts       hermetik taban — import'lardan ÖNCE koşar [D-049]
+tsconfig.scripts.json  scripts/ tip kontrolü (kök tsconfig'e EKLEME! [D-048c])
 ```
 
-**Okuma sırası (yeni gelen için):** `CLAUDE.md` → bu dosya → `STATUS.md` →
-`ARCHITECTURE.md` → `DECISIONS.md` (kritik: D-010, D-014, D-030, D-038, D-040,
-D-041, D-042, D-043, D-044, D-046).
+⚠️ **`tsconfig.json`'ın `include`'una `scripts/**` EKLENMEZ.** `nest build` aynı
+dosyayı kullanır; scripts dâhil edilirse çıktı `dist/main.js` yerine
+`dist/src/main.js` olur ve Dockerfile'daki `node dist/main.js` **kırılır**
+(denendi, ölçüldü). Tip kontrolü `tsconfig.scripts.json` ile ayrı yapılır.
+
+**Okuma sırası (yeni gelen için):** `CLAUDE.md` (özellikle **§8.1** — CI kuralı)
+→ bu dosya → `STATUS.md` → `ARCHITECTURE.md` → `DECISIONS.md`.
+
+**En kritik kararlar:** D-010 (OCR gizlilik takası) · D-014 (onay kapısı) ·
+D-030 (fail-closed webhook) · D-040 (rotasyonun altın kuralı) · D-041/D-042
+(aracın ve platformun yanılması) · D-043/D-047/D-048 (yerel↔üretim izolasyonu)
+· D-046 (OCR dayanıklı maskeleme) · D-049 (test hermetikliği) · D-050 (CI kuralı).
 
 ---
 
@@ -524,3 +572,25 @@ kez kullanıcının bildirdiği durum gerçekle uyuşmadı:
 
 Hiçbiri kötü niyet değil — dağıtık sistemlerde "yaptım" ile "etkisi görünür
 oldu" arasında gerçek bir gecikme var. Refleks: **önce ölç, sonra yaz.**
+
+> **v4 notu — kural simetriktir.** Bu turda kullanıcı "ikinci bot token'ını
+> ekledim" dedi ve `getMe` ile doğrulandığında **doğruydu** (`@BuKoTest749_bot`).
+> Kural "kullanıcı yanılır" değil, **"iddia ölçülür"**. Aynı turda ölçüm
+> asistanın kendi iddialarını üç kez çürüttü (aşağıda).
+
+### v4 — asistanın KENDİ hataları (aynı standart)
+
+Doğrulama disiplini asistana da uygulanır; bu turda üç kez tutmadı:
+
+| Ne oldu | Nasıl yakalandı |
+|---|---|
+| "Yerel uygulamayı kapattım" — kapanmamıştı. `spawn`'a `detached: true` verilmediği için süreç grubu yoktu; `npx` sarmalayıcısı ölürken **torun süreç 1,5 saat yaşadı** ve test botunu polling'e devam etti | Kullanıcının bildirdiği takılı süreçten yola çıkan `ps` taraması (D-048d) |
+| "660 test geçiyor" — gerçek sayı **659**'du; sayım, commit'ten önce silinen bir hata ayıklama dosyasını içeriyordu | CI'ın 659 raporlaması → CI/yerel eşitliği invaryantı (D-045) |
+| "CI koşuyor, merge kararı sende" — koşu **bitmemişti** | Kullanıcı düzeltti → CLAUDE.md **§8.1** (D-050) |
+
+**Çıkarılan kurallar:**
+- Kısa ömürlü bir uygulama boot'u başlatan script `detached: true` kullanmalı,
+  süreç **grubunu** öldürmeli ve öldürdüğünü `ps` ile **doğrulamalı**.
+- Bir sayı raporlanmadan önce ölçümün neyi içerdiği kontrol edilmeli.
+- CI tetikleyen her commit'ten sonra sonuç **beklenir**; "yeşil" demek için
+  `conclusion: success` yetmez, log'dan bağımsız kanıt okunur (§8.1).
