@@ -115,6 +115,34 @@ Her faz kendi agent'ını/agent'larını doğurur; faz bitince `PROGRESS.md`'ye 
 - Her tamamlanan görev sonrası commit at (küçük, atomik, açıklayıcı mesaj — Conventional Commits formatı: `feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 - Faz bazlı branch kullanılabilir (`feature/pii-masking`, `feature/telegram-bot` vb.), ana entegrasyon `main`/`develop` üzerinde toplanır. Merge çakışmalarını kendin çöz, durup sorma.
 
+### 8.1 CI SONUCU BEKLENMEDEN MERGE'DEN SÖZ EDİLMEZ (bağlayıcı)
+
+Bir commit CI'ı tetiklediyse, **koşu bitip sonucu teyit edilmeden**:
+
+- "merge edeyim mi?" diye **sorma**,
+- merge **önerme**,
+- "hazır / merge'e hazır / sende" gibi ifadelerle merge kararını kullanıcıya
+  **devretme**.
+
+**Yapılacak:** koşunun bitmesini bekle, sonra:
+
+| Sonuç | Ne yapılır |
+|---|---|
+| 🟢 Yeşil | Sonucu **göstererek** bildir (koşu id'si, commit SHA, job'lar, test sayıları). Merge'den ancak bundan sonra söz et. |
+| 🔴 Kırmızı | **Sebebini açıkla** — hangi job, hangi adım, hangi test, log'dan ilgili satırlar. Merge'i gündeme getirme; önce düzelt. |
+
+**Teyit "conclusion: success" görmek DEĞİLDİR.** Bu projede doğrulama aracının
+kendisi dört kez yanıldı (D-033, D-039, D-041 + teşhis script'i). Job
+sonuçlarına ek olarak log'dan bağımsız kanıt oku: test/suite sayıları (yerelle
+eşit olmalı — D-045), kritik suite'lerin gerçekten `PASS` satırı ürettiği,
+eklenen yeni CI adımlarının gerçekten koştuğu.
+
+**Neden bağlayıcı:** "push ettim, CI koşuyor, merge kararı sende" demek, sonucu
+bilinmeyen bir değişikliği kullanıcının onayına sunmaktır. Kullanıcı "merge et"
+derse ve koşu kırmızı çıkarsa, kırık kod `main`'e ve oradan otomatik deploy ile
+**üretime** gider. Bekleme maliyeti birkaç dakika; hatanın maliyeti canlı bir
+bot.
+
 ---
 
 ## 9. İlerleme Takibi (kullanıcı bilgisayara döndüğünde ilk bakacağı yer)

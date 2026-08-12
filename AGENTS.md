@@ -1,6 +1,6 @@
-# BüKo — Otonom Implementasyon Direktifi (Codex için)
+# BüKo — Otonom Implementasyon Direktifi (Claude Code için)
 
-Bu dosyanın tamamını sistem/proje talimatı olarak kabul et. Aşağıda tanımlanan çalışma şeklinden sapma; bu doküman, projenin AGENTS.md'si ve yürütme sözleşmesidir.
+Bu dosyanın tamamını sistem/proje talimatı olarak kabul et. Aşağıda tanımlanan çalışma şeklinden sapma; bu doküman, projenin CLAUDE.md'si ve yürütme sözleşmesidir.
 
 ---
 
@@ -27,7 +27,7 @@ Bu projeyi tek bir monolitik oturumda değil, **SDLC fazlarına göre uzmanlaşm
 
 1. **Planlama & Mimari Agent'ı** — bu dokümanı analiz eder, teknik mimariyi netleştirir, klasör yapısını, veri modelini ve API sözleşmelerini tasarlar, `ARCHITECTURE.md` ve `TODO.md` (WBS — iş kırılım yapısı) üretir. İlk çalışan agent budur, diğerleri onun çıktısına göre işe başlar.
 2. **Backend/API Agent'ı** — Node.js/NestJS iskeleti, REST/webhook endpoint'leri, Supabase şeması ve migration'lar.
-3. **Agent-Orkestrasyon / LLM-Entegrasyon Agent'ı** — Codex API çağrıları, belge analiz zinciri (OCR/vision → sınıflandırma → deadline/risk çıkarımı → eksik belge listesi → taslak mektup üretimi), basit state machine.
+3. **Agent-Orkestrasyon / LLM-Entegrasyon Agent'ı** — Claude API çağrıları, belge analiz zinciri (OCR/vision → sınıflandırma → deadline/risk çıkarımı → eksik belge listesi → taslak mektup üretimi), basit state machine.
 4. **Mesajlaşma Kanalı Agent'ı** — WhatsApp Business API / Telegram Bot API entegrasyonu (gerçek kimlik bilgisi yoksa mock adapter + net arayüz).
 5. **PII/Gizlilik Agent'ı** — yerel maskeleme/anonimleştirme katmanı (isim, TC/vergi no, adres → LLM'e gitmeden placeholder, yanıt gelince geri eşleme). Bu, moat olarak rapor edilen kritik özellik; şansa bırakma, ayrı bir agent ve ayrı bir test seti hak ediyor.
 6. **Tarayıcı Otomasyonu Agent'ı** — Playwright ile randevu sayfası / form gereksinimi izleme prototipi (tek bir örnek Ausländerbehörde ile sınırlı proof-of-concept).
@@ -74,8 +74,8 @@ Bu döngüyü mümkün olduğunca agent bazında paralelleştir: birbirine bağ�
 |---|---|---|
 | Giriş kanalı | WhatsApp Business API veya Telegram Bot API (Telegram ile başla — kurulumu API anahtarı gerektirmeden test edilebilir, WhatsApp Business doğrulaması insan-eylemi gerektirir) | Düşük friction, hızlı prototipleme |
 | Backend | Node.js / NestJS | Hız, mevcut know-how |
-| Agent orkestrasyonu | Doğrudan Codex API çağrıları + basit state machine (LangGraph v2'ye ertelenir) | 15 günlük MVP karmaşıklığı azaltma |
-| OCR/Vision | Codex'un native görsel okuma yeteneği | Ayrı OCR servisi maliyetinden kaçın |
+| Agent orkestrasyonu | Doğrudan Claude API çağrıları + basit state machine (LangGraph v2'ye ertelenir) | 15 günlük MVP karmaşıklığı azaltma |
+| OCR/Vision | Claude'un native görsel okuma yeteneği | Ayrı OCR servisi maliyetinden kaçın |
 | DB/Auth | Supabase (AB bölgesi seçilecek) | Hızlı kurulum + GDPR uyumu |
 | Tarayıcı otomasyonu | Playwright | Randevu/form izleme proof-of-concept |
 | PII koruma | Yerel regex/NER tabanlı maskeleme katmanı | GDPR moat, gerçek teknik derinlik |
@@ -114,6 +114,34 @@ Her faz kendi agent'ını/agent'larını doğurur; faz bitince `PROGRESS.md`'ye 
 - Repo'yu en başta initialize et, anlamlı `.gitignore` kur.
 - Her tamamlanan görev sonrası commit at (küçük, atomik, açıklayıcı mesaj — Conventional Commits formatı: `feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 - Faz bazlı branch kullanılabilir (`feature/pii-masking`, `feature/telegram-bot` vb.), ana entegrasyon `main`/`develop` üzerinde toplanır. Merge çakışmalarını kendin çöz, durup sorma.
+
+### 8.1 CI SONUCU BEKLENMEDEN MERGE'DEN SÖZ EDİLMEZ (bağlayıcı)
+
+Bir commit CI'ı tetiklediyse, **koşu bitip sonucu teyit edilmeden**:
+
+- "merge edeyim mi?" diye **sorma**,
+- merge **önerme**,
+- "hazır / merge'e hazır / sende" gibi ifadelerle merge kararını kullanıcıya
+  **devretme**.
+
+**Yapılacak:** koşunun bitmesini bekle, sonra:
+
+| Sonuç | Ne yapılır |
+|---|---|
+| 🟢 Yeşil | Sonucu **göstererek** bildir (koşu id'si, commit SHA, job'lar, test sayıları). Merge'den ancak bundan sonra söz et. |
+| 🔴 Kırmızı | **Sebebini açıkla** — hangi job, hangi adım, hangi test, log'dan ilgili satırlar. Merge'i gündeme getirme; önce düzelt. |
+
+**Teyit "conclusion: success" görmek DEĞİLDİR.** Bu projede doğrulama aracının
+kendisi dört kez yanıldı (D-033, D-039, D-041 + teşhis script'i). Job
+sonuçlarına ek olarak log'dan bağımsız kanıt oku: test/suite sayıları (yerelle
+eşit olmalı — D-045), kritik suite'lerin gerçekten `PASS` satırı ürettiği,
+eklenen yeni CI adımlarının gerçekten koştuğu.
+
+**Neden bağlayıcı:** "push ettim, CI koşuyor, merge kararı sende" demek, sonucu
+bilinmeyen bir değişikliği kullanıcının onayına sunmaktır. Kullanıcı "merge et"
+derse ve koşu kırmızı çıkarsa, kırık kod `main`'e ve oradan otomatik deploy ile
+**üretime** gider. Bekleme maliyeti birkaç dakika; hatanın maliyeti canlı bir
+bot.
 
 ---
 

@@ -1213,3 +1213,25 @@ varsayımsal olmadığı görüldü:
 - **Refleks:** uzun bir oturumun sonunda `ps -eo pid,etime,command | grep dist/main`
   ile yetim süreç taraması yapılmalı. Üretim etkilenmemişti (uptime kesintisiz,
   webhook yerinde, 0 bekleyen update) ama bu şansa bırakılacak bir şey değil.
+
+## D-050 — CI sonucu beklenmeden merge'den söz edilmez (süreç kuralı)
+
+- **Bağlam:** Bir dokümantasyon commit'i push edildi, CI tetiklendi ve koşu
+  **daha bitmeden** "merge kararı sende" denildi. Kullanıcı bunu düzeltti.
+- **Neden gerçek bir risk:** Bu repoda `main`'e merge → Railway **otomatik
+  deploy** demek. "CI koşuyor, merge kararı sende" cümlesi, sonucu bilinmeyen
+  bir değişikliği onaya sunmaktır; kullanıcı "merge et" der ve koşu kırmızı
+  çıkarsa kırık kod doğrudan üretime gider. Bekleme maliyeti birkaç dakika,
+  hatanın maliyeti canlı bir bot.
+- **KARAR (CLAUDE.md §8.1, bağlayıcı):** commit CI'ı tetiklediyse koşu bitip
+  sonucu teyit edilmeden merge sorulmaz, önerilmez ve karar kullanıcıya
+  devredilmez. Yeşilse sonuç **gösterilerek** bildirilir; kırmızıysa sebebi
+  (job, adım, test, log satırları) açıklanır ve merge gündeme getirilmez.
+- **Teyit, `conclusion: success` görmek DEĞİLDİR.** Job sonucuna ek olarak
+  log'dan bağımsız kanıt okunur: test/suite sayıları yerelle eşit mi (D-045
+  invaryantı), kritik suite'ler gerçekten `PASS` satırı üretmiş mi, yeni
+  eklenen CI adımları gerçekten koşmuş mu. Bu projede aracın kendisi dört kez
+  yanıldı (D-033, D-039, D-041 + teşhis script'i).
+- **`AGENTS.md` de senkronlandı.** İki dosya birebir kopyaydı; yalnızca
+  `CLAUDE.md`'yi güncellemek Codex oturumunun ESKİ kuralla çalışması demekti.
+  Kural: bu iki dosyadan biri değişirse diğeri aynı commit'te güncellenir.
