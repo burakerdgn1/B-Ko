@@ -55,12 +55,37 @@ jobs:
       - name: TypeScript tip kontrolü — scripts/
         run: npx tsc --noEmit -p tsconfig.scripts.json
 
+      # `npm run lint` yerel geliştirme için `--fix` içerir (rahatlık); CI'da
+      # aynı komutu kullanmak, otomatik düzeltilebilir bir hatayı ÇALIŞTIRICI
+      # üzerinde sessizce onarıp yeşil çıkardı — asıl PR dalında hata dururken.
+      # Bu projede "araç ✓ diyor ama gerçekte doğrulamıyor" sınıfı hatalar
+      # (D-033/D-039/D-041) tam olarak bu türden sessiz maskeleme yüzünden
+      # oldu; CI kapısı `--fix` OLMADAN, ham `eslint` ile çalışır.
+      - name: ESLint
+        run: npx eslint "{src,test,scripts}/**/*.ts"
+
       # REQUIRE_PLAYWRIGHT=1: tarayıcı yoksa test SKIP değil FAIL olur.
       # Kurulum adımı ileride bozulur/silinirse CI yeşil kalmaz.
+      #
+      # `--json --outputFile=jest-results.json`: aşağıdaki "Doküman senkron
+      # kontrolü" adımının README.md'deki geçen-test sayısını gerçek Jest
+      # sonucuyla karşılaştırabilmesi için makine-okunur bir çıktı üretir
+      # (bkz. scripts/check-docs-sync.ts, D-054). `--outputFile` kullanınca
+      # normal PASS/FAIL konsol çıktısı stderr'e kayar (stdout'ta değil) —
+      # GitHub Actions ikisini de log'a yazdığı için görünürlük kaybolmaz.
       - name: Birim testleri (Jest)
-        run: npx jest --ci
+        run: npx jest --ci --json --outputFile=jest-results.json
         env:
           REQUIRE_PLAYWRIGHT: "1"
+
+      # README.md'deki iddia edilen rakamlar (geçen test sayısı, karar sayısı)
+      # ile gerçek durum (DECISIONS.md, yukarıdaki Jest sonucu) arasında
+      # otomatik çapraz doğrulama — D-050'nin ruhu: "iddia" ile "gerçek durum"
+      # arasında birinin manuel güncellemeyi unutması CI'ı kırmalı.
+      - name: Doküman senkron kontrolü
+        run: npm run check:docs-sync
+        env:
+          JEST_RESULTS_JSON: jest-results.json
 
       - name: Üretim build (nest build)
         run: npm run build

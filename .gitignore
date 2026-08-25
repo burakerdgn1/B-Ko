@@ -15,6 +15,10 @@ test-results/
 *.tsbuildinfo
 tmp/
 
+# `scripts/check-docs-sync.ts` için CI'da üretilen makine-okunur Jest çıktısı
+# (bkz. .github/workflows/ci.yml, D-054) — üretilen artefakt, repoya girmez.
+jest-results.json
+
 # tesseract.js çalışma zamanında dil verisini ÇALIŞMA DİZİNİNE indirir
 # (~15-30 MB/dil). Bunlar önbellek; repoya girmemeli — bir kez girdiğinde
 # GitHub push'u boyut yüzünden HTTP 400 ile reddediyor (yaşandı).

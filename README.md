@@ -152,8 +152,8 @@ Supabase/Postgres · Zod · Playwright · Jest
 
 ## Durum
 
-**547 test geçiyor** (40 suite) · TypeScript strict · gerçek API anahtarı olmadan
-uçtan uca çalışır (mock modlar).
+**700 test geçiyor** (45 suite; 1 suite ilgisiz nedenle skip) · TypeScript strict ·
+gerçek API anahtarı olmadan uçtan uca çalışır (mock modlar).
 
 | Faz | Durum |
 |---|---|
@@ -180,7 +180,7 @@ uçtan uca çalışır (mock modlar).
 git clone <repo> && cd B-Ko
 npm install
 cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 547 test
+npm test                  # 700 test
 npm run start:dev
 ```
 
@@ -263,7 +263,7 @@ Son tarih yaklaştıkça 14/7/3/1 gün kala otomatik hatırlatma gönderilir.
 | Dosya | İçerik |
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Mimari, modül haritası, veri modeli |
-| [`DECISIONS.md`](DECISIONS.md) | Her mühendislik kararı + gerekçesi (19 karar) |
+| [`DECISIONS.md`](DECISIONS.md) | Her mühendislik kararı + gerekçesi (54 karar) |
 | [`STATUS.md`](STATUS.md) | Şu an neredeyiz |
 | [`PROGRESS.md`](PROGRESS.md) | Kronolojik ilerleme |
 | [`TODO.md`](TODO.md) | Görev listesi + bağımlılık grafiği |

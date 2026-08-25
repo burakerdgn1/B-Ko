@@ -1418,3 +1418,64 @@ varsayımsal olmadığı görüldü:
   D-052'deki sayıyla birebir aynı (lint/tip düzeltmeleri test DAVRANIŞINI
   değiştirmedi, yalnızca tip/lint uyumluluğu sağladı).
 
+## D-054 — README/ARCHITECTURE gerçek durumdan geride kalmıştı; artık CI'da otomatik çapraz doğrulanıyor
+
+- **Bağlam:** Ayrı bir mühendislik denetiminde README.md'nin ve
+  ARCHITECTURE.md'nin gerçek koddan geride kaldığı, somut ve kanıtlı şekilde
+  bulundu:
+  - README.md "**547 test geçiyor**" (40 suite) diyordu; `npm test` gerçekte
+    **700 test, 45 suite** (1 suite ilgisiz nedenle skip) veriyordu.
+  - README.md "Proje belgeleri" tablosunda DECISIONS.md için "(19 karar)"
+    yazıyordu; `grep -c "^## D-" DECISIONS.md` gerçekte **53** veriyordu.
+  - README.md "Lisans: MIT" diyordu ama repo kökünde `LICENSE` dosyası hiç
+    yoktu (`package.json`'daki `"license": "MIT"` alanına rağmen).
+  - ARCHITECTURE.md, `modules/documents/` diye aktif bir modülden ("mektup
+    alımı, durum yönetimi, depolama referansı") bahsediyordu; ama
+    `src/modules/documents/` gerçekte tamamen boştu (kod yok, yalnızca boş
+    bir `dto/` alt klasörü) — TODO.md (F2.2) zaten bunun terk edildiğini,
+    belge alımının `modules/analysis/` pipeline'ı içinde modellendiğini
+    kaydediyordu.
+- **Düzeltmeler:**
+  - README.md'deki test sayısı → "700 test geçiyor" (45 suite; 1 suite
+    ilgisiz nedenle skip), karar sayısı → "(53 karar)" olarak güncellendi.
+  - Repo köküne standart bir MIT `LICENSE` eklendi. Telif satırı gerçek bir
+    kişi adı UYDURMAK yerine `Copyright (c) 2026 BüKo project contributors`
+    olarak yazıldı (`package.json`'daki proje adı + son commit'in yılı).
+  - ARCHITECTURE.md'deki `modules/documents/` satırı kaldırıldı;
+    `modules/analysis/` maddesine, belge alımının ayrı bir modül olarak değil
+    bu pipeline içinde modellendiğine dair açık bir not eklendi.
+  - `src/modules/documents/` (kod barındırmayan, yalnızca boş `dto/`
+    içeren, git tarafından hiç izlenmeyen bir klasör — boş dizinler git'e
+    girmez) dosya sisteminden silindi. Var olmayan bir modülü var gibi
+    göstermek yerine gerçek durumu yansıtmak tercih edildi.
+- **Kalıcı çözüm (tek seferlik yama değil):** Bu sınıf kayma ("iddia" ile
+  "gerçek durum" arasında biri güncellenir, diğeri unutulur) D-050'nin
+  belgelediği "araç ✓ diyor ama gerçekte doğrulamıyor" ailesine çok benziyor.
+  Bunu bir daha manuel denetime bırakmamak için `scripts/check-docs-sync.ts`
+  eklendi:
+  - DECISIONS.md'deki gerçek `## D-XXX` sayısını sayar, README.md'nin
+    "(N karar)" ifadesindeki N ile karşılaştırır.
+  - README.md'nin "**N test geçiyor**" ifadesindeki N'i gerçek Jest
+    sonucundaki `numPassedTests` ile karşılaştırır.
+  - İkisinden biri uyuşmazsa `process.exit(1)` ile kırmızı çıkar ve hangi
+    sayının hangi sayı olduğunu (README vs. gerçek) net yazar.
+  - **Test sayısı kaynağı — tasarım kararı:** jest'i CI'da İKİNCİ KEZ
+    çalıştırmak yerine (chromium kurulumu + tüm suite'i tekrar koşturmak
+    CI dakikası israfı olurdu), `.github/workflows/ci.yml`'deki mevcut
+    "Birim testleri (Jest)" adımı `--json --outputFile=jest-results.json`
+    ile zaten makine-okunur bir sonuç üretecek şekilde genişletildi; script
+    CI'da bu dosyayı OKUR. Yerelde (`npm run check:docs-sync`) böyle bir
+    dosya genelde yok — script bu durumda kendi kendine yeterli olsun diye
+    jest'i kendisi bir kez çalıştırıp geçici bir JSON üretir. Bu, "CI
+    yapısına en az invaziv" seçenekti.
+  - `package.json`'a `"check:docs-sync": "ts-node -T scripts/check-docs-sync.ts"`
+    eklendi; CI'da yeni bir "Doküman senkron kontrolü" adımı olarak, Jest
+    adımından hemen sonra ve build'den önce çalıştırılıyor.
+- **Doğrulama:** `npm run check:docs-sync` → yeşil (Karar sayısı: DECISIONS.md
+  54 = README.md 54 — bu kaydın kendisi eklendikten SONRAKİ nihai sayı; Test
+  sayısı: Jest 700 = README.md 700). `npx tsc --noEmit`
+  → temiz. `npm run typecheck:scripts` → temiz. `npm run lint` → 0 hata/0
+  uyarı (yeni script `scripts/**` ESLint kurallarından — D-053'te eklenen
+  `no-restricted-imports`/type-checked kurallar dahil — temiz geçti). `npm
+  test` → 45/46 suite yeşil (1 skip, ilgisiz), 700/700 test yeşil, 0 kırmızı
+  (bu kararın kendisi test davranışını değiştirmedi).

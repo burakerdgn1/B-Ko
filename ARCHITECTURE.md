@@ -60,8 +60,10 @@ Model default: `claude-sonnet-5` (analiz), vision destekli. Model ID `.env` ile 
 - `common/pii/` — **PII maskeleme (moat, kritik).** Deterministik tokenizasyon.
 - `common/crypto/` — AES-256-GCM zarf; PII vault şifreleme.
 - `modules/channels/` — `ChannelAdapter` arayüzü; `telegram/` (gerçek), `mock/` (WhatsApp yerine).
-- `modules/documents/` — mektup alımı, durum yönetimi, depolama referansı.
-- `modules/analysis/` — orkestrasyon state machine + pipeline.
+- `modules/analysis/` — orkestrasyon state machine + pipeline; belge alımı
+  (mektup fotoğrafı/PDF, durum yönetimi, depolama referansı) ayrı bir
+  `documents/` modülü olarak değil, bu pipeline'ın içinde modellendi
+  (bkz. TODO.md F2.2).
 - `modules/llm/` — Claude sarmalayıcı; **her çağrı PiiService'ten geçer**, prompt şablonları.
 - `modules/drafts/` — taslak mektup üretimi + **human-in-the-loop approval state**.
 - `modules/reminders/` — deadline hatırlatma + GDPR (Art.17) silme cron.
