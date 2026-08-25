@@ -1235,3 +1235,43 @@ varsayımsal olmadığı görüldü:
 - **`AGENTS.md` de senkronlandı.** İki dosya birebir kopyaydı; yalnızca
   `CLAUDE.md`'yi güncellemek Codex oturumunun ESKİ kuralla çalışması demekti.
   Kural: bu iki dosyadan biri değişirse diğeri aynı commit'te güncellenir.
+
+## D-051 — `pii.real-fixtures.spec.ts`: gitignore'lu `expected.json` şema uyuşmazlığı canlıda test çökertti
+
+- **Bağlam:** Bir mühendislik denetiminde `npm test` bu makinede `1 failed, 1
+  skipped, 44 passed` verdi. Kırmızı olan `src/common/pii/pii.real-fixtures.spec.ts`
+  bir assertion'da değil, suite YÜKLENİRKEN `TypeError` ile çöküyordu.
+- **Kök neden:** `test-fixtures/real/expected.json` — D-048 ile eklenen, `.gitignore`'lu,
+  yalnızca bu makinede var olan gerçek fixture beklentileri dosyası — spec'in
+  beklediği kanonik şemayla (`{ file, expectedRiskLevel, expectedDeadline,
+  expectedPiiTypes }`, bkz. README.md ve `expected.example.json`) değil, anahtarın
+  kendisini zaten dosya adı olarak kullanan, alan adları farklı (`riskLevel`,
+  `deadline`, `piiMustBeMasked`) daha zengin bir şemayla yazılmıştı. Dosyanın
+  kendi `_schema_note` alanı bunu itiraf ediyordu: "kanonik şemaya erişim
+  olmadan yazıldı, hizalanması gerekiyor." Spec kayıtsız şartsız
+  `expected[k].file` okuyunca `undefined` çıktı, `join(REAL_DIR, undefined)`
+  patladı — cryptic bir `TypeError`, anlamlı bir hata değil.
+  Dosya gitignore'lu olduğu için kalıcı düzeltme dosyada değil, KOD'da olmalıydı.
+- **KARAR:** `pii.real-fixtures.spec.ts`'e bir `normalizeEntry()` adımı eklendi:
+  (1) `.file` alanı yoksa anahtarın kendisi (gerekirse `.txt` eklenerek) dosya
+  adı olarak kullanılır; (2) girdi nesne değilse (string/array/null) sessizce
+  atlamak yerine hangi anahtarda ne bulunduğunu söyleyen açık bir hata
+  fırlatılır. Bilinçli olarak YAPILMAYAN şey: `expectedPiiTypes`'ı zengin
+  şemadaki `piiMustBeMasked`'ın anahtarlarından otomatik türetmek. Denendi —
+  gerçek fixture'larda STEUERID/IBAN/PHONE'un maskeleme motoru tarafından
+  yakalanmadığını ortaya çıkardı (muhtemelen boşluklu IBAN/Steuer-ID biçimleri,
+  D-046 sınıfı bir desen boşluğu olabilir). Bu gerçek ve ilginç bir bulgu ama
+  BAŞKA bir görev — bu görevin kapsamı "test altyapısını onar", "üretim
+  maskeleme motorunu genişlet" değil; ikisini aynı düzeltmede karıştırmak hem
+  denetim kapsamını bulanıklaştırır hem de kimin onayladığı belirsiz bir
+  davranış değişikliğini sessizce içeri sokar.
+- **Doğrulama:** `npx jest --testPathPattern pii.real-fixtures` → 1 suite, 40
+  test, hepsi yeşil (önceden: suite çöktüğü için 0 test bile çalışmıyordu).
+  Tam `npm test`: 45/46 suite yeşil (1 skip, önceden de öyleydi, ilgisiz),
+  698 test yeşil, 0 kırmızı.
+- **Açık iş:** STEUERID/IBAN/PHONE'un `piiMustBeMasked` altında listelenip
+  maskeleme motorunca gerçekten yakalanıp yakalanmadığı henüz doğrulanmadı —
+  bir sonraki oturumda `npm run check:real-fixtures` ile veya
+  `expectedPiiTypes`'ı bilinçli olarak elle `expected.json`'a ekleyip
+  ayrı bir görev olarak incelenmeli.
+
