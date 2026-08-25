@@ -1275,3 +1275,56 @@ varsayımsal olmadığı görüldü:
   `expectedPiiTypes`'ı bilinçli olarak elle `expected.json`'a ekleyip
   ayrı bir görev olarak incelenmeli.
 
+## D-052 — `RetentionService`: statik `@Cron` yerine `SchedulerRegistry` ile runtime yeniden-zamanlama
+
+- **Bağlam:** Bir mühendislik denetiminde `retention.service.ts`'te
+  `@Cron(DEFAULT_DELETION_CRON, { name: 'gdpr-purge' })` dekoratörünün
+  **derleme zamanında sabit** bir string kullandığı, `.env`'deki
+  `DELETION_CRON` farklı bir değer verse bile gerçek cron zamanlamasının
+  ASLA değişmediği (yalnızca `onModuleInit`'te bir uyarı logu basıldığı)
+  tespit edildi. Kök neden: `@Cron`'un argümanı sınıf gövdesi
+  değerlendirilirken (DI enjeksiyonundan ÖNCE) sabitlenmek zorunda —
+  enjekte edilen `AppConfigService`'e decorator içinden erişilemiyordu.
+- **KARAR:** Statik `@Cron` dekoratörü KALDIRILDI. Bunun yerine NestJS'in
+  resmi "Dynamic schedule module" deseni uygulandı: `RetentionService`
+  artık `SchedulerRegistry`'yi enjekte ediyor, `onModuleInit()` içinde
+  `AppConfigService.deletionCron`'dan okunan GERÇEK değerle `cron`
+  paketinin `CronJob`'ını oluşturup `schedulerRegistry.addCronJob('gdpr-purge', job)`
+  ile RUNTIME'DA kaydediyor ve `job.start()` ile başlatıyor.
+  `DEFAULT_DELETION_CRON` ('0 3 * * *') sabiti yalnızca dokümantasyon/log
+  amaçlı korundu — `env.schema.ts`'teki gerçek varsayımla birebir eşleşiyor.
+- **`cron` paketi ek bağımlılık olarak eklenmedi:** `@nestjs/schedule@^4.1.1`
+  zaten `cron@3.2.1`'i (tipleriyle birlikte) geçişli bağımlılık olarak
+  `node_modules/cron`'a kuruyor; `SchedulerRegistry.addCronJob` zaten bu
+  paketin `CronJob` tipini bekliyor. `npm install` gerekmedi,
+  `package.json` değiştirilmedi.
+- **`handlePurgeCron()`'daki `SCHEDULER_SKIP_STARTUP` guard'ı (D-047)
+  KORUNDU** — kaldırılmadı, çünkü hem `scheduler-isolation.spec.ts`'in
+  servisi DOĞRUDAN (`new RetentionService(...)`, Nest lifecycle'ı
+  atlayarak) kurup `handlePurgeCron()`'u çağıran testleri hem de "elle
+  tetiklenen cron callback'i her zaman güvenli olmalı" ilkesi buna bağımlı.
+  Guard, cron job'ın KAYDINI değil, tetiklendiğinde DB'ye dokunmasını
+  engelliyor — iki kaygı kasıtlı olarak ayrı tutuldu.
+- **Test stratejisi (D-043/D-047 ile aynı, kanıtlanmış desen izlendi):**
+  `retention.service.spec.ts`'e `DELETE_CRON dinamik yeniden-zamanlama`
+  başlıklı yeni bir `describe` eklendi. İlk denenen yaklaşım —
+  `it()` içinde `process.env.DELETION_CRON`'u değiştirip `AppModule`'ü
+  yeniden `Test.createTestingModule(...)` ile derlemek — ÇALIŞMADI:
+  `scheduler-isolation.spec.ts`'in zaten belgelediği gibi `AppModule` bu
+  spec dosyasının tepesinde STATİK import edildiğinden, `ConfigModule.forRoot()`
+  doğrulaması `process.env`'i test gövdesi çalışmadan ÖNCE okuyup dondurmuş
+  oluyor; sonradan `process.env`'i değiştirmek etkisiz kalıyor (spy 3 çağrı
+  yakaladı ama hiçbiri özel cron değerini taşımıyordu). Bunun yerine
+  `RetentionService`'i sahte bir `AppConfigService` ile DOĞRUDAN kurup
+  (gerçek, DI'sız bir `SchedulerRegistry` örneğiyle) `onModuleInit()`'i elle
+  çağıran bir birim testine geçildi — hem `jest.spyOn(schedulerRegistry,
+  'addCronJob')` ile çağrının GERÇEKTEN özel zamanlamayla yapıldığı, hem de
+  `schedulerRegistry.getCronJob('gdpr-purge').cronTime.source` ile kaydın
+  kalıcı ve `running: true` olduğu doğrulanıyor. Ayrı bir test, varsayılan
+  env ile boot edilen ana `app`'te de aynı job'ın `DEFAULT_DELETION_CRON`
+  ile ve çalışır durumda kayıtlı olduğunu doğruluyor.
+- **Doğrulama:** `npx jest --testPathPattern "retention.service|scheduler-isolation"`
+  → 2 suite, 16 test, hepsi yeşil. Tam `npm test`: 45/46 suite yeşil (1 skip,
+  ilgisiz), 700 test yeşil, 0 kırmızı (D-051'deki 698'den +2 — yeni testler).
+  `npx tsc --noEmit` temiz.
+

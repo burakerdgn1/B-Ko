@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
 import { AppConfigService } from '../../config/config.service';
 import { AnalysisRepository } from '../persistence/repositories/analysis.repository';
 import { DocumentRepository } from '../persistence/repositories/document.repository';
@@ -10,24 +11,25 @@ import { UserRepository } from '../persistence/repositories/user.repository';
 import { AuditRepository } from '../persistence/repositories/audit.repository';
 
 /**
- * `AppConfigService.deletionCron`'un varsayılan değeri (`env.schema.ts`).
+ * `AppConfigService.deletionCron`'un varsayılan değeri (`env.schema.ts` ile
+ * BİREBİR aynı tutulmalı) — yalnızca dokümantasyon/log mesajı amaçlı.
  *
- * KISITLAMA: `@Cron` dekoratörünün argümanı sınıf gövdesi değerlendirilirken
- * (DI enjeksiyonundan ÖNCE) sabitlenmek zorundadır — enjekte edilen
- * `AppConfigService` örneğine decorator içinde erişilemez. Bu yüzden burada
- * config'in VARSAYILANIYLA birebir eşleşen sabit bir literal kullanılıyor.
- * `.env` üzerinden farklı bir `DELETION_CRON` verilirse, bu cron zamanlaması
- * OTOMATİK güncellenmez — yalnızca `onModuleInit` içinde bir uyarı loglanır.
- * Gerçek runtime yeniden-zamanlama `@nestjs/schedule`'ın `SchedulerRegistry`'si
- * + `cron` paketinin `CronTime`'ı ile yapılabilir; bunu burada uygulamadım
- * çünkü `cron` paketi `package.json`'da DOĞRUDAN bir bağımlılık olarak
- * tanımlı değil (yalnızca `@nestjs/schedule`'ın geçişli bağımlılığı) ve görev
- * kapsamım `npm install` çalıştırmama izin vermiyor — DevOps/paket sahipliği
- * dışına çıkmadan en güvenli seçenek bu. Ana oturum isterse `cron`'u doğrudan
- * bağımlılık olarak ekleyip `SchedulerRegistry` tabanlı dinamik yeniden
- * zamanlamayı ekleyebilir (bkz. bu ajanın çıktı raporu).
+ * DÜZELTME (D-051): Önceden bu değer statik bir `@Cron(...)` dekoratörüne
+ * geçiriliyordu. Dekoratörün argümanı sınıf gövdesi değerlendirilirken (DI
+ * enjeksiyonundan ÖNCE) sabitlenmek ZORUNDA olduğundan, `.env`'den farklı bir
+ * `DELETION_CRON` verilse bile gerçek zamanlama hiçbir zaman değişmiyordu —
+ * yalnızca bir uyarı loglanıyordu. Artık `@Cron` KULLANILMIYOR: gerçek cron,
+ * `onModuleInit()` içinde `SchedulerRegistry.addCronJob()` ile config'ten
+ * okunan GERÇEK `DELETION_CRON` değeriyle runtime'da kaydediliyor — NestJS'in
+ * resmi "Dynamic schedule module" deseni. `cron` paketi `package.json`'da
+ * doğrudan bağımlılık olarak listeli değil ama `@nestjs/schedule@^4.1.1`'in
+ * geçişli bağımlılığı olarak zaten `node_modules/cron`'da kurulu (v3.2.1,
+ * tipleriyle birlikte) — ek `npm install` gerekmedi.
  */
-const DEFAULT_DELETION_CRON = '0 3 * * *';
+export const DEFAULT_DELETION_CRON = '0 3 * * *';
+
+/** `SchedulerRegistry`'de kayıtlı GDPR silme cron job'ının adı. */
+export const GDPR_PURGE_CRON_JOB_NAME = 'gdpr-purge';
 
 /** `purgeNow`/`deleteUserData` tarafından döndürülen, tabloya göre silinen adet. */
 export type PurgeCounts = Record<
@@ -39,7 +41,9 @@ export type PurgeCounts = Record<
  * GDPR Art. 17 — veri minimizasyonu/silme servisi (F5.1, CLAUDE.md §7).
  *
  * İki tetikleme yolu:
- *   1. Otomatik: `@Cron` ile periyodik `purgeNow()` (süresi geçmiş TÜM kayıtlar).
+ *   1. Otomatik: `onModuleInit()`'te `SchedulerRegistry` ile RUNTIME'DA
+ *      kaydedilen, `DELETION_CRON`'a göre periyodik `purgeNow()` çağrısı
+ *      (süresi geçmiş TÜM kayıtlar).
  *   2. Elle: `purgeNow()` (aynı mantık, endpoint/test için) ve `deleteUserData()`
  *      (tek bir kullanıcının TÜM verisi — kullanıcının "verimi sil" talebi).
  *
@@ -53,6 +57,7 @@ export class RetentionService implements OnModuleInit {
 
   constructor(
     private readonly config: AppConfigService,
+    private readonly schedulerRegistry: SchedulerRegistry,
     private readonly users: UserRepository,
     private readonly documents: DocumentRepository,
     private readonly analyses: AnalysisRepository,
@@ -62,19 +67,30 @@ export class RetentionService implements OnModuleInit {
     private readonly audit: AuditRepository,
   ) {}
 
+  /**
+   * GDPR silme cron'unu RUNTIME'DA, config'ten okunan gerçek `DELETION_CRON`
+   * değeriyle kaydeder (bkz. `DEFAULT_DELETION_CRON` üstündeki DÜZELTME notu).
+   * `SchedulerRegistry.addCronJob`, döndürdüğü `CronJob`'ın `fireOnTick`'ini
+   * otomatik olarak try/catch'e sarar (bkz. `@nestjs/schedule` kaynağı) — bu
+   * yüzden burada ayrıca bir hata yakalama sarmalayıcısına gerek yok.
+   */
   onModuleInit(): void {
-    if (this.config.deletionCron !== DEFAULT_DELETION_CRON) {
-      this.logger.warn(
-        `DELETION_CRON='${this.config.deletionCron}' olarak ayarlanmış, ancak ` +
-          `@Cron dekoratörü derleme-zamanı sabiti '${DEFAULT_DELETION_CRON}' ` +
-          'kullanıyor. Gerçek zamanlamayı config ile hizalamak için ana ' +
-          "oturumun SchedulerRegistry tabanlı dinamik yeniden zamanlama " +
-          'eklemesi gerekir (bkz. reminders modülü raporu).',
-      );
-    }
+    const cronTime = this.config.deletionCron;
+    const job = new CronJob(cronTime, () => this.handlePurgeCron());
+
+    this.schedulerRegistry.addCronJob(GDPR_PURGE_CRON_JOB_NAME, job);
+    job.start();
+
+    this.logger.log(
+      cronTime === DEFAULT_DELETION_CRON
+        ? `GDPR silme cron'u ('${GDPR_PURGE_CRON_JOB_NAME}') varsayılan ` +
+            `zamanlamayla kaydedildi: '${cronTime}'.`
+        : `GDPR silme cron'u ('${GDPR_PURGE_CRON_JOB_NAME}') DELETION_CRON ` +
+            `override'ı ile kaydedildi: '${cronTime}' (varsayılan ` +
+            `'${DEFAULT_DELETION_CRON}'dan farklı).`,
+    );
   }
 
-  @Cron(DEFAULT_DELETION_CRON, { name: 'gdpr-purge' })
   async handlePurgeCron(): Promise<void> {
     // D-047: EN BAŞTA — `purgeNow()` SİLME yapar, sonradan sınamak geç olurdu.
     // Guard yalnızca CRON yolunu kapatır; `purgeNow()` elle çağrıldığında

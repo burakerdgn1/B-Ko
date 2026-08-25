@@ -1,7 +1,9 @@
 import type { INestApplication } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from '../../app.module';
+import type { AppConfigService } from '../../config/config.service';
 import { PiiEntityType } from '../../common/pii/pii.types';
 import { SealedPiiRecord } from '../../common/pii/pii-vault.service';
 import { AnalysisRepository } from '../persistence/repositories/analysis.repository';
@@ -12,7 +14,7 @@ import { PiiVaultRepository } from '../persistence/repositories/pii-vault.reposi
 import { ReminderRepository } from '../persistence/repositories/reminder.repository';
 import { UserRepository } from '../persistence/repositories/user.repository';
 import { RemindersModule } from './reminders.module';
-import { RetentionService } from './retention.service';
+import { DEFAULT_DELETION_CRON, GDPR_PURGE_CRON_JOB_NAME, RetentionService } from './retention.service';
 
 /**
  * `RetentionService` (GDPR Art.17) testleri — gerçek in-memory persistence,
@@ -417,11 +419,11 @@ describe('RetentionService', () => {
       });
 
       // Kullanıcı-bazlı (onboarding) + belge-bazlı vault kayıtları.
-      await piiVault.create(dummySealedRecord({ userId: userA.id } as never));
+      await piiVault.create(dummySealedRecord({ userId: userA.id }));
       await piiVault.create(
-        dummySealedRecord({ userId: userA.id, documentId: docA.id } as never),
+        dummySealedRecord({ userId: userA.id, documentId: docA.id }),
       );
-      await piiVault.create(dummySealedRecord({ userId: userB.id } as never));
+      await piiVault.create(dummySealedRecord({ userId: userB.id }));
 
       await service.deleteUserData(userA.id);
 
@@ -440,6 +442,71 @@ describe('RetentionService', () => {
       expect(await drafts.findById(draftB.id)).not.toBeNull();
       expect(await reminders.findById(reminderB.id)).not.toBeNull();
       expect(await piiVault.findByUser(userB.id)).toHaveLength(1);
+    });
+  });
+
+  /**
+   * D-051 regresyonu: `@Cron` dekoratörü derleme-zamanı sabiti kullandığından
+   * `DELETION_CRON` override'ı GERÇEK zamanlamayı hiç değiştirmiyordu (yalnızca
+   * bir uyarı loglanıyordu). Artık cron, `onModuleInit()` içinde config'ten
+   * okunan gerçek değerle `SchedulerRegistry.addCronJob()` ile RUNTIME'DA
+   * kaydediliyor — burada bunu hem "gerçekten çağrıldı" (spy) hem de
+   * "registry'de kalıcı olarak duruyor" (getCronJob) açısından doğruluyoruz.
+   */
+  describe('DELETION_CRON dinamik yeniden-zamanlama (SchedulerRegistry, D-051)', () => {
+    it('varsayılan DELETION_CRON ile "gdpr-purge" adında ÇALIŞAN bir cron job kaydedilir', () => {
+      const schedulerRegistry = app.get(SchedulerRegistry);
+      const job = schedulerRegistry.getCronJob(GDPR_PURGE_CRON_JOB_NAME);
+
+      expect(job).toBeDefined();
+      expect(job.cronTime.source).toBe(DEFAULT_DELETION_CRON);
+      expect(job.running).toBe(true);
+    });
+
+    // NOT (bkz. `scheduler-isolation.spec.ts`'teki büyük yorum): `AppModule`
+    // bu dosyanın tepesinde statik import edildiği İÇİN `ConfigModule.forRoot()`
+    // doğrulaması `process.env`'i O ANDA (test gövdesi çalışmadan ÖNCE) okur —
+    // `it()` içinde `process.env.DELETION_CRON` değiştirip yeniden
+    // `Test.createTestingModule({ imports: [AppModule, ...] })` çağırmak,
+    // AYNI (çoktan doğrulanmış) config'i yeniden kullanır ve ETKİSİZDİR. D-043
+    // ve D-047 testlerinin izlediği kanıtlanmış deseni izliyoruz: servisi
+    // sahte bir `AppConfigService` ile DOĞRUDAN kurup `onModuleInit()`'i elle
+    // çağırıyoruz — `SchedulerRegistry` ise gerçek (yalnızca bir `Map` saran,
+    // DI'sız basit bir sınıf), böylece `addCronJob`'ın GERÇEKTEN doğru
+    // zamanlamayla çağrıldığını hem spy hem de registry içeriğiyle doğrularız.
+    it('DELETION_CRON farklı bir değerle verildiğinde, SchedulerRegistry.addCronJob GERÇEK zamanlamayla çağrılır', () => {
+      const customCron = '*/5 * * * *';
+      const schedulerRegistry = new SchedulerRegistry();
+      const addCronJobSpy = jest.spyOn(schedulerRegistry, 'addCronJob');
+
+      const fakeConfig = {
+        deletionCron: customCron,
+        schedulerSkipStartup: false,
+      } as AppConfigService;
+
+      const retentionService = new RetentionService(
+        fakeConfig,
+        schedulerRegistry,
+        {} as never, {} as never, {} as never, {} as never,
+        {} as never, {} as never, {} as never,
+      );
+
+      retentionService.onModuleInit();
+
+      // 1. Spy: `addCronJob` GERÇEKTEN özel zamanlamayla çağrıldı mı?
+      expect(addCronJobSpy).toHaveBeenCalledWith(
+        GDPR_PURGE_CRON_JOB_NAME,
+        expect.objectContaining({
+          cronTime: expect.objectContaining({ source: customCron }),
+        }),
+      );
+
+      // 2. Registry: kayıt kalıcı mı, GERÇEKTEN bu değerle mi duruyor ve çalışıyor mu?
+      const registeredJob = schedulerRegistry.getCronJob(GDPR_PURGE_CRON_JOB_NAME);
+      expect(registeredJob.cronTime.source).toBe(customCron);
+      expect(registeredJob.running).toBe(true);
+
+      registeredJob.stop();
     });
   });
 });

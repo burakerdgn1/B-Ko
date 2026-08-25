@@ -68,6 +68,7 @@ describe('Zamanlayıcı izolasyonu — SCHEDULER_SKIP_STARTUP (D-047)', () => {
     it('handlePurgeCron: purgeNow() çağrılmaz (silme yapılmaz)', async () => {
       const service = new RetentionService(
         makeConfig(true),
+        {} as never, // schedulerRegistry — handlePurgeCron'da kullanılmaz
         {} as never, {} as never, {} as never, {} as never,
         {} as never, {} as never, {} as never,
       );
@@ -95,6 +96,7 @@ describe('Zamanlayıcı izolasyonu — SCHEDULER_SKIP_STARTUP (D-047)', () => {
     it('handlePurgeCron: purgeNow() çağrılır', async () => {
       const service = new RetentionService(
         makeConfig(false),
+        {} as never, // schedulerRegistry — handlePurgeCron'da kullanılmaz
         {} as never, {} as never, {} as never, {} as never,
         {} as never, {} as never, {} as never,
       );
