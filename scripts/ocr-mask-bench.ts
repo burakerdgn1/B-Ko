@@ -53,12 +53,12 @@ const FIXTURE_DIR = join(__dirname, '..', 'test-fixtures');
 const LETTER_DIR = join(FIXTURE_DIR, 'behordenbriefe');
 const OCR_DIR = join(FIXTURE_DIR, 'ocr');
 
-const profiles: Record<string, KnownPiiProfile> = JSON.parse(
+const profiles = JSON.parse(
   readFileSync(join(FIXTURE_DIR, 'profiles.json'), 'utf8'),
-);
-const expected: Record<string, { file: string }> = JSON.parse(
+) as Record<string, KnownPiiProfile>;
+const expected = JSON.parse(
   readFileSync(join(LETTER_DIR, 'expected.json'), 'utf8'),
-);
+) as Record<string, { file: string }>;
 
 // ── Render ──────────────────────────────────────────────────────────────────
 

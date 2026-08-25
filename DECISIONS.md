@@ -1328,3 +1328,93 @@ varsayımsal olmadığı görüldü:
   ilgisiz), 700 test yeşil, 0 kırmızı (D-051'deki 698'den +2 — yeni testler).
   `npx tsc --noEmit` temiz.
 
+## D-053 — ESLint hiç kurulu değildi: `npm run lint` yıllardır `command not found` veriyordu
+
+- **Bağlam:** Bir mühendislik denetiminde `package.json`'daki
+  `"lint": "eslint ... --fix"` script'inin ÇALIŞTIRILAMADIĞI bulundu:
+  `eslint` hiçbir zaman `devDependencies`'e eklenmemiş, hiçbir
+  `.eslintrc`/`eslint.config.*` dosyası da yoktu. Proje bugüne kadar HİÇ
+  statik analizden geçmemişti — `npm test`/`tsc` yeşildi ama bu, kör bir
+  nokta olduğu gerçeğini değiştirmiyordu.
+- **KARAR:** Güncel (flat config) bir ESLint kurulumu eklendi:
+  `eslint@10`, `typescript-eslint@8`, `@eslint/js`, `eslint-config-prettier`
+  devDependency olarak kuruldu; `eslint.config.mjs` oluşturuldu. Kural seti
+  `eslint.configs.recommended` + `tseslint.configs.recommendedTypeChecked`
+  — bilinçli olarak `strict`/`stylistic` setleri DEĞİL: ~130 dosyalık,
+  şimdiye kadar hiç lint edilmemiş bir kod tabanında daha agresif bir set
+  yüzlerce kozmetik hataya yol açardı. `npm run lint` glob'u `{src,test}`
+  idi, `scripts` EKSİKTİ — `{src,test,scripts}` olarak düzeltildi (aksi
+  halde `scripts/` hem tip kontrolünden hem lint'ten muaf kalmaya devam
+  ederdi, D-048'in `typecheck:scripts` ile kapattığı boşluğun lint eşdeğeri).
+- **İlk koşuda 220 hata çıktı, tamamı düzeltildi (sıfıra indirildi), davranış
+  DEĞİŞTİRİLMEDEN:**
+  - **`@typescript-eslint/no-unsafe-assignment` (25 örnek, `supabase/*.repository.ts`):**
+    Supabase client generic tip almadan kullanıldığından `.single()`/
+    `.maybeSingle()` sonrası `data: any`. Gerçek düzeltme: yanıtı doğrudan
+    `(await ...) as { data: XRow | null; error: PostgrestError | null }`
+    ile cast edip use-site'daki eski `data as XRow` cast'lerini kaldırmak
+    (artık gereksizdi). 8 repository dosyasının tamamında uygulandı — bu
+    projenin production kod yolundaki TEK gerçek `any` sızıntısıydı.
+  - **`@typescript-eslint/require-await` (72 örnek, ezici çoğunluk
+    `persistence/memory/*.repository.ts` + `channels/mock/mock.adapter.ts`):**
+    Bu sınıflar, gerçek (Supabase/Telegram) implementasyonlarla AYNI async
+    arayüzü sürücüden bağımsız olarak uygulamak ZORUNDA (`persistence.module.ts`
+    `DB_DRIVER`'a göre ikisi arasında sessizce geçiş yapıyor) ama kendi
+    gövdeleri I/O yapmadığından hiç `await` içermiyor — hata değil, kasıtlı
+    mimari kısıt. Kural bu üç dizin için `eslint.config.mjs`'de KAPATILDI
+    (yorumla gerekçelendirildi), spec dosyaları için de aynı şekilde (jest
+    mock'ları `async () => value` deseniyle aynı false-positive'i üretiyor).
+  - **`no-unsafe-*` ailesi + `unbound-method` + `no-require-imports`
+    (spec dosyalarında, ~90 örnek):** grammy/Supabase/Anthropic SDK'larını
+    taklit eden elle yazılmış test mock'ları doğası gereği `any` sızdırıyor;
+    test kodu deploy edilmediği için bunları tip-güvenli hale getirmenin
+    üretim güvenliğine katkısı yok, efor kapsam dışı. `**/*.spec.ts` için
+    kapatıldı — gerekçe `eslint.config.mjs`'de.
+  - **`preserve-caught-error` (5 örnek, `llm.service.ts`/`ocr.provider.ts`
+    dahil production dosyaları):** yakalanan hata yeniden fırlatılırken
+    `cause` eklenmiyordu (debug için orijinal stack kayboluyordu). GERÇEK
+    düzeltme: `{ cause: err }` eklendi. Bu, `Error`'ın 2-argümanlı
+    constructor'ının tip bilgisini gerektiriyor ve `tsconfig.json`'ın
+    `target: ES2021` varsayılan lib'i bunu içermiyordu (TS2554) — `"lib":
+    ["ES2021", "ES2022.Error"]` eklendi. Bunun derleme ÇIKTISINI
+    etkilemediği doğrulandı: Node 22 `cause`'u runtime'da zaten native
+    destekliyor, `target` yalnızca sözdizimi/polyfill'i etkiler; `npm run
+    build` + `dist/main.js`'in konumu (D-048 invaryantı) sonrasında
+    doğrulandı.
+  - **`no-unnecessary-type-assertion` (12 örnek):** `--fix` ile otomatik
+    temizlendi — TEK istisna `telegram.controller.spec.ts`: autofix, private
+    `logger` alanına erişmek için kasıtlı konan `as never as {...}` köprü
+    cast'ini "gereksiz" sanıp SİLDİ ve `tsc`'yi TS2341 ile kırdı (autofix'in
+    kendisi hatalıydı — otomatik düzeltmeyi bile kör güvenmemek gerektiğinin
+    bir örneği daha). Cast geri eklendi, satıra hedefli bir
+    `eslint-disable-next-line` gerekçeli yorumla kondu.
+  - **İki gerçek D-043 tekrarı bulundu ve düzeltildi:** `scripts/prompt-eval.ts`
+    ve `scripts/smoke-supabase.ts`, D-043'ün önlemeye çalıştığı TAM deseni
+    zaten işliyordu — `NestFactory.createApplicationContext(AppModule)`'ü
+    DOĞRUDAN çağırıyorlardı (yeni eklenen `no-restricted-imports` kuralı bunu
+    yakaladı). İkisi de `bootScriptContext()`'e geçirildi; davranış aynı
+    kaldı (ikisi de zaten kanal/scheduler'a ihtiyaç duymuyordu).
+  - Küçük gerçek hatalar: `pii.service.ts`'de iki ölü fonksiyon
+    (`escapeRegex`/`foldLocaleCase`, gerçek implementasyon zaten
+    `ocr-tolerance.ts`'te) kaldırıldı; `config.service.ts`'de bir gereksiz
+    cast; `conversation.service.ts`'de kullanılmayan `catch (error)` binding'i
+    (`catch` olarak sadeleştirildi).
+- **`scripts/` için D-043'ü YAPISAL olarak zorlayan yeni kural:**
+  `eslint.config.mjs`'de `scripts/**/*.ts` (yalnızca `script-context.ts`
+  muaf) için `no-restricted-imports` ile `@nestjs/core` import'u yasaklandı.
+  Artık bu ihlal `npm run lint`'te (ve CI'da) DERLEME ZAMANINDA yakalanıyor,
+  denetimde tesadüfen bulunmayı beklemiyor.
+- **CI'a `ESLint` adımı eklendi** (`.github/workflows/ci.yml`, tsc-scripts
+  adımından hemen sonra, Jest'ten önce) — ama `npm run lint` DEĞİL, ham
+  `npx eslint ... ` (─fix'siz): `npm run lint`'in `--fix`'i CI çalıştırıcısında
+  bir hatayı sessizce onarıp yeşil çıkarabilir, oysa asıl PR dalında hata
+  DURUR — tam olarak bu projenin dört kez ısırıldığı "araç ✓ diyor ama
+  gerçekte doğrulamıyor" sınıfı (D-033/D-039/D-041). CI kapısı kasıtlı olarak
+  daha sert.
+- **Doğrulama:** `npm run lint` → 0 hata/0 uyarı. `npx tsc --noEmit` → temiz.
+  `npm run typecheck:scripts` → temiz. `npm run build` → başarılı,
+  `dist/main.js` doğru konumda (D-048 invaryantı korundu). `npm test` →
+  45/46 suite yeşil (1 skip, ilgisiz), 700/700 test yeşil, 0 kırmızı —
+  D-052'deki sayıyla birebir aynı (lint/tip düzeltmeleri test DAVRANIŞINI
+  değiştirmedi, yalnızca tip/lint uyumluluğu sağladı).
+

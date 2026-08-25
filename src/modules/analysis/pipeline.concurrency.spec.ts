@@ -16,7 +16,6 @@ import { PiiVaultService } from '../../common/pii/pii-vault.service';
 import { UserRepository } from '../persistence/repositories/user.repository';
 import { DocumentRepository } from '../persistence/repositories/document.repository';
 import { PiiVaultRepository } from '../persistence/repositories/pii-vault.repository';
-import { LlmService } from '../llm/llm.service';
 import { KnownPiiProfile } from '../../common/pii/pii.types';
 
 /**

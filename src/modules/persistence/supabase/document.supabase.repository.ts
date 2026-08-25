@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { DocumentRecord } from '../../../common/types/domain';
 import { DocumentRow, documentToRow, mapDocumentRow } from '../mappers';
 import {
@@ -19,34 +20,34 @@ export class DocumentSupabaseRepository extends DocumentRepository {
   }
 
   async create(input: CreateDocumentInput): Promise<DocumentRecord> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .insert(documentToRow(input))
       .select()
-      .single();
+      .single()) as { data: DocumentRow | null; error: PostgrestError | null };
     assertNoError(error, `create(${TABLE})`);
-    return mapDocumentRow(assertData(data as DocumentRow | null, `create(${TABLE})`));
+    return mapDocumentRow(assertData(data, `create(${TABLE})`));
   }
 
   async findById(id: string): Promise<DocumentRecord | null> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle()) as { data: DocumentRow | null; error: PostgrestError | null };
     assertNoError(error, `findById(${TABLE})`);
-    return data ? mapDocumentRow(data as DocumentRow) : null;
+    return data ? mapDocumentRow(data) : null;
   }
 
   async update(id: string, patch: UpdateDocumentInput): Promise<DocumentRecord> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .update(documentToRow(patch))
       .eq('id', id)
       .select()
-      .single();
+      .single()) as { data: DocumentRow | null; error: PostgrestError | null };
     assertNoError(error, `update(${TABLE})`);
-    return mapDocumentRow(assertData(data as DocumentRow | null, `update(${TABLE})`));
+    return mapDocumentRow(assertData(data, `update(${TABLE})`));
   }
 
   async delete(id: string): Promise<void> {

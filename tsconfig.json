@@ -8,6 +8,13 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "target": "ES2021",
+    // `target: ES2021`'in varsayılan lib'i `Error`'ın 2-argümanlı (`cause`)
+    // constructor overload'ını içermiyor. ESLint'in `preserve-caught-error`
+    // kuralına uymak için birkaç yerde `new Error(msg, { cause })` eklendi;
+    // Node 22 bunu `target`'tan BAĞIMSIZ olarak zaten native destekliyor
+    // (ES2022 runtime özelliği, syntax'ı DEĞİL — `target` çıktısını etkilemez).
+    // Bu satır yalnızca TİP bilgisini genişletir, derleme çıktısını değiştirmez.
+    "lib": ["ES2021", "ES2022.Error"],
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { AppointmentWatch } from '../../../common/types/domain';
 import {
   AppointmentWatchRow,
@@ -23,41 +24,37 @@ export class AppointmentWatchSupabaseRepository extends AppointmentWatchReposito
   }
 
   async create(input: CreateAppointmentWatchInput): Promise<AppointmentWatch> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .insert(appointmentWatchToRow(input))
       .select()
-      .single();
+      .single()) as { data: AppointmentWatchRow | null; error: PostgrestError | null };
     assertNoError(error, `create(${TABLE})`);
-    return mapAppointmentWatchRow(
-      assertData(data as AppointmentWatchRow | null, `create(${TABLE})`),
-    );
+    return mapAppointmentWatchRow(assertData(data, `create(${TABLE})`));
   }
 
   async findById(id: string): Promise<AppointmentWatch | null> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle()) as { data: AppointmentWatchRow | null; error: PostgrestError | null };
     assertNoError(error, `findById(${TABLE})`);
-    return data ? mapAppointmentWatchRow(data as AppointmentWatchRow) : null;
+    return data ? mapAppointmentWatchRow(data) : null;
   }
 
   async update(
     id: string,
     patch: UpdateAppointmentWatchInput,
   ): Promise<AppointmentWatch> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .update(appointmentWatchToRow(patch))
       .eq('id', id)
       .select()
-      .single();
+      .single()) as { data: AppointmentWatchRow | null; error: PostgrestError | null };
     assertNoError(error, `update(${TABLE})`);
-    return mapAppointmentWatchRow(
-      assertData(data as AppointmentWatchRow | null, `update(${TABLE})`),
-    );
+    return mapAppointmentWatchRow(assertData(data, `update(${TABLE})`));
   }
 
   async delete(id: string): Promise<void> {

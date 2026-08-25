@@ -122,7 +122,7 @@ describe('Onboarding uçtan uca — bilinen-değer maskeleme aktif mi?', () => {
       kind: 'text',
       locale: 'tr',
       ...partial,
-    } as IncomingMessage);
+    });
 
   /** Onboarding'i tam olarak tamamlar. */
   const completeOnboarding = async () => {
@@ -295,7 +295,7 @@ describe('Onboarding uçtan uca — bilinen-değer maskeleme aktif mi?', () => {
       await completeOnboarding();
 
       // Bu senaryoda LLM, hata metninde ham adı yankılıyor.
-      const failing = app.get(ANTHROPIC_CLIENT) as AnthropicClientLike;
+      const failing = app.get(ANTHROPIC_CLIENT);
       jest
         .spyOn(failing.messages, 'create')
         .mockRejectedValue(new Error(`API 400: "${ME.name}" ${ME.address}`));

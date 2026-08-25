@@ -18,8 +18,7 @@ process.env.DB_DRIVER = 'supabase';
 process.env.LLM_MOCK = 'true';
 process.env.TELEGRAM_MODE = 'disabled';
 
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
+import { bootScriptContext } from './script-context';
 import { UserRepository } from '../src/modules/persistence/repositories/user.repository';
 import { DocumentRepository } from '../src/modules/persistence/repositories/document.repository';
 import { AnalysisRepository } from '../src/modules/persistence/repositories/analysis.repository';
@@ -41,9 +40,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: ['error'],
-  });
+  // D-043: kanal/scheduler yan etkisiz boot — bkz. scripts/script-context.ts.
+  const app = await bootScriptContext({ logger: ['error'] });
 
   const users = app.get(UserRepository);
   const documents = app.get(DocumentRepository);

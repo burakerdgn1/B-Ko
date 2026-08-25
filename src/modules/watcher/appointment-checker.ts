@@ -138,8 +138,10 @@ export class AppointmentChecker {
 export function isPlaywrightBrowserAvailable(): boolean {
   try {
     // Dinamik import yerine require: senkron sonuç gerekiyor (yukarıdaki not).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- kasıtlı, bkz. yukarıdaki not
     const { chromium } = require('playwright') as typeof import('playwright');
     const execPath = chromium.executablePath();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- kasıtlı, bkz. yukarıdaki not
     const fs = require('fs') as typeof import('fs');
     return fs.existsSync(execPath);
   } catch {

@@ -111,8 +111,8 @@ export class ClaudeVisionOcrProvider implements OcrProvider {
         throw new Error('Claude Vision OCR boş metin döndürdü.');
       }
       return text;
-    } catch (err) {
-      throw new Error(`Claude Vision OCR başarısız: ${toErrorMessage(err)}`);
+    } catch (err: unknown) {
+      throw new Error(`Claude Vision OCR başarısız: ${toErrorMessage(err)}`, { cause: err });
     }
   }
 }
@@ -137,8 +137,10 @@ export class LocalOcrProvider implements OcrProvider {
       // Almanca resmi belgeler + Türkçe/İngilizce karışık içerik için çoklu dil.
       const { data } = await tesseract.recognize(buffer, 'deu+eng');
       return (data?.text ?? '').trim();
-    } catch (err) {
-      throw new Error(`Yerel OCR (tesseract.js) başarısız: ${toErrorMessage(err)}`);
+    } catch (err: unknown) {
+      throw new Error(`Yerel OCR (tesseract.js) başarısız: ${toErrorMessage(err)}`, {
+        cause: err,
+      });
     }
   }
 

@@ -375,7 +375,7 @@ export class ConversationService implements OnModuleInit {
   private async buildProfile(user: User): Promise<KnownPiiProfile | undefined> {
     try {
       return await this.profiles.load(user.id);
-    } catch (error) {
+    } catch {
       // Profil çözülemezse analiz durmamalı; yalnızca recall düşer.
       this.logger.error(
         `Profil yüklenemedi (userId=${user.id}) — yapısal maskelemeyle devam ediliyor.`,

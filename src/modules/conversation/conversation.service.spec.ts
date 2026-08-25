@@ -34,7 +34,7 @@ function incoming(partial: Partial<IncomingMessage>): IncomingMessage {
     kind: 'text',
     locale: 'tr',
     ...partial,
-  } as IncomingMessage;
+  };
 }
 
 describe('ConversationService — uçtan uca sohbet akışı', () => {

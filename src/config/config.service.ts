@@ -15,7 +15,7 @@ export class AppConfigService {
   }
 
   get<K extends keyof AppEnv>(key: K): AppEnv[K] {
-    return this.config.get(key, { infer: true }) as AppEnv[K];
+    return this.config.get(key, { infer: true });
   }
 
   get nodeEnv(): AppEnv['NODE_ENV'] {

@@ -59,7 +59,7 @@ function deepClone<T>(value: T): T {
     return new Date(value.getTime()) as unknown as T;
   }
   if (Array.isArray(value)) {
-    return value.map((v) => deepClone(v)) as unknown as T;
+    return value.map((v: unknown) => deepClone(v)) as unknown as T;
   }
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};

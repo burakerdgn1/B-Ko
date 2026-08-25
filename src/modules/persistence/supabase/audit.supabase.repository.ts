@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { AuditEntry } from '../../../common/types/domain';
 import { AuditRow, auditToRow, mapAuditRow } from '../mappers';
 import {
@@ -19,34 +20,34 @@ export class AuditSupabaseRepository extends AuditRepository {
   }
 
   async create(entry: CreateAuditInput): Promise<AuditEntry> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .insert(auditToRow(entry))
       .select()
-      .single();
+      .single()) as { data: AuditRow | null; error: PostgrestError | null };
     assertNoError(error, `create(${TABLE})`);
-    return mapAuditRow(assertData(data as AuditRow | null, `create(${TABLE})`));
+    return mapAuditRow(assertData(data, `create(${TABLE})`));
   }
 
   async findById(id: string): Promise<AuditEntry | null> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle()) as { data: AuditRow | null; error: PostgrestError | null };
     assertNoError(error, `findById(${TABLE})`);
-    return data ? mapAuditRow(data as AuditRow) : null;
+    return data ? mapAuditRow(data) : null;
   }
 
   async update(id: string, patch: UpdateAuditInput): Promise<AuditEntry> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .update(auditToRow(patch))
       .eq('id', id)
       .select()
-      .single();
+      .single()) as { data: AuditRow | null; error: PostgrestError | null };
     assertNoError(error, `update(${TABLE})`);
-    return mapAuditRow(assertData(data as AuditRow | null, `update(${TABLE})`));
+    return mapAuditRow(assertData(data, `update(${TABLE})`));
   }
 
   async delete(id: string): Promise<void> {

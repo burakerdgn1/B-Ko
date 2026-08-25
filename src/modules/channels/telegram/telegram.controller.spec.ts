@@ -180,6 +180,7 @@ describe('TelegramController — webhook', () => {
     it('hata mesajı update İÇERİĞİNİ (olası PII) loglamaz', async () => {
       await build(SECRET);
       const logSpy = jest
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- `as never` köprüsü olmadan TS, private `logger`'a erişimi reddeder (TS2352); rule bunu yanlış pozitif olarak işaretliyor.
         .spyOn((app.get(TelegramController) as never as { logger: { error: () => void } }).logger, 'error')
         .mockImplementation(() => undefined);
 

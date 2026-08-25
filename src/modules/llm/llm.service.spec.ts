@@ -33,7 +33,7 @@ function fakeConfig(
 }
 
 function fakeClient(create: jest.Mock = jest.fn()): jest.Mocked<AnthropicClientLike> {
-  return { messages: { create } } as unknown as jest.Mocked<AnthropicClientLike>;
+  return { messages: { create } };
 }
 
 function textResponse(text: string) {

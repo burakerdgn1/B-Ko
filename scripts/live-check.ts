@@ -57,10 +57,10 @@ async function main(): Promise<void> {
 
   const expected = JSON.parse(
     readFileSync(join(LETTERS, 'expected.json'), 'utf8'),
-  );
-  const allProfiles: Record<string, KnownPiiProfile> = JSON.parse(
+  ) as Record<string, { file: string }>;
+  const allProfiles = JSON.parse(
     readFileSync(join(FIXTURES, 'profiles.json'), 'utf8'),
-  );
+  ) as Record<string, KnownPiiProfile>;
   const key = '01-aufenthaltserlaubnis-verlaengerung';
   const letter = readFileSync(join(LETTERS, expected[key].file), 'utf8');
   const profile = allProfiles[key];
@@ -70,7 +70,11 @@ async function main(): Promise<void> {
   let fail = 0;
   const check = (name: string, pass: boolean, detail = '') => {
     console.log(`  ${pass ? '✓' : '✗'} ${name}${detail ? ` — ${detail}` : ''}`);
-    pass ? ok++ : fail++;
+    if (pass) {
+      ok++;
+    } else {
+      fail++;
+    }
   };
 
   try {

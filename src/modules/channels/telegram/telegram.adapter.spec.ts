@@ -172,7 +172,7 @@ describe('TelegramAdapter', () => {
         ok: true,
         status: 200,
         arrayBuffer: async () => bytes.buffer,
-      }) as unknown as typeof fetch;
+      });
 
       const adapter = new TelegramAdapter(makeService(api));
       const result = await adapter.downloadIncomingFile('file-1');
@@ -197,7 +197,7 @@ describe('TelegramAdapter', () => {
     it('HTTP hatası anlamlı hata olarak yükseltilir', async () => {
       const api = makeFakeApi();
       api.getFile.mockResolvedValue({ file_path: 'photos/f.jpg' });
-      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404 }) as unknown as typeof fetch;
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404 });
 
       const adapter = new TelegramAdapter(makeService(api));
       await expect(adapter.downloadIncomingFile('file-1')).rejects.toThrow(/404/);

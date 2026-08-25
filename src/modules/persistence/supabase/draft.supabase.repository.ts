@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { Draft } from '../../../common/types/domain';
 import { draftToRow, DraftRow, mapDraftRow } from '../mappers';
 import {
@@ -31,23 +32,23 @@ export class DraftSupabaseRepository extends DraftRepository {
     // Onay kapısının INSERT tarafı — memory sürücüsüyle davranış eşitliği.
     assertNotBornSent(input.status);
 
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .insert(draftToRow(input))
       .select()
-      .single();
+      .single()) as { data: DraftRow | null; error: PostgrestError | null };
     assertNoError(error, `create(${TABLE})`);
-    return mapDraftRow(assertData(data as DraftRow | null, `create(${TABLE})`));
+    return mapDraftRow(assertData(data, `create(${TABLE})`));
   }
 
   async findById(id: string): Promise<Draft | null> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle()) as { data: DraftRow | null; error: PostgrestError | null };
     assertNoError(error, `findById(${TABLE})`);
-    return data ? mapDraftRow(data as DraftRow) : null;
+    return data ? mapDraftRow(data) : null;
   }
 
   async update(id: string, patch: UpdateDraftInput): Promise<Draft> {
@@ -70,14 +71,14 @@ export class DraftSupabaseRepository extends DraftRepository {
       }
     }
 
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .update(draftToRow(patch))
       .eq('id', id)
       .select()
-      .single();
+      .single()) as { data: DraftRow | null; error: PostgrestError | null };
     assertNoError(error, `update(${TABLE})`);
-    return mapDraftRow(assertData(data as DraftRow | null, `update(${TABLE})`));
+    return mapDraftRow(assertData(data, `update(${TABLE})`));
   }
 
   async delete(id: string): Promise<void> {

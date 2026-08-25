@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { ChannelKind, User } from '../../../common/types/domain';
 import { mapUserRow, UserRow, userToRow } from '../mappers';
 import {
@@ -19,34 +20,34 @@ export class UserSupabaseRepository extends UserRepository {
   }
 
   async create(input: CreateUserInput): Promise<User> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .insert(userToRow(input))
       .select()
-      .single();
+      .single()) as { data: UserRow | null; error: PostgrestError | null };
     assertNoError(error, `create(${TABLE})`);
-    return mapUserRow(assertData(data as UserRow | null, `create(${TABLE})`));
+    return mapUserRow(assertData(data, `create(${TABLE})`));
   }
 
   async findById(id: string): Promise<User | null> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle()) as { data: UserRow | null; error: PostgrestError | null };
     assertNoError(error, `findById(${TABLE})`);
-    return data ? mapUserRow(data as UserRow) : null;
+    return data ? mapUserRow(data) : null;
   }
 
   async update(id: string, patch: UpdateUserInput): Promise<User> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .update(userToRow(patch))
       .eq('id', id)
       .select()
-      .single();
+      .single()) as { data: UserRow | null; error: PostgrestError | null };
     assertNoError(error, `update(${TABLE})`);
-    return mapUserRow(assertData(data as UserRow | null, `update(${TABLE})`));
+    return mapUserRow(assertData(data, `update(${TABLE})`));
   }
 
   async delete(id: string): Promise<void> {
@@ -55,14 +56,14 @@ export class UserSupabaseRepository extends UserRepository {
   }
 
   async findByChannel(channel: ChannelKind, channelUserId: string): Promise<User | null> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .select('*')
       .eq('channel', channel)
       .eq('channel_user_id', channelUserId)
-      .maybeSingle();
+      .maybeSingle()) as { data: UserRow | null; error: PostgrestError | null };
     assertNoError(error, `findByChannel(${TABLE})`);
-    return data ? mapUserRow(data as UserRow) : null;
+    return data ? mapUserRow(data) : null;
   }
 
   async upsertByChannel(

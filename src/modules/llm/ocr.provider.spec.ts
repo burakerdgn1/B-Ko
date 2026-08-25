@@ -1,7 +1,6 @@
 import { AppConfigService } from '../../config/config.service';
 import {
   ClaudeVisionOcrProvider,
-  LocalOcrProvider,
   resolveOcrProviderKind,
 } from './ocr.provider';
 import { AnthropicClientLike } from './anthropic-client';

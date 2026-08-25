@@ -119,7 +119,7 @@ export class PiiService {
   unmaskDeep<T>(value: T, map: PiiMap): T {
     if (typeof value === 'string') return this.unmask(value, map) as unknown as T;
     if (Array.isArray(value)) {
-      return value.map((v) => this.unmaskDeep(v, map)) as unknown as T;
+      return value.map((v: unknown) => this.unmaskDeep(v, map)) as unknown as T;
     }
     if (value && typeof value === 'object') {
       const out: Record<string, unknown> = {};
@@ -383,19 +383,6 @@ function normalizeKey(s: string): string {
   return s.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Yerel-dile bağlı büyük/küçük harf eşleşmesini düzeltir.
- *
- * Unicode case-folding, Türkçe noktasız `ı` (U+0131) ile `I`'yı EŞLEŞTİRMEZ;
- * `/i` bayrağı tek başına "Yılmaz" ↔ "YILMAZ" eşleşmesini kaçırır. Türk
- * kullanıcılar bu ürünün ana hedef kitlesinde olduğundan bu, kabul edilemez
- * bir recall kaybıdır — i-ailesi karakterleri karakter sınıfına genişletilir.
- * Aynı sorun Azerice/Kazakça isimlerde de görülür.
- */
-function foldLocaleCase(pattern: string): string {
-  return pattern.replace(/[iıIİ]/g, '[iıIİ]');
-}
+// NOT: `escapeRegex`/`foldLocaleCase` burada tanımlıydı ama hiç çağrılmıyordu
+// (ESLint `no-unused-vars` ile bulundu) — gerçek implementasyonları zaten
+// `./ocr-tolerance.ts` içinde ve orada kullanılıyor. Ölü kopya kaldırıldı.

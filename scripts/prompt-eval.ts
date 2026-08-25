@@ -21,9 +21,8 @@ import { join } from 'node:path';
 // `.env` dosyasını Nest başlamadan ÖNCE yükle: anahtar kontrolü ve
 // ConfigModule'ün import-anındaki doğrulaması (D-023) buna bağlı.
 loadDotenv();
-import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
-import { AppModule } from '../src/app.module';
+import { bootScriptContext } from './script-context';
 import { LlmService } from '../src/modules/llm/llm.service';
 import { PiiService } from '../src/common/pii/pii.service';
 import { parseGermanDate } from '../src/modules/analysis/deadline.util';
@@ -84,16 +83,15 @@ async function main(): Promise<void> {
   process.env.DB_DRIVER = process.env.DB_DRIVER ?? 'memory';
   process.env.TELEGRAM_MODE = 'disabled';
 
-  const expected: Record<string, ExpectedEntry> = JSON.parse(
+  const expected = JSON.parse(
     readFileSync(join(LETTER_DIR, 'expected.json'), 'utf8'),
-  );
-  const profiles: Record<string, KnownPiiProfile> = JSON.parse(
+  ) as Record<string, ExpectedEntry>;
+  const profiles = JSON.parse(
     readFileSync(join(FIXTURE_DIR, 'profiles.json'), 'utf8'),
-  );
+  ) as Record<string, KnownPiiProfile>;
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: ['error', 'warn'],
-  });
+  // D-043: kanal/scheduler yan etkisiz boot — bkz. scripts/script-context.ts.
+  const app = await bootScriptContext({ logger: ['error', 'warn'] });
   const llm = app.get(LlmService);
   const pii = app.get(PiiService);
 
@@ -175,7 +173,7 @@ async function main(): Promise<void> {
   }
 
   await app.close();
-  report(results, keys.length);
+  report(results);
 
   const outArg = process.argv.indexOf('--out');
   if (outArg !== -1 && process.argv[outArg + 1]) {
@@ -190,7 +188,7 @@ function looselyMatches(got: string, want: string): boolean {
     norm(want).includes(norm(got).slice(0, 10));
 }
 
-function report(results: CaseResult[], total: number): void {
+function report(results: CaseResult[]): void {
   reportSubset('TÜM VAKALAR', results);
 
   const borderline = results.filter((r) => r.category === 'borderline');

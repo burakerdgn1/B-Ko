@@ -261,12 +261,15 @@ export class LlmService {
         throw new Error('Claude boş yanıt döndürdü.');
       }
       return text;
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof Anthropic.APIError) {
-        throw new Error(`Claude API hatası (${err.status ?? 'bilinmiyor'}): ${err.message}`);
+        throw new Error(`Claude API hatası (${err.status ?? 'bilinmiyor'}): ${err.message}`, {
+          cause: err,
+        });
       }
       throw new Error(
         `Claude API çağrısı başarısız: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
       );
     }
   }

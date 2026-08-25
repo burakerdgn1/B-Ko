@@ -36,7 +36,6 @@ jest.mock('grammy', () => ({
   InputFile: jest.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { TelegramService } = require('./telegram.service');
 
 function makeConfig(overrides: Partial<AppConfigService> = {}): AppConfigService {

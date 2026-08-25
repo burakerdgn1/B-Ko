@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { SealedPiiRecord } from '../../../common/pii/pii-vault.service';
 import { mapPiiVaultRow, PiiVaultRow, piiVaultToRow } from '../mappers';
 import {
@@ -21,34 +22,34 @@ export class PiiVaultSupabaseRepository extends PiiVaultRepository {
   }
 
   async create(record: SealedPiiRecord): Promise<SealedPiiRecordRow> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .insert(piiVaultToRow(record))
       .select()
-      .single();
+      .single()) as { data: PiiVaultRow | null; error: PostgrestError | null };
     assertNoError(error, `create(${TABLE})`);
-    return mapPiiVaultRow(assertData(data as PiiVaultRow | null, `create(${TABLE})`));
+    return mapPiiVaultRow(assertData(data, `create(${TABLE})`));
   }
 
   async findById(id: string): Promise<SealedPiiRecordRow | null> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle()) as { data: PiiVaultRow | null; error: PostgrestError | null };
     assertNoError(error, `findById(${TABLE})`);
-    return data ? mapPiiVaultRow(data as PiiVaultRow) : null;
+    return data ? mapPiiVaultRow(data) : null;
   }
 
   async update(id: string, patch: Partial<SealedPiiRecord>): Promise<SealedPiiRecordRow> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .update(piiVaultToRow(patch))
       .eq('id', id)
       .select()
-      .single();
+      .single()) as { data: PiiVaultRow | null; error: PostgrestError | null };
     assertNoError(error, `update(${TABLE})`);
-    return mapPiiVaultRow(assertData(data as PiiVaultRow | null, `update(${TABLE})`));
+    return mapPiiVaultRow(assertData(data, `update(${TABLE})`));
   }
 
   async delete(id: string): Promise<void> {

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { Analysis } from '../../../common/types/domain';
 import { analysisToRow, AnalysisRow, mapAnalysisRow } from '../mappers';
 import {
@@ -19,34 +20,34 @@ export class AnalysisSupabaseRepository extends AnalysisRepository {
   }
 
   async create(input: CreateAnalysisInput): Promise<Analysis> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .insert(analysisToRow(input))
       .select()
-      .single();
+      .single()) as { data: AnalysisRow | null; error: PostgrestError | null };
     assertNoError(error, `create(${TABLE})`);
-    return mapAnalysisRow(assertData(data as AnalysisRow | null, `create(${TABLE})`));
+    return mapAnalysisRow(assertData(data, `create(${TABLE})`));
   }
 
   async findById(id: string): Promise<Analysis | null> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle()) as { data: AnalysisRow | null; error: PostgrestError | null };
     assertNoError(error, `findById(${TABLE})`);
-    return data ? mapAnalysisRow(data as AnalysisRow) : null;
+    return data ? mapAnalysisRow(data) : null;
   }
 
   async update(id: string, patch: UpdateAnalysisInput): Promise<Analysis> {
-    const { data, error } = await this.supabase.client
+    const { data, error } = (await this.supabase.client
       .from(TABLE)
       .update(analysisToRow(patch))
       .eq('id', id)
       .select()
-      .single();
+      .single()) as { data: AnalysisRow | null; error: PostgrestError | null };
     assertNoError(error, `update(${TABLE})`);
-    return mapAnalysisRow(assertData(data as AnalysisRow | null, `update(${TABLE})`));
+    return mapAnalysisRow(assertData(data, `update(${TABLE})`));
   }
 
   async delete(id: string): Promise<void> {

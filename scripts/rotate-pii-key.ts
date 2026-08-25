@@ -183,7 +183,7 @@ async function main(): Promise<void> {
       iv: next.iv,
       authTag: next.authTag,
       keyVersion: r.keyVersion + 1,
-    } as never);
+    });
     written++;
   }
 
