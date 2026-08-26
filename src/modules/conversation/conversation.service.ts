@@ -147,6 +147,14 @@ export class ConversationService implements OnModuleInit {
 
       case 'profil':
       case 'profile':
+        // D-056: kullanıcının KENDİ ad/adres bilgisi burada toplanır ve
+        // pii_vault'a şifreli yazılır — belge işleme kadar hassas, ama bu
+        // kontrol eksikti. Diğer her rıza kontrolüyle tutarlı olsun diye
+        // handleDocument'takiyle AYNI kapı burada da uygulanır.
+        if (!user.consentAt) {
+          await this.send(user, m.needConsent);
+          return;
+        }
         await this.startOnboarding(user);
         return;
 

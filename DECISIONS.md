@@ -1528,3 +1528,47 @@ varsayımsal olmadığı görüldü:
   silme), ama iki AYRI birimin BİR ARADA doğru davrandığını hiç kimse
   test etmemişti. Gerçek kullanıcı trafiği, unit test'lerin kör noktasını
   (kompozisyon) birim testlerden daha hızlı buldu.
+
+## D-056 — `/profil` hiçbir rıza kontrolü yapmıyordu — canlı kullanıcı testiyle bulundu
+
+- **Bağlam:** D-055'in doğrulanmasının ardından, "/onayla → belge işleme"
+  akışının rıza kapısı kod tabanında zaten test edilmişti
+  (`rıza olmadan belge işlenmez (GDPR)` bloğu). Bunun BENZERİ bir kontrolün
+  `/profil` komutunda da var olup olmadığı canlıda denendi: `/sil` ile
+  temizlenmiş, rızası hiç kaydedilmemiş bir kullanıcı doğrudan `/profil`
+  gönderdi — `/onayla` HİÇ çağrılmadan.
+- **Bulgu:** Bot doğrudan onboarding'e geçti ve "1/3 — Adınız ve soyadınız?"
+  diye sordu. `handleCommand`'daki `'profil'/'profile'` case'i ve
+  çağırdığı `startOnboarding()`/`ProfileService.save()` zincirinin HİÇBİRİ
+  `user.consentAt` kontrolü yapmıyordu — yalnızca `handleDocument()` bu
+  kontrolü yapıyordu.
+- **Neden önemli:** Onboarding, kullanıcının GERÇEK (maskelenmemiş) ad ve
+  adresini toplayıp `pii_vault`'a AES-256-GCM ile şifreli yazan TEK akış
+  (D-027). Bu, belgedeki üçüncü taraf bilgisini işlemekten daha AZ değil,
+  daha FAZLA hassasiyet taşıyor — ama tutarsız biçimde daha ZAYIF bir
+  kapıya (hiç kapı yok) sahipti. Proje genelinde "rıza olmadan kişisel veri
+  işlenmez" ilkesinin en kritik uygulama noktasında bir istisna vardı.
+- **Karar:** `'profil'/'profile'` case'ine `handleDocument()`'takiyle AYNI
+  kontrol eklendi: `if (!user.consentAt) { send(needConsent); return; }`,
+  `startOnboarding()`'den ÖNCE. `onboardingStep` haritası artık yalnızca
+  rıza verilmiş kullanıcılar için doldurulabiliyor; bu da `/gec` ve serbest
+  metin cevap yollarını da dolaylı olarak korumaya alıyor (onboardingStep
+  hiç set edilmediği için).
+- **Regresyon testi:** `conversation.service.spec.ts`'e yeni bir blok —
+  `/onayla` çağrılmadan `/profil` gönderildiğinde onboarding'in
+  BAŞLAMADIĞINI (yanıtta "adınız ve soyadınız" GEÇMEDİĞİNİ) ve ardından
+  gelen bir "isim" cevabının `pii_vault`'a YAZILMADIĞINI (`profile:` önekli
+  kayıt sayısı 0) doğruluyor; ayrıca `/onayla` sonrası `/profil`'in normal
+  çalıştığını da doğruluyor. Eski koda karşı ÖNCE kırmızı olduğu
+  (`toMatch(/onayla/)` beklenirken doğrudan onboarding metni alındığı)
+  ampirik olarak doğrulandıktan sonra düzeltme uygulandı.
+- **Doğrulama:** `npm test` → 46/47 suite yeşil (1 skip, ilgisiz), 704/704
+  test yeşil (yerelde) — CI'ın kanonik sayısı 665 (46 suite). `npx tsc
+  --noEmit` ve `npm run lint` temiz. README (665 test, 56 karar) senkron.
+- **Ders:** İki farklı komutun (`/taslak` gerektirmeyen belge akışı vs.
+  `/profil`) aynı ilkeyi (rıza) uygulaması gerektiğinde, ilkeyi TEK bir
+  yerde (örn. ortak bir guard/decorator) zorlamak yerine her `case`'e ayrı
+  ayrı eklemek, tam olarak bu sınıf kayıp noktasını yaratıyor. Kısa vadede
+  düzeltme yeterli; uzun vadede "rıza gerektiren komutlar" listesini
+  merkezi bir yerde tanımlamak aynı hatanın üçüncü bir komutta tekrarını
+  önler (açık iş — bkz. TODO.md).

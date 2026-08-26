@@ -10,6 +10,7 @@ import { MockChannelAdapter } from '../channels/mock/mock.adapter';
 import { UserRepository } from '../persistence/repositories/user.repository';
 import { DraftRepository } from '../persistence/repositories/draft.repository';
 import { DocumentRepository } from '../persistence/repositories/document.repository';
+import { PiiVaultRepository } from '../persistence/repositories/pii-vault.repository';
 
 /**
  * Sohbet akışı testleri — botun ürün akışına bağlandığı son halka.
@@ -149,6 +150,45 @@ describe('ConversationService — uçtan uca sohbet akışı', () => {
       const docs = await app.get(DocumentRepository).findByUser(user!.id);
       expect(docs.length).toBeGreaterThan(0);
       expect(docs[0].status).toBe('analyzed');
+    });
+  });
+
+  /**
+   * D-056 regresyonu — canlı üretimde bir kullanıcı testiyle bulundu.
+   *
+   * `/profil` hiçbir rıza kontrolü yapmıyordu: `/onayla` hiç çağrılmadan
+   * `/profil` gönderildiğinde bot doğrudan onboarding'e (ad/adres sorma)
+   * geçiyordu. Bu, belge işleme için zaten var olan "rıza olmadan işlenmez"
+   * kapısıyla tutarsızdı — üstelik onboarding, kullanıcının GERÇEK adını/
+   * adresini (maskelenmemiş) `pii_vault`'a şifreli yazan tek akış, yani
+   * belge işlemekten daha az değil, daha FAZLA hassasiyet gerektiriyordu.
+   */
+  describe('rıza olmadan profil onboarding\'i başlatılamaz (D-056)', () => {
+    it('/onayla olmadan /profil onboarding\'i BAŞLATMAZ', async () => {
+      await convo.handle(incoming({ kind: 'command', command: 'profil' }));
+
+      expect(normalized()).toMatch(/onayla/);
+      expect(normalized()).not.toMatch(/adınız ve soyadınız/i);
+
+      // Onboarding adımı hiç açılmamış olmalı — ardından gelen kısa bir metin
+      // (örn. gerçek bir isim) "ad cevabı" olarak yutulup vault'a yazılmamalı.
+      await convo.handle(incoming({ kind: 'text', text: 'Yasin Kılıç' }));
+
+      const user = await app
+        .get(UserRepository)
+        .findByChannel('mock', CHANNEL_USER);
+      const vaultRecords = await app
+        .get(PiiVaultRepository)
+        .findByUser(user!.id);
+      expect(vaultRecords.filter((r) => r.token.startsWith('profile:'))).toHaveLength(0);
+      expect(user?.profileCompletedAt).toBeFalsy();
+    });
+
+    it('/onayla sonrası /profil onboarding\'i normal şekilde başlatır', async () => {
+      await convo.handle(incoming({ kind: 'command', command: 'onayla' }));
+      await convo.handle(incoming({ kind: 'command', command: 'profil' }));
+
+      expect(normalized()).toMatch(/adınız ve soyadınız/i);
     });
   });
 
