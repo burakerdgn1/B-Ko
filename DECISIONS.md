@@ -1572,3 +1572,53 @@ varsayımsal olmadığı görüldü:
   düzeltme yeterli; uzun vadede "rıza gerektiren komutlar" listesini
   merkezi bir yerde tanımlamak aynı hatanın üçüncü bir komutta tekrarını
   önler (açık iş — bkz. TODO.md).
+
+## D-057 — Üçüncü taraf isim maskeleme v2: yerel NER ölçüldü, ÜRETİME ALINMADI (D-044 deseni)
+
+- **Bağlam:** D-028'in açık bıraktığı sınır (tetikleyicisiz üçüncü taraf
+  isimleri, ör. "Der Antrag wurde von Sabine Brandt geprüft") için v2 yönü
+  olarak yerel NER önerilmişti. Bulut NER API'si (ör. AWS Comprehend/Google
+  NLP) D-003'ün "PII cihazdan hiç çıkmaz" ilkesiyle baştan çelişeceği için
+  hiç değerlendirilmedi; tek seçenek Node process içinde, ağa çıkmadan
+  çalışan yerel bir model.
+- **Ölçüm:** `scripts/ner-mask-bench.ts` yazıldı (D-044'ün tesseract.js
+  ölçüm deseniyle birebir aynı disiplin: PRODUCTION KODUNA DOKUNMADAN,
+  bağımsız bir script, tekrarlanabilir). `@huggingface/transformers`
+  (transformers.js — Node'da ONNX, Python yok, ağ çağrısı yok) ile iki
+  model karşılaştırıldı:
+  - `Xenova/distilbert-base-multilingual-cased-ner-hrl` (135MB, quantized)
+  - `Xenova/bert-base-multilingual-cased-ner-hrl` (178MB, quantized)
+  Her ikisi de Almanca dahil 10 dilde (Davlan/bert-base-multilingual-cased-
+  ner-hrl'nin ONNX'e çevrilmiş hâli, CoNLL-2003 üzerinde eğitilmiş) PER/ORG/
+  LOC tanıyor.
+- **Sonuç (26 örneklik, elle etiketlenmiş korpus üzerinde):**
+  - 🎯 bare-name (asıl hedef — D-028'in kapatmak istediği boşluk): **%100
+    recall (7/7)**, "Der Antrag wurde von Sabine Brandt geprüft" dahil.
+  - 🌍 çokkültürlü tetikleyicisiz isimler (Türkçe, Vietnamca, Arapça,
+    Ukraynaca): **%100 recall (4/4)**.
+  - 🟢 mevcut motorun zaten yakaladığı tetikleyici bağlamlar: **%100
+    tutarlılık (6/6)**.
+  - 🛡️ yanlış-pozitif tuzakları (kurum adları, büyük harfli terimler,
+    "Sehr geehrte Damen und Herren"): **9/9 temiz, sıfır yanlış-pozitif**.
+  - Gecikme: distil ~7ms/örnek, base ~14ms/örnek — iki model aynı
+    doğrulukta olduğu için **distil tercih edilir** (daha küçük, daha hızlı).
+  - Ölçüm sırasında bir kendi-hata bulundu ve düzeltildi: WordPiece
+    detokenizasyonu tire etrafına boşluk ekliyordu ("Mohammed Al-Rashid" →
+    "Mohammed Al - Rashid"), bu da modelin DOĞRU bulduğu bir varlığı
+    script'in "kaçırıldı" sanmasına yol açıyordu — karşılaştırma boşluk
+    normalize edilerek düzeltildi (bkz. script içi yorum).
+- **KESİNLİKLE ÜRETİME ALINMADI.** Bu, D-044'ün "tesseract.js eklendi;
+  local OCR ölçüldü ve ÜRETİME ALINMADI" deseninin birebir tekrarı. Sebep:
+  - Korpus küçük (26 örnek) ve BEN yazdım — gerçek Behördenbrief
+    çeşitliliğini (OCR bozulmaları, satır kırılmaları, yarım/kısaltılmış
+    isimler, "Schmidt GmbH" gibi şirket-mi-soyisim-mi belirsizliği)
+    henüz test etmiyor. %100 gerçek ama "üretime hazır" demek değil.
+  - Docker imajı boyutu ~218MB'den ~350MB'a çıkar (model build-time'da
+    gömülürse); fail-open/fail-closed davranışı, `NER_ENABLED` bayrağı ve
+    gerçek fixture'lara (OCR-bozulmuş dahil) karşı ikinci bir ölçüm turu
+    hiçbiri henüz yapılmadı.
+- **Sıradaki adım (açık iş):** `test-fixtures/behordenbriefe/` içindeki tam
+  mektuplara ve varsa OCR-bozulmuş varyantlara karşı ikinci bir ölçüm turu;
+  kabul eşiği netleşirse ancak o zaman `PiiService`'e entegrasyon planlanır.
+
+Kullanım: `npm run bench:ner-mask -- --model=both`

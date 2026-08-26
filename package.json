@@ -24,6 +24,7 @@
     "rotate:pii-key": "ts-node -T scripts/rotate-pii-key.ts",
     "live:check": "ts-node -T scripts/live-check.ts",
     "bench:ocr-mask": "ts-node -T scripts/ocr-mask-bench.ts",
+    "bench:ner-mask": "ts-node -T scripts/ner-mask-bench.ts",
     "check:real-fixtures": "ts-node -T scripts/check-real-fixtures.ts",
     "check:docs-sync": "ts-node -T scripts/check-docs-sync.ts",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json"
@@ -42,6 +43,7 @@
     "zod": "^3.23.8"
   },
   "optionalDependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "playwright": "^1.48.0",
     "tesseract.js": "^7.0.0"
   },

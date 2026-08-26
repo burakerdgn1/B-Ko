@@ -268,7 +268,7 @@ Son tarih yaklaştıkça 14/7/3/1 gün kala otomatik hatırlatma gönderilir.
 | Dosya | İçerik |
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Mimari, modül haritası, veri modeli |
-| [`DECISIONS.md`](DECISIONS.md) | Her mühendislik kararı + gerekçesi (56 karar) |
+| [`DECISIONS.md`](DECISIONS.md) | Her mühendislik kararı + gerekçesi (57 karar) |
 | [`STATUS.md`](STATUS.md) | Şu an neredeyiz |
 | [`PROGRESS.md`](PROGRESS.md) | Kronolojik ilerleme |
 | [`TODO.md`](TODO.md) | Görev listesi + bağımlılık grafiği |
