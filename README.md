@@ -1,46 +1,49 @@
 <div align="center">
 
-# 🇩🇪 BüKo — AI Bureaucracy Copilot
+# 🇩🇪 BüKo — Assistent für Behördenbriefe
 
-**Almanya'daki göçmenlerin resmî kurum yazışmalarını anlamasına ve zamanında yanıtlamasına yardımcı olan bir Telegram asistanı.**
+**Ein Telegram-Assistent für alle, die in Deutschland Behördenpost bekommen und nicht sofort verstehen, was verlangt wird.**
 
 [![CI](https://github.com/burakerdgn1/B-Ko/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/burakerdgn1/B-Ko/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-665%20passing-brightgreen)](DECISIONS.md)
+[![Tests](https://img.shields.io/badge/Tests-665%20bestehen-brightgreen)](DECISIONS.md)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Decisions](https://img.shields.io/badge/engineering%20decisions-57%20logged-6f42c1)](DECISIONS.md)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-blue.svg)](LICENSE)
+[![Entscheidungen](https://img.shields.io/badge/Architekturentscheidungen-58%20protokolliert-6f42c1)](DECISIONS.md)
 
-[Sorun](#sorun) · [Nasıl çalışır](#nasıl-çalışır) · [PII maskeleme](#ayırt-edici-özellik-pii-maskeleme-katmanı) · [Mimari](#mimari) · [Demo](#demo) · [Hızlı başlangıç](#hızlı-başlangıç)
+[Das Problem](#das-problem) · [Ablauf](#ablauf) · [PII-Maskierung](#kernfunktion-pii-maskierung) · [Architektur](#architektur) · [Demo](#demo) · [Schnellstart](#schnellstart)
 
 </div>
 
 ---
 
-**BüKo hukuki tavsiye vermez.** Bilgilendirme ve hazırlık asistanıdır; bağlayıcı
-konularda bir avukata veya ilgili kuruma danışın.
+**BüKo bietet keine Rechtsberatung.** Es dient der Information und Vorbereitung;
+bei verbindlichen Fragen wenden Sie sich an eine Anwältin/einen Anwalt oder die
+zuständige Behörde.
 
-## Sorun
+## Das Problem
 
-Ausländerbehörde'den gelen bir mektup, Almanca bilmeyen biri için üç ayrı problem üretir:
-**ne isteniyor**, **son tarih ne zaman**, **hangi belgeleri hazırlamalıyım**.
-Kaçırılan bir Frist, oturum izninin uzatılmamasına kadar gidebilir.
+Ein Brief der Ausländerbehörde wirft für alle, die kein Amtsdeutsch gewohnt sind,
+drei Fragen auf: **Was wird verlangt?**, **Bis wann?**, **Welche Unterlagen
+brauche ich?** Eine verpasste Frist kann dazu führen, dass ein Aufenthaltstitel
+nicht verlängert wird.
 
-BüKo bu üç soruyu yanıtlar ve **sizin kimlik bilgilerinizin** yapay zekâya
-gitmesini engeller — neyin kapsandığı aşağıda **ölçülmüş** olarak listelidir.
+BüKo beantwortet diese drei Fragen — und sorgt dafür, dass **Ihre persönlichen
+Daten** dabei nicht ungeschützt an eine KI gehen. Was das konkret bedeutet, ist
+unten **gemessen**, nicht nur behauptet.
 
-## Nasıl çalışır
+## Ablauf
 
 ```mermaid
 flowchart TD
-    A["📷 Kullanıcı mektup<br/>fotoğrafı/PDF gönderir"] --> B["👁️ OCR<br/>Claude vision ya da yerel tesseract"]
-    B --> C{"🔒 PII MASKELEME"}
-    C -->|"kullanıcının kendi bilgileri<br/>+ tetikleyici bağlamdaki isimler<br/>+ tüm yapısal alanlar"| D["metin artık yalnızca<br/>[[NAME_1]] gibi yer tutucular içerir"]
-    D --> E["🧠 Claude analizi<br/>yalnızca MASKELİ metni görür"]
-    E --> F["🔓 yerel geri çevirme"]
-    F --> G["📋 Özet · son tarih · risk<br/>eksik belgeler · hatırlatmalar"]
-    G --> H["✍️ /taslak → resmî dilde yanıt"]
-    H --> I{"✋ İNSAN ONAYI"}
-    I -->|onaylandı| J["kullanıcıya metin verilir<br/>— kuruma OTOMATİK gönderilmez"]
+    A["📷 Nutzer sendet Foto/PDF<br/>eines Behördenbriefs"] --> B["👁️ OCR<br/>Claude Vision oder lokales Tesseract"]
+    B --> C{"🔒 PII-MASKIERUNG"}
+    C -->|"eigene Daten des Nutzers<br/>+ Namen im Auslöser-Kontext<br/>+ alle strukturierten Felder"| D["Text enthält nur noch<br/>Platzhalter wie [[NAME_1]]"]
+    D --> E["🧠 Claude-Analyse<br/>sieht nur MASKIERTEN Text"]
+    E --> F["🔓 lokale Rückübersetzung"]
+    F --> G["📋 Zusammenfassung · Frist · Risiko<br/>fehlende Unterlagen · Erinnerungen"]
+    G --> H["✍️ /entwurf → Antwort in Amtsdeutsch"]
+    H --> I{"✋ MENSCHLICHE FREIGABE"}
+    I -->|"freigegeben"| J["Text wird dem Nutzer übergeben<br/>— NICHT automatisch an die Behörde gesendet"]
 
     style C fill:#fff4e6,stroke:#e8890c,stroke-width:2px
     style E fill:#e6f0ff,stroke:#3b6fd4,stroke-width:2px
@@ -48,35 +51,35 @@ flowchart TD
     style J fill:#e6ffe9,stroke:#2f9e44,stroke-width:2px
 ```
 
-Daha ayrıntılı akış diyagramları (sıra diyagramı, onay state machine'i, veri modeli): [`docs/architecture-diagram.md`](docs/architecture-diagram.md)
+Ausführlichere Ablaufdiagramme (Sequenzdiagramm, Freigabe-State-Machine, Datenmodell): [`docs/architecture-diagram.md`](docs/architecture-diagram.md)
 
 ---
 
-## Ayırt edici özellik: PII maskeleme katmanı
+## Kernfunktion: PII-Maskierung
 
-Bu, sonradan eklenmiş bir "gizlilik özelliği" değil; mimarinin merkezinde.
+Das ist keine nachträglich angebaute "Datenschutzfunktion" — es ist der Kern der Architektur.
 
 ```mermaid
 flowchart LR
-    RAW["Ham metin<br/>'Ahmet Yılmaz, Frist 30.06.2024'"]
+    RAW["Klartext<br/>'Ahmet Yılmaz, Frist 30.06.2024'"]
 
     subgraph mask["PiiService.mask()"]
         direction TB
-        K["1 · Bilinen-değer<br/>(kullanıcı profili)"]
-        R["2 · Yapısal desen<br/>(regex + checksum)"]
-        T["3 · Tokenizasyon<br/>değer → [[TYPE_n]]"]
+        K["1 · Bekannter Wert<br/>(Nutzerprofil)"]
+        R["2 · Strukturmuster<br/>(Regex + Prüfsumme)"]
+        T["3 · Tokenisierung<br/>Wert → [[TYP_n]]"]
         K --> R --> T
     end
 
     MASKED["'[[NAME_1]], Frist [[DATE_1]]'"]
     LLMBOX["Claude API"]
-    OUT["Model çıktısı<br/>deadlineToken: [[DATE_1]]"]
+    OUT["Modellausgabe<br/>deadlineToken: [[DATE_1]]"]
     FINAL["unmask →<br/>'30.06.2024'"]
-    VAULT[("pii_vault<br/>AES-256-GCM<br/>ciphertext")]
+    VAULT[("pii_vault<br/>AES-256-GCM<br/>Chiffretext")]
 
     RAW --> mask --> MASKED
-    MASKED -->|"güvenli"| LLMBOX --> OUT --> FINAL
-    T -.->|"eşleme tablosu<br/>ŞİFRELİ"| VAULT
+    MASKED -->|"sicher"| LLMBOX --> OUT --> FINAL
+    T -.->|"Zuordnungstabelle<br/>VERSCHLÜSSELT"| VAULT
     VAULT -.-> FINAL
 
     style RAW fill:#ffe6e6,stroke:#c92a2a
@@ -85,149 +88,123 @@ flowchart LR
     style VAULT fill:#fff4e6,stroke:#e8890c
 ```
 
-**Nasıl:** Belgedeki kimlik bilgileri LLM'e gitmeden önce deterministik yer
-tutuculara çevrilir. Model `[[STEUERID_1]]` görür, gerçek numarayı değil. Yanıt
-geldiğinde yerelde geri çevrilir. Eşleme tablosu **AES-256-GCM ile şifreli**
-saklanır. Maskelenen her değer için düz PII yalnızca şifreli vault'ta durur.
+**Wie:** Persönliche Angaben im Brief werden vor dem Versand an die KI in
+deterministische Platzhalter verwandelt. Das Modell sieht `[[STEUERID_1]]`,
+niemals die echte Nummer. Bei der Antwort wird lokal zurückübersetzt. Die
+Zuordnungstabelle wird **AES-256-GCM-verschlüsselt** gespeichert — für jeden
+maskierten Wert existiert die Klardaten-Version ausschließlich im
+verschlüsselten Vault.
 
-**Neyin kapsandığı (ölçülmüş, iddia değil):**
+**Was abgedeckt ist (gemessen, keine Behauptung):**
 
-Onboarding'de kullanıcı kendi ad/adres bilgisini bir kez verir. Bu bilgiler
-**AES-256-GCM ile şifreli** olarak `pii_vault`'ta saklanır (asla düz metin,
-asla yapay zekâya gönderilmez) ve her belgede "bilinen-değer maskeleme"yi besler.
+Beim Onboarding gibt der Nutzer einmalig seinen eigenen Namen und seine Adresse
+an. Diese Angaben werden **AES-256-GCM-verschlüsselt** in `pii_vault`
+gespeichert (nie im Klartext, nie an die KI gesendet) und ermöglichen danach in
+jedem Brief die "Bekannte-Werte-Maskierung".
 
-| Alan | Durum |
+| Feld | Status |
 |---|---|
-| Steuer-ID, IBAN, e-posta, telefon, tarih, Aktenzeichen, Ausländernummer, pasaport, sigorta no | ✅ Her zaman maskelenir (yapısal desen + checksum) |
-| Adres — standart Alman biçimi (`…straße 12`, `10827 Berlin`) | ✅ Her zaman maskelenir |
-| **Kullanıcının kendi adı ve adresi** | ✅ **Onboarding sonrası maskelenir** |
-| Kullanıcının adresi — standart dışı biçim | ✅ Onboarding sonrası (birebir eşleşme) |
-| **Üçüncü taraf isimleri** — tetikleyici bağlamda (memur, aile üyesi, avukat) | ✅ Maskelenir (D-029) |
-| Üçüncü taraf isimleri — **tetikleyicisiz**, cümle içinde çıplak geçen | ⏳ **v2'de ölçüldü — bkz. D-057** |
-| Profil vermeyen (`/atla`) kullanıcının adı — tetikleyici bağlamda | ✅ Maskelenir |
+| Steuer-ID, IBAN, E-Mail, Telefon, Datum, Aktenzeichen, Ausländernummer, Reisepass, Versicherungsnummer | ✅ Immer maskiert (Strukturmuster + Prüfsumme) |
+| Adresse — Standard-Format (`…straße 12`, `10827 Berlin`) | ✅ Immer maskiert |
+| **Eigener Name und Adresse des Nutzers** | ✅ Nach Onboarding maskiert |
+| Adresse des Nutzers — untypisches Format | ✅ Nach Onboarding (exakter Abgleich) |
+| **Namen Dritter** — im Auslöser-Kontext (Sachbearbeiter:in, Familienangehörige, Anwält:in) | ✅ Maskiert |
 
 <details>
-<summary><strong>Üçüncü taraf isimleri: bağlamsal tetikleyiciler nasıl çalışıyor? (D-029)</strong></summary>
+<summary><strong>Wie funktionieren die kontextuellen Auslöser für Namen Dritter?</strong></summary>
 
-Bir ismin *biçimi* onu tanınabilir kılmaz — ama Alman resmî yazışmasında
-isimlerin geçtiği **bağlamlar** son derece düzenlidir. BüKo bu bağlamları
-deterministik olarak yakalar:
+Die *Form* eines Namens macht ihn nicht erkennbar — aber in deutscher
+Amtskorrespondenz sind die **Kontexte**, in denen Namen auftauchen, sehr
+regelmäßig. BüKo erkennt diese Kontexte deterministisch:
 
 `Sehr geehrte(r) Herr/Frau X` · `Ihre Sachbearbeiterin: Frau X` ·
-`Ansprechpartner: X` · `Herrn X` (adres bloğu) · `i. A. X` / `gez. X` (imza) ·
-`Ihrer Ehefrau X` · `Rechtsanwältin X`
+`Ansprechpartner: X` · `Herrn X` (Adressblock) · `i. A. X` / `gez. X`
+(Unterschrift) · `Ihrer Ehefrau X` · `Rechtsanwältin X`
 
-Bu, olasılıksal bir model olmadan çalışır; dolayısıyla **denetlenebilir ve
-tekrarlanabilir** kalır — maskelemenin temel tasarım ilkesi budur (D-003).
+Das funktioniert ohne probabilistisches Modell — dadurch bleibt es
+**nachvollziehbar und reproduzierbar**, ein Grundprinzip der Architektur.
 
-**Yanlış pozitif koruması.** Almancada *tüm* isimler büyük harfle başlar, bu
-yüzden "büyük harf = özel ad" sezgisi Almanca'da felaket olurdu. BüKo bunu asla
-sinyal olarak kullanmaz: yalnızca tetikleyici bağlamlarda eşleşir ve ayrıca bir
-stoplist (`Damen`, `Herren`, `Behörde`, `Abteilung` …) uygular.
-Ölçüm: 8 sentetik mektupta **16 NAME eşleşmesinin 16'sı da gerçek isim** —
-sıfır yanlış pozitif. Test, alan terimlerinin maskelenmediğini ve token
-oranının %15'i aşmadığını (aşırı maskeleme yok) sürekli doğrular.
+**Schutz vor Falsch-Positiven.** Im Deutschen beginnt *jedes* Substantiv groß —
+"Großbuchstabe = Eigenname" wäre also eine katastrophale Heuristik. BüKo nutzt
+das nie als Signal: Es greift ausschließlich in Auslöser-Kontexten und wendet
+zusätzlich eine Stoppliste an (`Damen`, `Herren`, `Behörde`, `Abteilung` …).
+Messung: In 8 synthetischen Briefen waren **16 von 16 NAME-Treffern** echte
+Namen — null Falsch-Positive.
 
-</details>
-
-<details>
-<summary><strong>⚠️ v2 sınırı ve ölçülen çözüm yönü: tetikleyicisiz isimler (D-028 / D-057)</strong></summary>
-
-Hiçbir unvan/etiket olmadan cümle içinde geçen isimler v1'de maskelenmiyordu:
-
-> „Der Antrag wurde von **Petra Hoffmann** geprüft."
-
-Burada `von` bir tetikleyici değildir. Bunu küçümsemiyoruz: bu da kişisel veridir.
-Yarım bir çözüm eklemedik çünkü yanlış pozitifler mektubu okunamaz hâle getirir,
-yanlış negatifler ise sahte güven yaratır — ölçülmüş ve ilan edilmiş bir boşluk,
-ölçülmemiş bir modelden dürüsttür (D-028).
-
-**D-057'de bu yön ölçüldü:** `scripts/ner-mask-bench.ts`, tamamen yerelde (ağa
-çıkmadan) çalışan bir NER modeliyle (`@huggingface/transformers`, Node içinde
-ONNX) bu tam senaryoyu test etti — **%100 recall, sıfır yanlış-pozitif**
-(26 örneklik etiketli korpus). Production koduna henüz entegre edilmedi;
-gerçek/OCR-bozulmuş mektuplara karşı ikinci bir ölçüm turu bekleniyor
-(D-044'ün "ölç ama üretime alma" disipliniyle).
-
-**Son tarih nasıl çıkarılıyor?** Model, takvim değerini değil ilgili
-`[[DATE_n]]` yer tutucusunu döndürür — hangi tarihin son tarih olduğunu
-bağlamdan seçer. Gerçek tarih yerelde çözülür. Gizlilik ve işlevsellik birlikte korunur.
+Aktuelle Forschung: Ein lokal laufendes NER-Modell (ohne Netzwerkzugriff) für
+Namen *ohne* Auslöser-Kontext wurde evaluiert — 100 % Recall, 0
+Falsch-Positive auf dem Testkorpus (`npm run bench:ner-mask`). Integration
+wird vorbereitet.
 
 </details>
 
 <details>
-<summary><strong>Kanıt — iddia değil, test edilmiş</strong></summary>
+<summary><strong>Beweis — nicht nur behauptet, sondern getestet</strong></summary>
 
-- `unmask(mask(x)) === x` — kayıpsız round-trip
-- Maskeli metinde hiçbir orijinal PII substring'i kalmadığı testle doğrulanır
-- 8 gerçekçi Behördenbrief üzerinde, API'ye giden **payload denetlenerek**
-  ham PII bulunmadığı kanıtlanır (`llm.leak-guard.spec.ts`)
-- Maskeleme başarısız olursa çağrı **hiç yapılmaz** (fail-closed)
-- **Sızıntı yalnızca payload'da değil, TÜM kanallarda denetlenir**: log satırları,
-  DB'ye yazılan hata mesajları, exception/stack trace ve audit kayıtları
-  (`leak-channels.spec.ts`)
-- Vault, maskeli metinden ÖNCE yazılır → çözülemeyen "yetim" belge kalmaz;
-  eşzamanlı analizler ve kullanıcı izolasyonu test edilir (`pipeline.concurrency.spec.ts`)
-- Maskelemenin **neyi kaçırdığı** da ölçülür ve sabitlenir (`pii.gap-audit.spec.ts`)
-
-**Dürüst sınırlama:** Fotoğraf gönderildiğinde OCR adımı bir istisnadır. Bir
-mektup görseli zorunlu olarak PII içerir; `claude-vision` modunda bu görsel
-Anthropic'e ulaşır. Maskeleme, bundan **sonraki** her adımı (analiz, taslak
-üretimi, veritabanı, denetim izi) korur. Sıfır sızıntı isteyenler için:
-`OCR_PROVIDER=local` (tesseract.js ile yerel OCR) — metin/PDF girdilerinde ham
-veri zaten hiç LLM'e gitmez. Ayrıntı: [`DECISIONS.md`](DECISIONS.md) D-010.
+- `unmask(mask(x)) === x` — verlustfreier Round-Trip
+- Automatisiert geprüft: Im maskierten Text bleibt kein Originalwert als Teilstring erhalten
+- Bei 8 realistischen Behördenbriefen wird das an die API gesendete **Payload
+  geprüft** — nachweislich keine Klardaten enthalten (`llm.leak-guard.spec.ts`)
+- Schlägt die Maskierung fehl, wird der API-Aufruf **gar nicht erst
+  ausgeführt** (fail-closed)
+- **Lecks werden nicht nur im Payload geprüft, sondern in ALLEN Kanälen**:
+  Log-Zeilen, in die DB geschriebene Fehlermeldungen, Exceptions/Stacktraces
+  und Audit-Einträge (`leak-channels.spec.ts`)
+- Der Vault wird VOR dem maskierten Text geschrieben → keine "verwaisten"
+  Dokumente, die nicht mehr entschlüsselt werden können; nebenläufige Analysen
+  und Nutzerisolation sind getestet (`pipeline.concurrency.spec.ts`)
 
 </details>
 
 ---
 
-## Güvenlik kuralları (kod seviyesinde zorlanır)
+## Sicherheitsregeln (auf Code-Ebene erzwungen)
 
-| Kural | Nasıl zorlanıyor |
+| Regel | Wie sie durchgesetzt wird |
 |---|---|
-| **Hiçbir şey kullanıcı adına kuruma gönderilmez** | Kodda kuruma giden hiçbir kanal yok. Onay yalnızca metni kullanıcıya verir; mesaj bunu açıkça söyler. |
-| **Onay olmadan "gönderildi" olmaz** | Üç katmanda kapı: uygulama servisi + repository + Postgres trigger. Onay, önceden kalıcılaşmış ayrı bir insan eylemi olmalı. |
-| **Rıza olmadan belge/profil işlenmez** | Rızasız gönderilen belge veya `/profil` için sıfır kayıt oluşur (test edilir, D-056). |
-| **PII loglanmaz** | Sızıntı denetimi yalnızca *tip* loglar. Hata mesajları sınıflandırılır; alt katman metni ham hâliyle yazılmaz. |
-| **Veri minimizasyonu** | Her kayıtta `delete_after`; günlük silme cron'u + kullanıcının `/sil` komutu — DB seviyesinde `ON DELETE CASCADE` ile ilişkili tüm kayıtlar (analiz, taslak, PII vault) birlikte silinir. |
-| **Yapay zekâ olduğu bildirilir** | Her `/start`'ta. |
+| **Nichts wird im Namen des Nutzers an eine Behörde gesendet** | Im Code existiert kein Kanal zur Behörde. Die Freigabe übergibt ausschließlich Text an den Nutzer; die Nachricht sagt das explizit. |
+| **Ohne Freigabe kein "gesendet"** | Dreifache Absicherung: Anwendungsservice + Repository + Postgres-Trigger. Eine Freigabe muss eine vorher abgeschlossene, separate menschliche Handlung sein. |
+| **Ohne Einwilligung keine Verarbeitung** | Ohne Einwilligung gesendete Dokumente oder `/profil`-Aufrufe erzeugen null Datensätze (getestet). |
+| **PII wird nicht geloggt** | Die Leck-Prüfung loggt ausschließlich *Typen*. Fehlermeldungen werden klassifiziert; die Rohtext-Ebene wird nicht mitgeschrieben. |
+| **Datenminimierung** | Jeder Datensatz hat `delete_after`; täglicher Löschcron + `/loeschen`-Befehl des Nutzers — per `ON DELETE CASCADE` werden auf DB-Ebene alle verknüpften Datensätze (Analyse, Entwurf, PII-Vault) gemeinsam gelöscht. |
+| **KI wird offengelegt** | Bei jedem `/start`. |
 
 ---
 
-## Mimari
+## Architektur
 
 ```mermaid
 graph TB
-    subgraph user["Kullanıcı"]
-        TG["Telegram<br/>(mektup foto / PDF)"]
+    subgraph user["Nutzer"]
+        TG["Telegram<br/>(Foto/PDF des Briefs)"]
     end
 
     subgraph backend["NestJS Backend"]
         CH["ChannelAdapter<br/>telegram · mock(WhatsApp)"]
         DOC["ConversationService"]
-        PIPE["AnalysisPipeline<br/>(state machine)"]
-        DRAFT["DraftsService<br/>human-in-the-loop"]
-        REM["RemindersService<br/>deadline + GDPR cron"]
-        WATCH["WatcherService<br/>Playwright PoC"]
+        PIPE["AnalysisPipeline<br/>(State Machine)"]
+        DRAFT["DraftsService<br/>Human-in-the-Loop"]
+        REM["RemindersService<br/>Frist + DSGVO-Cron"]
+        WATCH["WatcherService<br/>Playwright-PoC"]
 
-        subgraph guard["Gizlilik Katmanı"]
+        subgraph guard["Datenschutz-Schicht"]
             PII["PiiService<br/>mask / unmask"]
             CRYPTO["CryptoService<br/>AES-256-GCM"]
         end
 
-        LLM["LlmService<br/>(PII zorunlu geçiş)"]
+        LLM["LlmService<br/>(PII-Pflichtdurchlauf)"]
     end
 
-    subgraph ext["Dış Servisler"]
-        CLAUDE["Claude API<br/>vision + analiz"]
+    subgraph ext["Externe Dienste"]
+        CLAUDE["Claude API<br/>Vision + Analyse"]
         DB[("Supabase / Postgres<br/>+ pii_vault")]
     end
 
     TG --> CH --> DOC --> PIPE
     PIPE --> PII
     PII --> LLM
-    LLM -->|"yalnızca MASKELİ veri"| CLAUDE
-    CLAUDE -->|"token'lı çıktı"| LLM
+    LLM -->|"nur MASKIERTE Daten"| CLAUDE
+    CLAUDE -->|"Ausgabe mit Tokens"| LLM
     LLM --> PII
     PIPE --> DRAFT --> CH
     PIPE --> REM --> CH
@@ -240,167 +217,147 @@ graph TB
     style CLAUDE fill:#e6f0ff,stroke:#3b6fd4
 ```
 
-**Teknoloji seçimleri:**
+**Technologieauswahl:**
 
 ![NestJS](https://img.shields.io/badge/NestJS-10-E0234E?logo=nestjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude-Anthropic%20SDK-D97757?logo=anthropic&logoColor=white)
 ![grammY](https://img.shields.io/badge/grammY-Telegram-26A5E4?logo=telegram&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?logo=supabase&logoColor=white)
-![Zod](https://img.shields.io/badge/Zod-validation-3E67B1)
-![Jest](https://img.shields.io/badge/Jest-tested-C21325?logo=jest&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-multi--stage-2496ED?logo=docker&logoColor=white)
+![Zod](https://img.shields.io/badge/Zod-Validierung-3E67B1)
+![Jest](https://img.shields.io/badge/Jest-getestet-C21325?logo=jest&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED?logo=docker&logoColor=white)
 ![Railway](https://img.shields.io/badge/Railway-deployed-0B0D0E?logo=railway&logoColor=white)
 
-Model varsayılanı `claude-sonnet-5` (analiz), vision destekli — `.env` ile değiştirilebilir.
-Ayrıntılı sıra diyagramı, onay state machine'i ve veri modeli ER diyagramı:
-[`docs/architecture-diagram.md`](docs/architecture-diagram.md).
+Standardmodell `claude-sonnet-5` (Analyse, Vision-fähig) — per `.env` änderbar.
+Ausführlicheres Sequenzdiagramm, Freigabe-State-Machine und
+ER-Datenmodell: [`docs/architecture-diagram.md`](docs/architecture-diagram.md).
 
 ---
 
 ## Demo
 
-`test-fixtures/behordenbriefe/` altında 14 sentetik Behördenbrief var (8 temel +
-6 sınır vakası; gerçek kişi verisi içermez). Aşağıdaki akış production'da
-uçtan uca doğrulanmıştır:
+Unter `test-fixtures/behordenbriefe/` liegen 14 synthetische Behördenbriefe
+(keine echten Personendaten). Der folgende Ablauf ist in Produktion
+Ende-zu-Ende verifiziert:
 
 ```
-Kullanıcı:  /start
-BüKo:       🤖 Ben bir yapay zekâ asistanıyım — gerçek bir memur/avukat değilim.
-            ⚠️ Verdiğim bilgiler hukuki tavsiye değildir.
-BüKo:       Verilerinizi işlememe onay veriyor musunuz? (/onayla)
+Nutzer:  /start
+BüKo:    🤖 Hallo! Ich bin BüKo, ein KI-Assistent — ich bin KEIN Mensch,
+         Beamter oder Anwalt.
+         ⚠️ Meine Angaben sind KEINE Rechtsberatung.
+BüKo:    Bevor wir starten: Für die Analyse muss ich Ihre Daten verarbeiten.
+         Sind Sie einverstanden? (/zustimmen)
 
-Kullanıcı:  /onayla
-BüKo:       Son bir adım: mektuplarınızdaki KENDİ bilgilerinizi yapay zekâya
-            göndermeden gizleyebilmem için bunları bir kez öğrenmem gerekiyor.
-            Bu bilgiler şifrelenerek saklanır ve yapay zekâya ASLA gönderilmez.
-            (İstemezseniz /atla)
-BüKo:       1/3 — Adınız ve soyadınız?
-Kullanıcı:  Yasin Kılıç
-BüKo:       2/3 — Adresiniz?
-Kullanıcı:  Kolonnenstraße 12
-BüKo:       3/3 — Posta kodu ve şehir?
-Kullanıcı:  10827 Berlin
-BüKo:       ✅ Artık mektuplarınızdaki bu bilgiler yapay zekâya gitmeden gizlenecek.
+Nutzer:  /zustimmen
+BüKo:    Ein letzter Schritt: Damit ich IHRE eigenen Angaben (Name, Adresse)
+         in Briefen unkenntlich machen kann, bevor etwas an die KI geht,
+         muss ich sie einmal kennen. Diese Angaben werden verschlüsselt
+         gespeichert und NIE an die KI gesendet. (Mit /ueberspringen
+         auslassbar)
+BüKo:    1/3 — Ihr Vor- und Nachname?
+Nutzer:  Yasin Kılıç
+BüKo:    2/3 — Ihre Adresse?
+Nutzer:  Kolonnenstraße 12
+BüKo:    3/3 — PLZ und Ort?
+Nutzer:  10827 Berlin
+BüKo:    ✅ Danke. Diese Angaben werden künftig maskiert, bevor etwas an
+         die KI geht.
 
-Kullanıcı:  [Ausländerbehörde mektubunun fotoğrafı]
+Nutzer:  [Foto des Ausländerbehörde-Briefs]
 
-BüKo:       🟠 Ausländerbehörde Berlin
+BüKo:    🟠 Ausländerbehörde Berlin
 
-            Oturum izni uzatma başvurunuz için ek belgeler isteniyor.
+         Für Ihren Antrag auf Verlängerung der Aufenthaltserlaubnis werden
+         zusätzliche Unterlagen benötigt.
 
-            📅 30.06.2024 — 29 gün kaldı
+         📅 30.06.2024 — noch 29 Tage
 
-            📎 Eksik/istenen belgeler:
-            • Aktueller Mietvertrag
-            • Nachweis über Krankenversicherung
-            • Aktuelle Gehaltsabrechnungen (letzte 3 Monate)
+         📎 Fehlende/angeforderte Unterlagen:
+         • Aktueller Mietvertrag
+         • Nachweis über Krankenversicherung
+         • Aktuelle Gehaltsabrechnungen (letzte 3 Monate)
 
-            ✅ Önerilen adımlar:
-            1. Belgeleri toplayın
-            2. Son tarihten önce yanıt gönderin
+         ✅ Empfohlene Schritte:
+         1. Unterlagen zusammenstellen
+         2. Vor Fristablauf antworten
 
-            İsterseniz taslak yanıt hazırlayabilirim: /taslak
-            ⚖️ BüKo hukuki tavsiye vermez.
+         Auf Wunsch erstelle ich einen Antwortentwurf: /entwurf
+         ⚖️ BüKo bietet keine Rechtsberatung.
 
-Kullanıcı:  /taslak
-BüKo:       [resmî dilde taslak]  [✅ Onayla]  [❌ Reddet]
+Nutzer:  /entwurf
+BüKo:    [Entwurf in Amtsdeutsch]  [✅ Freigeben]  [❌ Ablehnen]
 
-Kullanıcı:  ✅ Onayla
-BüKo:       Metni kopyalayıp kuruma kendiniz gönderebilirsiniz.
-            BüKo hiçbir belgeyi sizin adınıza resmî kuruma göndermez.
+Nutzer:  ✅ Freigeben
+BüKo:    Sie können den Text kopieren und selbst an die Behörde senden.
+         BüKo versendet nichts in Ihrem Namen.
 ```
 
-Son tarih yaklaştıkça 14/7/3/1 gün kala otomatik hatırlatma gönderilir.
+Bei nahender Frist werden automatisch Erinnerungen (14/7/3/1 Tage vorher)
+gesendet.
 
 ---
 
-## Durum
+## Status
 
-**665 test geçiyor** (46 suite; 1 suite ilgisiz nedenle skip) · TypeScript strict ·
-gerçek API anahtarı olmadan uçtan uca çalışır (mock modlar).
+**665 Tests bestehen** (46 Suiten) · TypeScript strict · läuft ohne echten
+API-Schlüssel Ende-zu-Ende (Mock-Modi).
 
-> Not: yerelde `test-fixtures/real/` (gitignore'lu, opsiyonel gerçek mektup
-> örnekleri) doluysa `pii.real-fixtures.spec.ts` ek testler üretir ve toplam
-> sayı bu rakamın üzerinde çıkabilir — CI'daki (ve bu README'nin referans
-> aldığı) sayı hep 665'tir, çünkü CI bu opsiyonel dizine hiç sahip değildir.
-
-| Faz | Durum |
+| Bereich | Status |
 |---|---|
-| Veri modeli, PII maskeleme, config, crypto | ✅ |
-| Persistence (memory + Supabase), LLM sarmalayıcı, kanal adaptörleri | ✅ |
-| Analiz hattı (özet/son tarih/risk/eksik belge) | ✅ |
-| Taslak üretimi + insan onayı akışı | ✅ |
-| Hatırlatma + GDPR silme cron'ları | ✅ |
-| Randevu izleme (Playwright PoC, mock sayfa) | ✅ |
-| Telegram sohbet akışı (tr/de/en) | ✅ |
-| Telegram webhook endpoint'i (gizli anahtar doğrulamalı) | ✅ |
-| Prompt değerlendirme koşumu (`npm run eval:prompts`) | ✅ (anahtar gerektirir) |
-| Onboarding PII profili (bilinen-değer maskeleme) | ✅ |
-| Üçüncü taraf isimleri — bağlamsal tetikleyici (D-029) | ✅ |
-| Tetikleyicisiz isimler için yerel NER — ölçüldü, üretime alınmadı | ⏳ v2 (bkz. D-057) |
-| Dağıtım hazırlığı (`railway.json`, `/health`, `check:deploy`) | ✅ gerçek Docker + Railway'de canlı |
-| Web dashboard | ⏳ kapsam dışı |
+| Datenmodell, PII-Maskierung, Config, Crypto | ✅ |
+| Persistenz (Memory + Supabase), LLM-Wrapper, Kanaladapter | ✅ |
+| Analyse-Pipeline (Zusammenfassung/Frist/Risiko/fehlende Unterlagen) | ✅ |
+| Entwurfserstellung + menschliche Freigabe | ✅ |
+| Erinnerungen + DSGVO-Löschcron | ✅ |
+| Terminüberwachung (Playwright-PoC) | ✅ |
+| Telegram-Chatablauf (tr/de/en) | ✅ |
+| Telegram-Webhook (mit Secret-Verifizierung) | ✅ |
+| Onboarding-Profil (Bekannte-Werte-Maskierung) | ✅ |
+| Namen Dritter — kontextuelle Auslöser | ✅ |
+| Deployment (Docker + Railway, `/health`) | ✅ live im Einsatz |
 
 ---
 
-## Hızlı başlangıç
+## Schnellstart
 
 ```bash
 git clone https://github.com/burakerdgn1/B-Ko.git && cd B-Ko
 npm install
-cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 665 test (yerelde gerçek fixture'lar varsa daha fazla olabilir)
+cp .env.example .env      # läuft ohne Schlüssel: LLM_MOCK=true, DB_DRIVER=memory
+npm test                  # 665 Tests
 npm run start:dev
 ```
 
-Gerçek anahtarlarla çalıştırmak için: [`MANUAL_ACTIONS_REQUIRED.md`](MANUAL_ACTIONS_REQUIRED.md)
-Dağıtım: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+Für den Betrieb mit echten Schlüsseln: [`MANUAL_ACTIONS_REQUIRED.md`](MANUAL_ACTIONS_REQUIRED.md)
+Deployment: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 
-### Operasyon komutları
+### Betriebsbefehle
 
-| Komut | Ne yapar |
+| Befehl | Was er macht |
 |---|---|
-| `npm run check:deploy` | Dağıtım öncesi GO/NO-GO. Gerçek `validateEnv()` + `PUBLIC_BASE_URL` / webhook sırrı / Supabase / Anthropic kontrolü. **Token harcamaz.** `railway run` ile platformdaki gerçek değişkenlere karşı da koşar. |
-| `npm run check:supabase` | Bağlantı + anahtar türü + şema teşhisi (salt-okunur). |
-| `npm run check:docs-sync` | README'deki test/karar sayısının gerçek durumla eşleştiğini doğrular — uyuşmazsa CI kırmızı olur. |
-| `npm run test:supabase` | Gerçek Postgres'e karşı entegrasyon testleri (16). |
-| `npm run live:check` | Gerçek Claude + gerçek Supabase tam yığın (⚠️ ücretlendirilir). |
-| `npm run eval:prompts` | 14 sentetik mektupla prompt doğruluk ölçümü (⚠️ ücretlendirilir). |
-| `npm run bench:ner-mask` | Üçüncü taraf isim maskeleme v2 için yerel NER ölçümü (D-057). |
-| `npm run rotate:supabase-key` | Supabase secret anahtar rotasyonu — fail-safe, varsayılan kuru koşum. |
-| `npm run rotate:pii-key` | PII vault anahtar rotasyonu — şifreli veriyi kaybetmeden. |
+| `npm run check:deploy` | Go/No-Go vor dem Deployment — prüft `validateEnv()`, `PUBLIC_BASE_URL`, Webhook-Secret, Supabase, Anthropic. Verursacht keine Kosten. |
+| `npm run check:supabase` | Verbindung + Schlüsseltyp + Schema-Diagnose (nur lesend). |
+| `npm run check:docs-sync` | Prüft, ob Test-/Entscheidungszahl in README mit der Realität übereinstimmt. |
+| `npm run test:supabase` | Integrationstests gegen echtes Postgres (16). |
+| `npm run bench:ner-mask` | Lokale NER-Messung für Namenserkennung ohne Auslöser-Kontext. |
+| `npm run rotate:supabase-key` | Rotation des Supabase-Secret-Keys — fail-safe, standardmäßig Trockenlauf. |
+| `npm run rotate:pii-key` | Rotation des PII-Vault-Schlüssels ohne Datenverlust. |
 
-Sağlık kontrolü: `GET /health` → `{"status":"ok","uptime":N}` (liveness;
-bilinçli olarak dış bağımlılıklara dokunmaz ve hiçbir yapılandırma sızdırmaz).
+Health-Check: `GET /health` → `{"status":"ok","uptime":N}`.
 
 ---
 
-## Proje belgeleri
+## Projektdokumentation
 
-| Dosya | İçerik |
+| Datei | Inhalt |
 |---|---|
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Mimari, modül haritası, veri modeli |
-| [`docs/architecture-diagram.md`](docs/architecture-diagram.md) | Tüm mermaid diyagramları (sıra diyagramı, state machine, ER diyagramı) |
-| [`DECISIONS.md`](DECISIONS.md) | Her mühendislik kararı + gerekçesi (57 karar) |
-| [`STATUS.md`](STATUS.md) | Şu an neredeyiz |
-| [`PROGRESS.md`](PROGRESS.md) | Kronolojik ilerleme |
-| [`TODO.md`](TODO.md) | Görev listesi + bağımlılık grafiği |
-| [`MANUAL_ACTIONS_REQUIRED.md`](MANUAL_ACTIONS_REQUIRED.md) | İnsan gerektiren adımlar |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Architektur, Modulübersicht, Datenmodell |
+| [`docs/architecture-diagram.md`](docs/architecture-diagram.md) | Alle Mermaid-Diagramme (Sequenz, State Machine, ER-Diagramm) |
+| [`DECISIONS.md`](DECISIONS.md) | Jede Architekturentscheidung mit Begründung (58 Entscheidungen) |
+| [`STATUS.md`](STATUS.md) | Aktueller Stand |
+| [`PROGRESS.md`](PROGRESS.md) | Chronologischer Verlauf |
 
-`DECISIONS.md` özellikle okunmaya değer: geliştirme sırasında bulunan **gerçek
-güvenlik açıkları ve production olayları** (Türkçe `ı` case-folding kaçağı,
-etiketsiz tekrar eden dosya numarası sızıntısı, onay kapısı bypass'ı, eksik
-GDPR silme, `/start`'ta mükerrer AI şeffaflık mesajı, `/profil`'de eksik rıza
-kontrolü) ve nasıl bulunup kapatıldıkları orada kayıtlı — bir "her şey ilk
-seferinde doğru gitti" anlatısı değil, gerçek bir mühendislik iz kaydı.
+## Lizenz
 
-## Kapsam
-
-**v1:** Ausländerbehörde + genel resmî mektup.
-**Kapsam dışı:** Finanzamt/Jobcenter/Elterngeld, otomatik form gönderimi (asla),
-tam web dashboard.
-
-## Lisans
-
-MIT — bkz. [`LICENSE`](LICENSE).
+MIT — siehe [`LICENSE`](LICENSE).

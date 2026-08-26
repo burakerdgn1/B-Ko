@@ -1622,3 +1622,46 @@ varsayımsal olmadığı görüldü:
   kabul eşiği netleşirse ancak o zaman `PiiService`'e entegrasyon planlanır.
 
 Kullanım: `npm run bench:ner-mask -- --model=both`
+
+## D-058 — README public portföy için Almancaya çevrildi, "Bureaucracy Copilot" adlandırması ve eksik/kapsam listeleri kaldırıldı
+
+- **Bağlam:** Repo public'e alınıp sahibinin portföyüne eklendikten sonra,
+  hedef kitle Almanca konuşan/okuyan bir teknik izleyici + genel portföy
+  ziyaretçisi olarak belirlendi. İki somut geri bildirim geldi:
+  1. "AI Bureaucracy Copilot" alt başlığı, projenin gerçek kapsamına göre
+     (Behördenbrief okuma + özet/son tarih/risk çıkarımı + taslak yanıt)
+     fazla iddialı bulundu.
+  2. README'nin kapsam dışı/eksik/risk anlatan bölümleri (v2 NER sınırı
+     detayı, OCR/fotoğraf istisnası uyarısı, "Kapsam" bölümündeki
+     Finanzamt/Jobcenter/Elterngeld hariç tutma listesi, DECISIONS.md'yi
+     "geçmiş güvenlik açıkları" üzerinden tanıtan paragraf) bir portföy
+     parçası için gereksiz derecede öz-eleştirel bulundu.
+- **Karar:**
+  - Alt başlık `"BüKo — Assistent für Behördenbriefe"` olarak değiştirildi
+    (daha dar, daha doğru kapsam tanımı).
+  - README.md TAMAMEN Almancaya çevrildi — demo transkripti gerçek `de`
+    locale mesajlarından (`conversation.messages.ts`) alındı, uydurma
+    çeviri değil.
+  - Kapsam dışı/eksik anlatan bölümler kaldırıldı: "v2 sınırı" detay bloğu
+    (yerine NER ölçümü artık "aktif araştırma" olarak, sınır değil başarı
+    olarak çerçeveleniyor), "Dürüst sınırlama" (OCR/fotoğraf istisnası)
+    paragrafı, "Kapsam" bölümü (v1/kapsam dışı listesi), durum tablosundaki
+    ⏳ satırları (web dashboard, NER v2 beklemede), DECISIONS.md'yi geçmiş
+    güvenlik açıklarını sayarak tanıtan paragraf (nötr bir cümleyle
+    değiştirildi).
+  - **Korunan:** Güvenlik kuralları tablosu (bunlar risk değil, POZİTİF
+    garantiler — "hiçbir şey onaysız gönderilmez" gibi), PII maskeleme
+    derinlemesine bölümü, "Beweis" (kanıt) test listesi, mimari diyagramları
+    — bunlar projenin gerçek mühendislik gücünü gösteriyor, kaldırılmadı.
+  - `scripts/check-docs-sync.ts`'teki regex'ler Almanca çapa ifadelere
+    güncellendi: `(N karar)` → `(N Entscheidungen)`, `**N test geçiyor**` →
+    `**N Tests bestehen**`.
+- **Bilinçli ödünleşim:** OCR/fotoğraf istisnası (görsel Anthropic'e ham
+  gider) gerçek bir gizlilik nüansıydı; README'den kaldırılması, o detayı
+  yalnızca kod/DECISIONS D-010'da bırakıyor. Sahibinin açık talebiyle
+  yapıldı; teknik gerçek değişmedi, yalnızca portföy metnindeki görünürlüğü
+  azaldı.
+- **Doğrulama:** 3 mermaid bloğu (Almanca etiketlerle) gerçek `mermaid.js`
+  parser'ı ile sözdizimi doğrulandı. `npm run check:docs-sync` → yeşil
+  (665 test, 58 karar → Almanca "665 Tests bestehen" / "58 Entscheidungen"
+  ile eşleşiyor). `npx tsc --noEmit`, `npm run lint`, `npm test` → temiz.

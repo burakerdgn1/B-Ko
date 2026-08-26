@@ -54,13 +54,15 @@ function countDecisions(): number {
   return matches.length;
 }
 
+// README.md D-058 ile Almancaya çevrildi — desenler artık Almanca çapa
+// ifadelere göre eşleşiyor ("(N Entscheidungen)" / "**N Tests bestehen**").
 function readmeDecisionCount(): number {
   const text = readFileSync(join(ROOT, 'README.md'), 'utf8');
-  const match = /\((\d+)\s*karar\)/.exec(text);
+  const match = /\((\d+)\s*Entscheidungen\)/.exec(text);
   if (!match) {
     throw new Error(
-      "README.md içinde \"(N karar)\" biçiminde bir ifade bulunamadı — " +
-        "'Proje belgeleri' tablosundaki DECISIONS.md satırı değişmiş olabilir.",
+      'README.md içinde "(N Entscheidungen)" biçiminde bir ifade bulunamadı — ' +
+        "'Projektdokumentation' tablosundaki DECISIONS.md satırı değişmiş olabilir.",
     );
   }
   return Number(match[1]);
@@ -68,10 +70,10 @@ function readmeDecisionCount(): number {
 
 function readmePassedTestCount(): number {
   const text = readFileSync(join(ROOT, 'README.md'), 'utf8');
-  const match = /\*\*(\d+)\s*test geçiyor\*\*/.exec(text);
+  const match = /\*\*(\d+)\s*Tests bestehen\*\*/.exec(text);
   if (!match) {
     throw new Error(
-      'README.md içinde "**N test geçiyor**" biçiminde bir ifade bulunamadı.',
+      'README.md içinde "**N Tests bestehen**" biçiminde bir ifade bulunamadı.',
     );
   }
   return Number(match[1]);
