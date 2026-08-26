@@ -152,8 +152,13 @@ Supabase/Postgres · Zod · Playwright · Jest
 
 ## Durum
 
-**700 test geçiyor** (45 suite; 1 suite ilgisiz nedenle skip) · TypeScript strict ·
+**661 test geçiyor** (45 suite; 1 suite ilgisiz nedenle skip) · TypeScript strict ·
 gerçek API anahtarı olmadan uçtan uca çalışır (mock modlar).
+
+> Not: yerelde `test-fixtures/real/` (gitignore'lu, opsiyonel gerçek mektup
+> örnekleri) doluysa `pii.real-fixtures.spec.ts` ek testler üretir ve toplam
+> sayı bu rakamın üzerinde çıkabilir — CI'daki (ve bu README'nin referans
+> aldığı) sayı hep 661'dir, çünkü CI bu opsiyonel dizine hiç sahip değildir.
 
 | Faz | Durum |
 |---|---|
@@ -180,7 +185,7 @@ gerçek API anahtarı olmadan uçtan uca çalışır (mock modlar).
 git clone <repo> && cd B-Ko
 npm install
 cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 700 test
+npm test                  # 661 test (yerelde gerçek fixture'lar varsa daha fazla olabilir)
 npm run start:dev
 ```
 
