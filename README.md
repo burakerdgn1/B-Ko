@@ -1,17 +1,23 @@
-# BüKo — AI Bureaucracy Copilot 🇩🇪
+<div align="center">
+
+# 🇩🇪 BüKo — AI Bureaucracy Copilot
+
+**Almanya'daki göçmenlerin resmî kurum yazışmalarını anlamasına ve zamanında yanıtlamasına yardımcı olan bir Telegram asistanı.**
 
 [![CI](https://github.com/burakerdgn1/B-Ko/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/burakerdgn1/B-Ko/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-665%20passing-brightgreen)](DECISIONS.md)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Decisions](https://img.shields.io/badge/engineering%20decisions-57%20logged-6f42c1)](DECISIONS.md)
 
-> Almanya'daki göçmenlerin resmî kurum yazışmalarını anlamasına ve zamanında
-> yanıtlamasına yardımcı olan bir Telegram asistanı.
+[Sorun](#sorun) · [Nasıl çalışır](#nasıl-çalışır) · [PII maskeleme](#ayırt-edici-özellik-pii-maskeleme-katmanı) · [Mimari](#mimari) · [Demo](#demo) · [Hızlı başlangıç](#hızlı-başlangıç)
+
+</div>
+
+---
 
 **BüKo hukuki tavsiye vermez.** Bilgilendirme ve hazırlık asistanıdır; bağlayıcı
 konularda bir avukata veya ilgili kuruma danışın.
-
----
 
 ## Sorun
 
@@ -24,30 +30,60 @@ gitmesini engeller — neyin kapsandığı aşağıda **ölçülmüş** olarak l
 
 ## Nasıl çalışır
 
-```
-Kullanıcı mektup fotoğrafı gönderir
-        ↓
-  OCR (Claude vision veya yerel tesseract)
-        ↓
-  🔒 PII MASKELEME  ← kullanıcının kendi bilgileri + tetikleyici
-        ↓             bağlamdaki isimler + tüm yapısal alanlar
-                      [[NAME_1]] gibi yer tutuculara çevrilir
-  Claude analizi (yalnızca maskeli metin görür)
-        ↓
-  🔓 yerel geri çevirme
-        ↓
-  Özet · son tarih · risk · eksik belgeler · hatırlatmalar
-        ↓
-  /taslak → resmî dilde yanıt taslağı → ✋ İNSAN ONAYI → kullanıcıya metin
+```mermaid
+flowchart TD
+    A["📷 Kullanıcı mektup<br/>fotoğrafı/PDF gönderir"] --> B["👁️ OCR<br/>Claude vision ya da yerel tesseract"]
+    B --> C{"🔒 PII MASKELEME"}
+    C -->|"kullanıcının kendi bilgileri<br/>+ tetikleyici bağlamdaki isimler<br/>+ tüm yapısal alanlar"| D["metin artık yalnızca<br/>[[NAME_1]] gibi yer tutucular içerir"]
+    D --> E["🧠 Claude analizi<br/>yalnızca MASKELİ metni görür"]
+    E --> F["🔓 yerel geri çevirme"]
+    F --> G["📋 Özet · son tarih · risk<br/>eksik belgeler · hatırlatmalar"]
+    G --> H["✍️ /taslak → resmî dilde yanıt"]
+    H --> I{"✋ İNSAN ONAYI"}
+    I -->|onaylandı| J["kullanıcıya metin verilir<br/>— kuruma OTOMATİK gönderilmez"]
+
+    style C fill:#fff4e6,stroke:#e8890c,stroke-width:2px
+    style E fill:#e6f0ff,stroke:#3b6fd4,stroke-width:2px
+    style I fill:#ffe6e6,stroke:#c92a2a,stroke-width:2px
+    style J fill:#e6ffe9,stroke:#2f9e44,stroke-width:2px
 ```
 
-Ayrıntılı diyagramlar: [`docs/architecture-diagram.md`](docs/architecture-diagram.md)
+Daha ayrıntılı akış diyagramları (sıra diyagramı, onay state machine'i, veri modeli): [`docs/architecture-diagram.md`](docs/architecture-diagram.md)
 
 ---
 
 ## Ayırt edici özellik: PII maskeleme katmanı
 
 Bu, sonradan eklenmiş bir "gizlilik özelliği" değil; mimarinin merkezinde.
+
+```mermaid
+flowchart LR
+    RAW["Ham metin<br/>'Ahmet Yılmaz, Frist 30.06.2024'"]
+
+    subgraph mask["PiiService.mask()"]
+        direction TB
+        K["1 · Bilinen-değer<br/>(kullanıcı profili)"]
+        R["2 · Yapısal desen<br/>(regex + checksum)"]
+        T["3 · Tokenizasyon<br/>değer → [[TYPE_n]]"]
+        K --> R --> T
+    end
+
+    MASKED["'[[NAME_1]], Frist [[DATE_1]]'"]
+    LLMBOX["Claude API"]
+    OUT["Model çıktısı<br/>deadlineToken: [[DATE_1]]"]
+    FINAL["unmask →<br/>'30.06.2024'"]
+    VAULT[("pii_vault<br/>AES-256-GCM<br/>ciphertext")]
+
+    RAW --> mask --> MASKED
+    MASKED -->|"güvenli"| LLMBOX --> OUT --> FINAL
+    T -.->|"eşleme tablosu<br/>ŞİFRELİ"| VAULT
+    VAULT -.-> FINAL
+
+    style RAW fill:#ffe6e6,stroke:#c92a2a
+    style MASKED fill:#e6ffe9,stroke:#2f9e44
+    style LLMBOX fill:#e6f0ff,stroke:#3b6fd4
+    style VAULT fill:#fff4e6,stroke:#e8890c
+```
 
 **Nasıl:** Belgedeki kimlik bilgileri LLM'e gitmeden önce deterministik yer
 tutuculara çevrilir. Model `[[STEUERID_1]]` görür, gerçek numarayı değil. Yanıt
@@ -67,10 +103,11 @@ asla yapay zekâya gönderilmez) ve her belgede "bilinen-değer maskeleme"yi bes
 | **Kullanıcının kendi adı ve adresi** | ✅ **Onboarding sonrası maskelenir** |
 | Kullanıcının adresi — standart dışı biçim | ✅ Onboarding sonrası (birebir eşleşme) |
 | **Üçüncü taraf isimleri** — tetikleyici bağlamda (memur, aile üyesi, avukat) | ✅ Maskelenir (D-029) |
-| Üçüncü taraf isimleri — **tetikleyicisiz**, cümle içinde çıplak geçen | ❌ **Maskelenmez — v2 (NER)** |
+| Üçüncü taraf isimleri — **tetikleyicisiz**, cümle içinde çıplak geçen | ⏳ **v2'de ölçüldü — bkz. D-057** |
 | Profil vermeyen (`/atla`) kullanıcının adı — tetikleyici bağlamda | ✅ Maskelenir |
 
-### Üçüncü taraf isimleri: bağlamsal tetikleyiciler (D-029)
+<details>
+<summary><strong>Üçüncü taraf isimleri: bağlamsal tetikleyiciler nasıl çalışıyor? (D-029)</strong></summary>
 
 Bir ismin *biçimi* onu tanınabilir kılmaz — ama Alman resmî yazışmasında
 isimlerin geçtiği **bağlamlar** son derece düzenlidir. BüKo bu bağlamları
@@ -91,27 +128,36 @@ stoplist (`Damen`, `Herren`, `Behörde`, `Abteilung` …) uygular.
 sıfır yanlış pozitif. Test, alan terimlerinin maskelenmediğini ve token
 oranının %15'i aşmadığını (aşırı maskeleme yok) sürekli doğrular.
 
-### ⚠️ Kalan v2 sınırlaması: tetikleyicisiz isimler
+</details>
 
-Hiçbir unvan/etiket olmadan cümle içinde geçen isimler **hâlâ maskelenmiyor**:
+<details>
+<summary><strong>⚠️ v2 sınırı ve ölçülen çözüm yönü: tetikleyicisiz isimler (D-028 / D-057)</strong></summary>
+
+Hiçbir unvan/etiket olmadan cümle içinde geçen isimler v1'de maskelenmiyordu:
 
 > „Der Antrag wurde von **Petra Hoffmann** geprüft."
 
-Burada `von` bir tetikleyici değildir ve bu adı yakalamak **yerel NER**
-gerektirir — bilinçli olarak **v2 kapsamındadır** (bkz. [`DECISIONS.md`](DECISIONS.md)
-D-028). Bunu küçümsemiyoruz: bu da kişisel veridir ve şu anda Claude'a
-ulaşmaktadır. Kalıcı bir test (`onboarding.e2e.spec.ts` — "KALAN SINIR") bu
-davranışı sabitler, böylece sınır sessizce kaymaz.
+Burada `von` bir tetikleyici değildir. Bunu küçümsemiyoruz: bu da kişisel veridir.
+Yarım bir çözüm eklemedik çünkü yanlış pozitifler mektubu okunamaz hâle getirir,
+yanlış negatifler ise sahte güven yaratır — ölçülmüş ve ilan edilmiş bir boşluk,
+ölçülmemiş bir modelden dürüsttür (D-028).
 
-Neden yarım bir NER eklemiyoruz: yanlış pozitifler mektubu okunamaz hâle
-getirir, yanlış negatifler ise sahte güven yaratır. Ölçülmüş ve ilan edilmiş bir
-boşluk, ölçülmemiş bir modelden dürüsttür.
+**D-057'de bu yön ölçüldü:** `scripts/ner-mask-bench.ts`, tamamen yerelde (ağa
+çıkmadan) çalışan bir NER modeliyle (`@huggingface/transformers`, Node içinde
+ONNX) bu tam senaryoyu test etti — **%100 recall, sıfır yanlış-pozitif**
+(26 örneklik etiketli korpus). Production koduna henüz entegre edilmedi;
+gerçek/OCR-bozulmuş mektuplara karşı ikinci bir ölçüm turu bekleniyor
+(D-044'ün "ölç ama üretime alma" disipliniyle).
 
 **Son tarih nasıl çıkarılıyor?** Model, takvim değerini değil ilgili
 `[[DATE_n]]` yer tutucusunu döndürür — hangi tarihin son tarih olduğunu
 bağlamdan seçer. Gerçek tarih yerelde çözülür. Gizlilik ve işlevsellik birlikte korunur.
 
-**Kanıt (iddia değil):**
+</details>
+
+<details>
+<summary><strong>Kanıt — iddia değil, test edilmiş</strong></summary>
+
 - `unmask(mask(x)) === x` — kayıpsız round-trip
 - Maskeli metinde hiçbir orijinal PII substring'i kalmadığı testle doğrulanır
 - 8 gerçekçi Behördenbrief üzerinde, API'ye giden **payload denetlenerek**
@@ -124,16 +170,14 @@ bağlamdan seçer. Gerçek tarih yerelde çözülür. Gizlilik ve işlevsellik b
   eşzamanlı analizler ve kullanıcı izolasyonu test edilir (`pipeline.concurrency.spec.ts`)
 - Maskelemenin **neyi kaçırdığı** da ölçülür ve sabitlenir (`pii.gap-audit.spec.ts`)
 
-### Dürüst sınırlama ⚠️
+**Dürüst sınırlama:** Fotoğraf gönderildiğinde OCR adımı bir istisnadır. Bir
+mektup görseli zorunlu olarak PII içerir; `claude-vision` modunda bu görsel
+Anthropic'e ulaşır. Maskeleme, bundan **sonraki** her adımı (analiz, taslak
+üretimi, veritabanı, denetim izi) korur. Sıfır sızıntı isteyenler için:
+`OCR_PROVIDER=local` (tesseract.js ile yerel OCR) — metin/PDF girdilerinde ham
+veri zaten hiç LLM'e gitmez. Ayrıntı: [`DECISIONS.md`](DECISIONS.md) D-010.
 
-**Fotoğraf gönderildiğinde OCR adımı bir istisnadır.** Bir mektup görseli
-zorunlu olarak PII içerir; `claude-vision` modunda bu görsel Anthropic'e ulaşır.
-Maskeleme, bundan **sonraki** her adımı (analiz, taslak üretimi, veritabanı,
-denetim izi) korur.
-
-Sıfır sızıntı isteyenler için: `OCR_PROVIDER=local` (tesseract.js ile yerel OCR).
-Metin/PDF girdilerinde ham veri zaten hiç LLM'e gitmez.
-Ayrıntı: [`DECISIONS.md`](DECISIONS.md) D-010.
+</details>
 
 ---
 
@@ -143,79 +187,82 @@ Ayrıntı: [`DECISIONS.md`](DECISIONS.md) D-010.
 |---|---|
 | **Hiçbir şey kullanıcı adına kuruma gönderilmez** | Kodda kuruma giden hiçbir kanal yok. Onay yalnızca metni kullanıcıya verir; mesaj bunu açıkça söyler. |
 | **Onay olmadan "gönderildi" olmaz** | Üç katmanda kapı: uygulama servisi + repository + Postgres trigger. Onay, önceden kalıcılaşmış ayrı bir insan eylemi olmalı. |
-| **Rıza olmadan belge işlenmez** | Rızasız gönderilen belge için sıfır kayıt oluşur (test edilir). |
+| **Rıza olmadan belge/profil işlenmez** | Rızasız gönderilen belge veya `/profil` için sıfır kayıt oluşur (test edilir, D-056). |
 | **PII loglanmaz** | Sızıntı denetimi yalnızca *tip* loglar. Hata mesajları sınıflandırılır; alt katman metni ham hâliyle yazılmaz. |
-| **Veri minimizasyonu** | Her kayıtta `delete_after`; günlük silme cron'u + kullanıcının `/sil` komutu. |
-| **Yapay zekâ olduğu bildirilir** | Her `/start`'ta, üç dilde. |
+| **Veri minimizasyonu** | Her kayıtta `delete_after`; günlük silme cron'u + kullanıcının `/sil` komutu — DB seviyesinde `ON DELETE CASCADE` ile ilişkili tüm kayıtlar (analiz, taslak, PII vault) birlikte silinir. |
+| **Yapay zekâ olduğu bildirilir** | Her `/start`'ta. |
 
 ---
 
-## Teknoloji
+## Mimari
 
-TypeScript · NestJS 10 · Claude (`@anthropic-ai/sdk`) · grammY (Telegram) ·
-Supabase/Postgres · Zod · Playwright · Jest
+```mermaid
+graph TB
+    subgraph user["Kullanıcı"]
+        TG["Telegram<br/>(mektup foto / PDF)"]
+    end
 
-## Durum
+    subgraph backend["NestJS Backend"]
+        CH["ChannelAdapter<br/>telegram · mock(WhatsApp)"]
+        DOC["ConversationService"]
+        PIPE["AnalysisPipeline<br/>(state machine)"]
+        DRAFT["DraftsService<br/>human-in-the-loop"]
+        REM["RemindersService<br/>deadline + GDPR cron"]
+        WATCH["WatcherService<br/>Playwright PoC"]
 
-**665 test geçiyor** (46 suite; 1 suite ilgisiz nedenle skip) · TypeScript strict ·
-gerçek API anahtarı olmadan uçtan uca çalışır (mock modlar).
+        subgraph guard["Gizlilik Katmanı"]
+            PII["PiiService<br/>mask / unmask"]
+            CRYPTO["CryptoService<br/>AES-256-GCM"]
+        end
 
-> Not: yerelde `test-fixtures/real/` (gitignore'lu, opsiyonel gerçek mektup
-> örnekleri) doluysa `pii.real-fixtures.spec.ts` ek testler üretir ve toplam
-> sayı bu rakamın üzerinde çıkabilir — CI'daki (ve bu README'nin referans
-> aldığı) sayı hep 661'dir, çünkü CI bu opsiyonel dizine hiç sahip değildir.
+        LLM["LlmService<br/>(PII zorunlu geçiş)"]
+    end
 
-| Faz | Durum |
-|---|---|
-| Veri modeli, PII maskeleme, config, crypto | ✅ |
-| Persistence (memory + Supabase), LLM sarmalayıcı, kanal adaptörleri | ✅ |
-| Analiz hattı (özet/son tarih/risk/eksik belge) | ✅ |
-| Taslak üretimi + insan onayı akışı | ✅ |
-| Hatırlatma + GDPR silme cron'ları | ✅ |
-| Randevu izleme (Playwright PoC, mock sayfa) | ✅ |
-| Telegram sohbet akışı (tr/de/en) | ✅ |
-| Telegram webhook endpoint'i (gizli anahtar doğrulamalı) | ✅ |
-| Prompt değerlendirme koşumu (`npm run eval:prompts`) | ✅ (anahtar gerektirir) |
-| Onboarding PII profili (bilinen-değer maskeleme) | ✅ |
-| Üçüncü taraf isimleri — bağlamsal tetikleyici (D-029) | ✅ |
-| Tetikleyicisiz isimler için yerel NER | ⏳ v2 (bkz. D-028) |
-| Dağıtım hazırlığı (`railway.json`, `/health`, `check:deploy`) | ✅ gerçek Docker ile doğrulandı |
-| Web dashboard | ⏳ kapsam dışı |
+    subgraph ext["Dış Servisler"]
+        CLAUDE["Claude API<br/>vision + analiz"]
+        DB[("Supabase / Postgres<br/>+ pii_vault")]
+    end
 
----
+    TG --> CH --> DOC --> PIPE
+    PIPE --> PII
+    PII --> LLM
+    LLM -->|"yalnızca MASKELİ veri"| CLAUDE
+    CLAUDE -->|"token'lı çıktı"| LLM
+    LLM --> PII
+    PIPE --> DRAFT --> CH
+    PIPE --> REM --> CH
+    WATCH --> CH
+    PII --> CRYPTO --> DB
+    PIPE --> DB
+    DRAFT --> DB
 
-## Hızlı başlangıç
-
-```bash
-git clone <repo> && cd B-Ko
-npm install
-cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
-npm test                  # 665 test (yerelde gerçek fixture'lar varsa daha fazla olabilir)
-npm run start:dev
+    style guard fill:#fff4e6,stroke:#e8890c
+    style CLAUDE fill:#e6f0ff,stroke:#3b6fd4
 ```
 
-Gerçek anahtarlarla çalıştırmak için: [`MANUAL_ACTIONS_REQUIRED.md`](MANUAL_ACTIONS_REQUIRED.md)
-Dağıtım: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+**Teknoloji seçimleri:**
 
-### Operasyon komutları
+![NestJS](https://img.shields.io/badge/NestJS-10-E0234E?logo=nestjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)
+![Claude](https://img.shields.io/badge/Claude-Anthropic%20SDK-D97757?logo=anthropic&logoColor=white)
+![grammY](https://img.shields.io/badge/grammY-Telegram-26A5E4?logo=telegram&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?logo=supabase&logoColor=white)
+![Zod](https://img.shields.io/badge/Zod-validation-3E67B1)
+![Jest](https://img.shields.io/badge/Jest-tested-C21325?logo=jest&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-multi--stage-2496ED?logo=docker&logoColor=white)
+![Railway](https://img.shields.io/badge/Railway-deployed-0B0D0E?logo=railway&logoColor=white)
 
-| Komut | Ne yapar |
-|---|---|
-| `npm run check:deploy` | Dağıtım öncesi GO/NO-GO. Gerçek `validateEnv()` + `PUBLIC_BASE_URL` / webhook sırrı / Supabase / Anthropic kontrolü. **Token harcamaz.** `railway run` ile platformdaki gerçek değişkenlere karşı da koşar. |
-| `npm run check:supabase` | Bağlantı + anahtar türü + şema teşhisi (salt-okunur). |
-| `npm run test:supabase` | Gerçek Postgres'e karşı entegrasyon testleri (16). |
-| `npm run live:check` | Gerçek Claude + gerçek Supabase tam yığın (⚠️ ücretlendirilir). |
-| `npm run eval:prompts` | 14 sentetik mektupla prompt doğruluk ölçümü (⚠️ ücretlendirilir). |
-| `npm run rotate:supabase-key` | Supabase secret anahtar rotasyonu — fail-safe, varsayılan kuru koşum. |
-| `npm run rotate:pii-key` | PII vault anahtar rotasyonu — şifreli veriyi kaybetmeden. |
+Model varsayılanı `claude-sonnet-5` (analiz), vision destekli — `.env` ile değiştirilebilir.
+Ayrıntılı sıra diyagramı, onay state machine'i ve veri modeli ER diyagramı:
+[`docs/architecture-diagram.md`](docs/architecture-diagram.md).
 
-Sağlık kontrolü: `GET /health` → `{"status":"ok","uptime":N}` (liveness;
-bilinçli olarak dış bağımlılıklara dokunmaz ve hiçbir yapılandırma sızdırmaz).
+---
 
-### Demo senaryosu
+## Demo
 
 `test-fixtures/behordenbriefe/` altında 14 sentetik Behördenbrief var (8 temel +
-6 sınır vakası; gerçek kişi verisi içermez). Örnek akış:
+6 sınır vakası; gerçek kişi verisi içermez). Aşağıdaki akış production'da
+uçtan uca doğrulanmıştır:
 
 ```
 Kullanıcı:  /start
@@ -268,11 +315,73 @@ Son tarih yaklaştıkça 14/7/3/1 gün kala otomatik hatırlatma gönderilir.
 
 ---
 
+## Durum
+
+**665 test geçiyor** (46 suite; 1 suite ilgisiz nedenle skip) · TypeScript strict ·
+gerçek API anahtarı olmadan uçtan uca çalışır (mock modlar).
+
+> Not: yerelde `test-fixtures/real/` (gitignore'lu, opsiyonel gerçek mektup
+> örnekleri) doluysa `pii.real-fixtures.spec.ts` ek testler üretir ve toplam
+> sayı bu rakamın üzerinde çıkabilir — CI'daki (ve bu README'nin referans
+> aldığı) sayı hep 665'tir, çünkü CI bu opsiyonel dizine hiç sahip değildir.
+
+| Faz | Durum |
+|---|---|
+| Veri modeli, PII maskeleme, config, crypto | ✅ |
+| Persistence (memory + Supabase), LLM sarmalayıcı, kanal adaptörleri | ✅ |
+| Analiz hattı (özet/son tarih/risk/eksik belge) | ✅ |
+| Taslak üretimi + insan onayı akışı | ✅ |
+| Hatırlatma + GDPR silme cron'ları | ✅ |
+| Randevu izleme (Playwright PoC, mock sayfa) | ✅ |
+| Telegram sohbet akışı (tr/de/en) | ✅ |
+| Telegram webhook endpoint'i (gizli anahtar doğrulamalı) | ✅ |
+| Prompt değerlendirme koşumu (`npm run eval:prompts`) | ✅ (anahtar gerektirir) |
+| Onboarding PII profili (bilinen-değer maskeleme) | ✅ |
+| Üçüncü taraf isimleri — bağlamsal tetikleyici (D-029) | ✅ |
+| Tetikleyicisiz isimler için yerel NER — ölçüldü, üretime alınmadı | ⏳ v2 (bkz. D-057) |
+| Dağıtım hazırlığı (`railway.json`, `/health`, `check:deploy`) | ✅ gerçek Docker + Railway'de canlı |
+| Web dashboard | ⏳ kapsam dışı |
+
+---
+
+## Hızlı başlangıç
+
+```bash
+git clone https://github.com/burakerdgn1/B-Ko.git && cd B-Ko
+npm install
+cp .env.example .env      # anahtarsız çalışır: LLM_MOCK=true, DB_DRIVER=memory
+npm test                  # 665 test (yerelde gerçek fixture'lar varsa daha fazla olabilir)
+npm run start:dev
+```
+
+Gerçek anahtarlarla çalıştırmak için: [`MANUAL_ACTIONS_REQUIRED.md`](MANUAL_ACTIONS_REQUIRED.md)
+Dağıtım: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+
+### Operasyon komutları
+
+| Komut | Ne yapar |
+|---|---|
+| `npm run check:deploy` | Dağıtım öncesi GO/NO-GO. Gerçek `validateEnv()` + `PUBLIC_BASE_URL` / webhook sırrı / Supabase / Anthropic kontrolü. **Token harcamaz.** `railway run` ile platformdaki gerçek değişkenlere karşı da koşar. |
+| `npm run check:supabase` | Bağlantı + anahtar türü + şema teşhisi (salt-okunur). |
+| `npm run check:docs-sync` | README'deki test/karar sayısının gerçek durumla eşleştiğini doğrular — uyuşmazsa CI kırmızı olur. |
+| `npm run test:supabase` | Gerçek Postgres'e karşı entegrasyon testleri (16). |
+| `npm run live:check` | Gerçek Claude + gerçek Supabase tam yığın (⚠️ ücretlendirilir). |
+| `npm run eval:prompts` | 14 sentetik mektupla prompt doğruluk ölçümü (⚠️ ücretlendirilir). |
+| `npm run bench:ner-mask` | Üçüncü taraf isim maskeleme v2 için yerel NER ölçümü (D-057). |
+| `npm run rotate:supabase-key` | Supabase secret anahtar rotasyonu — fail-safe, varsayılan kuru koşum. |
+| `npm run rotate:pii-key` | PII vault anahtar rotasyonu — şifreli veriyi kaybetmeden. |
+
+Sağlık kontrolü: `GET /health` → `{"status":"ok","uptime":N}` (liveness;
+bilinçli olarak dış bağımlılıklara dokunmaz ve hiçbir yapılandırma sızdırmaz).
+
+---
+
 ## Proje belgeleri
 
 | Dosya | İçerik |
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Mimari, modül haritası, veri modeli |
+| [`docs/architecture-diagram.md`](docs/architecture-diagram.md) | Tüm mermaid diyagramları (sıra diyagramı, state machine, ER diyagramı) |
 | [`DECISIONS.md`](DECISIONS.md) | Her mühendislik kararı + gerekçesi (57 karar) |
 | [`STATUS.md`](STATUS.md) | Şu an neredeyiz |
 | [`PROGRESS.md`](PROGRESS.md) | Kronolojik ilerleme |
@@ -280,9 +389,11 @@ Son tarih yaklaştıkça 14/7/3/1 gün kala otomatik hatırlatma gönderilir.
 | [`MANUAL_ACTIONS_REQUIRED.md`](MANUAL_ACTIONS_REQUIRED.md) | İnsan gerektiren adımlar |
 
 `DECISIONS.md` özellikle okunmaya değer: geliştirme sırasında bulunan **gerçek
-güvenlik açıkları** (Türkçe `ı` case-folding kaçağı, etiketsiz tekrar eden dosya
-numarası sızıntısı, onay kapısı bypass'ı, eksik GDPR silme) ve nasıl kapatıldıkları
-orada kayıtlı.
+güvenlik açıkları ve production olayları** (Türkçe `ı` case-folding kaçağı,
+etiketsiz tekrar eden dosya numarası sızıntısı, onay kapısı bypass'ı, eksik
+GDPR silme, `/start`'ta mükerrer AI şeffaflık mesajı, `/profil`'de eksik rıza
+kontrolü) ve nasıl bulunup kapatıldıkları orada kayıtlı — bir "her şey ilk
+seferinde doğru gitti" anlatısı değil, gerçek bir mühendislik iz kaydı.
 
 ## Kapsam
 
@@ -292,4 +403,4 @@ tam web dashboard.
 
 ## Lisans
 
-MIT
+MIT — bkz. [`LICENSE`](LICENSE).
