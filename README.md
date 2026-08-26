@@ -1,5 +1,10 @@
 # BüKo — AI Bureaucracy Copilot 🇩🇪
 
+[![CI](https://github.com/burakerdgn1/B-Ko/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/burakerdgn1/B-Ko/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-665%20passing-brightgreen)](DECISIONS.md)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 > Almanya'daki göçmenlerin resmî kurum yazışmalarını anlamasına ve zamanında
 > yanıtlamasına yardımcı olan bir Telegram asistanı.
 
