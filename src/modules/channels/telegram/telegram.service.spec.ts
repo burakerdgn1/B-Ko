@@ -119,8 +119,21 @@ describe('TelegramService — yaşam döngüsü (KRİTİK: token yoksa çökmeme
   });
 });
 
-describe('TelegramService — dispatch ve AI şeffaflığı (CLAUDE.md §7)', () => {
-  it('/start komutunda AI şeffaflık mesajı otomatik gönderilir', async () => {
+describe('TelegramService — dispatch (D-055: AI şeffaflığı artık YALNIZCA ConversationService gönderir)', () => {
+  /**
+   * D-055 regresyonu — canlı üretimde bir kullanıcı testiyle bulundu.
+   *
+   * `dispatch()` eskiden /start'ta kendi başına aiDisclosureText gönderiyordu
+   * ("kanal seviyesinde garanti"), ConversationService.handleCommand ise AYRICA
+   * aynı mesajı gönderiyordu — sonuç: her /start'ta AI açıklaması İKİ KEZ
+   * gönderiliyordu. Bu ikisi ayrı birim testlerde (burada sahte handler ile,
+   * conversation.service.spec.ts'te sahte adapter ile) ayrı ayrı "doğru"
+   * görünüyordu; hiçbir test ikisini GERÇEKTEN birbirine bağlayıp uçtan uca
+   * çalıştırmıyordu. `dispatch()` artık hiçbir UX/business metnini kendi
+   * göndermez — yalnızca handler'lara yönlendirir; tek kaynak
+   * ConversationService'tir (kanal-agnostik, Mock/WhatsApp'ta da çalışır).
+   */
+  it('/start dahil hiçbir mesaj türünde dispatch kendi başına sendMessage çağırmaz', async () => {
     const service = new TelegramService(makeConfig());
     const sendMessage = jest.fn().mockResolvedValue(undefined);
     primeFakeBot(service, sendMessage);
@@ -132,16 +145,12 @@ describe('TelegramService — dispatch ve AI şeffaflığı (CLAUDE.md §7)', ()
       message: { chat: { id: 42 }, from: { id: 42, language_code: 'de' }, text: '/start' },
     });
 
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-    const [chatId, text] = sendMessage.mock.calls[0];
-    expect(chatId).toBe('42');
-    expect(text).toMatch(/RECHTSBERATUNG/);
-
+    expect(sendMessage).not.toHaveBeenCalled();
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler.mock.calls[0][0]).toMatchObject({ kind: 'command', command: 'start' });
   });
 
-  it('normal metin mesajında AI şeffaflık mesajı gönderilmez', async () => {
+  it('normal metin mesajında da dispatch sendMessage çağırmaz', async () => {
     const service = new TelegramService(makeConfig());
     const sendMessage = jest.fn().mockResolvedValue(undefined);
     primeFakeBot(service, sendMessage);

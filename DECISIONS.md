@@ -1479,3 +1479,52 @@ varsayımsal olmadığı görüldü:
   `no-restricted-imports`/type-checked kurallar dahil — temiz geçti). `npm
   test` → 45/46 suite yeşil (1 skip, ilgisiz), 700/700 test yeşil, 0 kırmızı
   (bu kararın kendisi test davranışını değiştirmedi).
+
+## D-055 — /start'ta AI şeffaflık mesajı İKİ KEZ gönderiliyordu — canlı kullanıcı testiyle bulundu
+
+- **Bağlam:** Denetim raporundaki düzeltmeler production'a deploy edildikten
+  sonra, botun gerçekten çalıştığını doğrulamak için kullanıcı Telegram'dan
+  gerçek bir `/start` mesajı gönderdi. Railway HTTP loglarında istek `200`
+  dönüyordu, ama kullanıcının Telegram'dan kopyalayıp paylaştığı gerçek
+  transkriptte AI şeffaflık açıklaması ("🤖 Merhaba! Ben BüKo... HUKUKİ TAVSİYE
+  DEĞİLDİR...") **birebir aynı metinle iki kez** görünüyordu.
+- **Kök neden:** İki bağımsız kod yolu aynı mesajı gönderiyordu:
+  1. `TelegramService.dispatch()` — `/start` komutunda kanal seviyesinde
+     `aiDisclosureText` gönderiyordu ("kanal seviyesinde garanti edilir —
+     downstream modüllere bırakılmaz" yorumuyla savunulmuştu).
+  2. `ConversationService.handleCommand('start')` — kanal-agnostik akışın
+     PARÇASI olarak AYRICA aynı metni gönderiyordu (CLAUDE.md §7 gereği her
+     kanalda çalışması gerektiği için).
+  İkisi de kendi biriminde "doğru" görünüyordu: `telegram.service.spec.ts`
+  sahte bir `handler = jest.fn()` kullanıyordu (gerçek `ConversationService`
+  hiç devreye girmiyordu), `conversation.service.spec.ts` ise sahte bir
+  `MockChannelAdapter` ile `ConversationService`'i tek başına test ediyordu.
+  Hiçbir test TelegramService → TelegramAdapter → ConversationService
+  zincirini GERÇEKTEN uçtan uca kurup mesaj SAYISINI doğrulamıyordu — tam da
+  bu projenin daha önce defalarca vurguladığı "birim ✓ diyor ama kompozisyon
+  doğrulanmıyor" sınıfı bir boşluk.
+  Ayrıca `MockChannelAdapter`'da bu "kanal seviyesi garanti" hiç yoktu — yani
+  WhatsApp/Mock kanalında AI şeffaflığı yalnızca `ConversationService`
+  üzerinden çalışıyordu. Bu da kanıtlıyor ki channel-level kopya bir güvence
+  değil, yalnızca Telegram'a özgü bir mükerrerlik kaynağıydı.
+- **Karar:** `TelegramService.dispatch()`'teki kanal-seviyesi gönderim
+  (`trySendDisclosure`) tamamen kaldırıldı. Tek kaynak artık
+  `ConversationService`'tir — kanal-agnostik, tüm adaptörlerde (Telegram,
+  Mock, gelecekteki WhatsApp) aynı şekilde çalışır.
+- **Regresyon testi:** Yeni bir dosya —
+  `telegram.ai-disclosure.e2e.spec.ts` — gerçek `TelegramService` +
+  gerçek `TelegramAdapter`'ı `ConversationService`'in `ChannelAdapter`'ı
+  olarak DI'a bağlar (yalnızca grammY'nin ağ çağıran `api.sendMessage`'ı
+  sahte) ve `/start`'ın TAM ZİNCİRDEN geçtiğinde şeffaflık mesajının tam
+  olarak bir kez gönderildiğini doğrular. Eski koda karşı ÖNCE kırmızı
+  olduğu (`toHaveLength(1)` beklenirken `2` alındığı) doğrulandıktan sonra
+  düzeltme uygulandı ve yeşile döndü — testin gerçekten bu regresyonu
+  yakaladığının kanıtı.
+- **Doğrulama:** `npm test` → 46/47 suite yeşil (1 skip, ilgisiz), 702/702
+  test yeşil (yerelde, gerçek fixture'larla) — CI'ın kanonik sayısı 663
+  (46 suite). `npx tsc --noEmit` ve `npm run lint` temiz. README/
+  `check:docs-sync` yeni sayıya (663) güncellendi.
+- **Ders:** Ölçülen her şey testliydi (PII sızıntısı, onay kapısı, GDPR
+  silme), ama iki AYRI birimin BİR ARADA doğru davrandığını hiç kimse
+  test etmemişti. Gerçek kullanıcı trafiği, unit test'lerin kör noktasını
+  (kompozisyon) birim testlerden daha hızlı buldu.

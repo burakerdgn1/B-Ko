@@ -7,7 +7,6 @@ import {
 import { Api, Bot } from 'grammy';
 import { AppConfigService } from '../../../config/config.service';
 import { IncomingMessage } from '../channel.adapter';
-import { aiDisclosureText } from '../messages';
 import {
   mapTelegramUpdateToIncoming,
   TelegramCallbackQueryLike,
@@ -217,29 +216,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     const msg = mapTelegramUpdateToIncoming(update);
     if (!msg) return;
 
-    // AI şeffaflığı (CLAUDE.md §7): /start akışında kanal seviyesinde garanti
-    // edilir — downstream modüllere/UX metnine bırakılmaz.
-    if (msg.kind === 'command' && msg.command === 'start') {
-      await this.trySendDisclosure(msg.channelUserId, msg.locale);
-    }
-
+    // AI şeffaflığı (CLAUDE.md §7): tek kaynak ConversationService'tir
+    // (kanal-agnostik, her adaptör için geçerli — bkz. D-055). Burada AYRICA
+    // gönderilmez: iki bağımsız gönderim aynı /start'ta mükerrer mesaja yol
+    // açıyordu (canlıda bulundu, D-055).
     for (const handler of this.handlers) {
       try {
         await handler(msg);
       } catch (err) {
         this.logger.error(`Handler hatası: ${errMsg(err)}`);
       }
-    }
-  }
-
-  private async trySendDisclosure(
-    chatId: string,
-    locale?: string,
-  ): Promise<void> {
-    try {
-      await this.bot?.api.sendMessage(chatId, aiDisclosureText(locale));
-    } catch (err) {
-      this.logger.error(`AI şeffaflık mesajı gönderilemedi: ${errMsg(err)}`);
     }
   }
 }
